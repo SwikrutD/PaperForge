@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "allowJs": true,
+    "checkJs": true,
+    // Build tooling does not need the stricter indexing rules the app uses.
+    "noUncheckedIndexedAccess": false,
+    "exactOptionalPropertyTypes": false
+  },
+  "include": [
+    "eslint.config.mjs",
+    "forge.config.ts",
+    "vite.*.config.mts",
+    "vitest.config.mts",
+    "scripts/**/*.mjs"
+  ]
+}

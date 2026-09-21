@@ -1,0 +1,56 @@
+import type { BrowserWindow } from 'electron';
+import { eventContracts, type EventChannel, type EventPayload } from '@shared/ipc/contracts';
+import { buildAppInfo } from '../services/appInfo';
+import type { SettingsStore } from '../services/settings/settingsStore';
+import type { Logger } from '../services/logging/logger';
+import type { ThemeController } from '../theme/themeController';
+import { createIpcRegistrar } from './registry';
+
+export interface IpcDependencies {
+  settings: SettingsStore;
+  theme: ThemeController;
+  logger: Logger;
+  trustedOrigins: readonly string[];
+  /** Windows that should receive pushed events. */
+  getWindows: () => BrowserWindow[];
+}
+
+/** Sends a contract-validated event to every live renderer. */
+export function createEventBroadcaster(deps: Pick<IpcDependencies, 'getWindows' | 'logger'>) {
+  return function broadcast<C extends EventChannel>(channel: C, payload: EventPayload<C>): void {
+    const validated = eventContracts[channel].safeParse(payload);
+    if (!validated.success) {
+      deps.logger.error(`Refused to broadcast an invalid ${channel} payload.`);
+      return;
+    }
+    for (const window of deps.getWindows()) {
+      if (!window.isDestroyed()) window.webContents.send(channel, validated.data);
+    }
+  };
+}
+
+export function registerIpcHandlers(deps: IpcDependencies): void {
+  const registerInvoke = createIpcRegistrar({
+    trustedOrigins: deps.trustedOrigins,
+    logger: deps.logger,
+  });
+  const broadcast = createEventBroadcaster(deps);
+
+  registerInvoke('app:getInfo', () => buildAppInfo());
+  registerInvoke('settings:get', () => deps.settings.get());
+  registerInvoke('settings:patch', async (patch) => {
+    const next = await deps.settings.patch(patch);
+    if (patch.appearance?.theme !== undefined) {
+      deps.theme.setPreference(patch.appearance.theme);
+    }
+    return next;
+  });
+  registerInvoke('theme:getState', () => deps.theme.getState());
+
+  deps.theme.onChange((state) => {
+    broadcast('theme:changed', state);
+  });
+  deps.settings.onChange((settings) => {
+    broadcast('settings:changed', settings);
+  });
+}

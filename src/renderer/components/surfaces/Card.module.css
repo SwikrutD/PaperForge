@@ -1,0 +1,24 @@
+.card {
+  background-color: var(--pf-color-bg-surface);
+  border: 1px solid var(--pf-color-border);
+  border-radius: var(--pf-radius-xl);
+  padding: var(--pf-space-200);
+}
+
+.header {
+  margin-bottom: var(--pf-space-150);
+}
+
+.title {
+  font-family: var(--pf-font-family-display);
+  font-size: var(--pf-font-size-500);
+  font-weight: var(--pf-font-weight-medium);
+  line-height: var(--pf-line-height-500);
+}
+
+.description {
+  margin-top: var(--pf-space-050);
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-300);
+  line-height: var(--pf-line-height-400);
+}

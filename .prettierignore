@@ -1,0 +1,9 @@
+node_modules/
+.vite/
+out/
+dist/
+coverage/
+package-lock.json
+resources/icons/*.ico
+resources/icons/*.png
+CLAUDE.md

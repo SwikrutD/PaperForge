@@ -1,0 +1,42 @@
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pf-space-200);
+  height: var(--pf-statusbar-height);
+  padding: 0 var(--pf-space-150);
+  background-color: var(--pf-color-bg-surface);
+  border-top: 1px solid var(--pf-color-border);
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+  flex: 0 0 auto;
+}
+
+.group {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-space-150);
+  min-width: 0;
+}
+
+.item {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--pf-radius-round);
+  background-color: var(--pf-color-success);
+  flex: 0 0 auto;
+}
+
+.dotError {
+  background-color: var(--pf-color-danger);
+}
+
+.dotBusy {
+  background-color: var(--pf-color-warning);
+}

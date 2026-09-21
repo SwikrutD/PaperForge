@@ -1,0 +1,38 @@
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-200);
+  max-width: 760px;
+  margin: 0 auto;
+  padding: var(--pf-space-400) var(--pf-space-300);
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-100);
+}
+
+.title {
+  font-family: var(--pf-font-family-display);
+  font-size: var(--pf-font-size-700);
+  font-weight: var(--pf-font-weight-medium);
+  line-height: var(--pf-line-height-700);
+}
+
+.lead {
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-400);
+  line-height: var(--pf-line-height-500);
+  max-width: 60ch;
+}
+
+.cards {
+  display: grid;
+  gap: var(--pf-space-200);
+}
+
+.loading {
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-300);
+}

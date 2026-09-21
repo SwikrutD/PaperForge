@@ -1,0 +1,39 @@
+.bar {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--pf-space-100);
+  padding: var(--pf-space-150);
+  border: 1px solid var(--pf-color-border);
+  border-radius: var(--pf-radius-lg);
+  background-color: var(--pf-color-bg-subtle);
+  font-size: var(--pf-font-size-300);
+}
+
+.error {
+  border-color: var(--pf-color-danger);
+}
+
+.icon {
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  flex: 0 0 auto;
+  color: var(--pf-color-danger);
+}
+
+.body {
+  min-width: 0;
+}
+
+.details {
+  margin-top: var(--pf-space-050);
+  color: var(--pf-color-text-secondary);
+  font-family: var(--pf-font-family-mono);
+  font-size: var(--pf-font-size-200);
+  overflow-wrap: anywhere;
+}
+
+.summary {
+  cursor: pointer;
+  color: var(--pf-color-accent-text);
+}

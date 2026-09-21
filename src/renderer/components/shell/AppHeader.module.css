@@ -1,0 +1,40 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pf-space-200);
+  height: var(--pf-titlebar-height);
+  padding: 0 var(--pf-space-150);
+  background-color: var(--pf-color-bg-surface);
+  border-bottom: 1px solid var(--pf-color-border);
+  flex: 0 0 auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-space-100);
+  min-width: 0;
+}
+
+.name {
+  font-family: var(--pf-font-family-display);
+  font-size: var(--pf-font-size-400);
+  font-weight: var(--pf-font-weight-medium);
+  letter-spacing: 0.01em;
+}
+
+.tag {
+  padding: 1px var(--pf-space-100);
+  border: 1px solid var(--pf-color-border);
+  border-radius: var(--pf-radius-round);
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-100);
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-space-150);
+}

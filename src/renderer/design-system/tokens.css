@@ -1,0 +1,147 @@
+/*
+ * Fluent Workspace design tokens.
+ *
+ * Components must only ever reference these semantic variables — never literal
+ * colours. Light values live on :root; dark values are redefined under
+ * [data-theme='dark'], which the main process resolves from Windows.
+ */
+
+:root {
+  /* Typography — system fonts only, never fetched from the network. */
+  --pf-font-family:
+    'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --pf-font-family-display:
+    'Segoe UI Variable Display', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  --pf-font-family-mono: 'Cascadia Mono', 'Cascadia Code', Consolas, 'Courier New', monospace;
+
+  --pf-font-size-100: 11px;
+  --pf-font-size-200: 12px;
+  --pf-font-size-300: 13px;
+  --pf-font-size-400: 14px;
+  --pf-font-size-500: 16px;
+  --pf-font-size-600: 20px;
+  --pf-font-size-700: 26px;
+
+  --pf-line-height-300: 18px;
+  --pf-line-height-400: 20px;
+  --pf-line-height-500: 22px;
+  --pf-line-height-600: 28px;
+  --pf-line-height-700: 34px;
+
+  --pf-font-weight-regular: 400;
+  --pf-font-weight-medium: 600;
+  --pf-font-weight-strong: 700;
+
+  /* Spacing — compact desktop density. */
+  --pf-space-025: 2px;
+  --pf-space-050: 4px;
+  --pf-space-100: 8px;
+  --pf-space-150: 12px;
+  --pf-space-200: 16px;
+  --pf-space-250: 20px;
+  --pf-space-300: 24px;
+  --pf-space-400: 32px;
+  --pf-space-500: 40px;
+
+  /* Radii */
+  --pf-radius-sm: 4px;
+  --pf-radius-md: 6px;
+  --pf-radius-lg: 8px;
+  --pf-radius-xl: 12px;
+  --pf-radius-round: 9999px;
+
+  /* Control metrics */
+  --pf-control-height-sm: 26px;
+  --pf-control-height-md: 32px;
+  --pf-control-height-lg: 36px;
+  --pf-titlebar-height: 40px;
+  --pf-statusbar-height: 28px;
+
+  /* Motion */
+  --pf-duration-fast: 100ms;
+  --pf-duration-normal: 160ms;
+  --pf-duration-slow: 240ms;
+  --pf-ease-standard: cubic-bezier(0.33, 0, 0.67, 1);
+
+  /* Elevation — used sparingly; borders carry most of the hierarchy. */
+  --pf-shadow-2: 0 1px 2px rgba(0, 0, 0, 0.12);
+  --pf-shadow-8: 0 4px 8px rgba(0, 0, 0, 0.14);
+  --pf-shadow-16: 0 8px 16px rgba(0, 0, 0, 0.16);
+
+  /* Layers */
+  --pf-layer-panel: 10;
+  --pf-layer-toolbar: 20;
+  --pf-layer-dialog: 40;
+  --pf-layer-toast: 50;
+
+  /* Light theme surfaces */
+  --pf-color-bg-app: #faf9f8;
+  --pf-color-bg-surface: #ffffff;
+  --pf-color-bg-surface-raised: #ffffff;
+  --pf-color-bg-subtle: #f3f2f1;
+  --pf-color-bg-hover: rgba(0, 0, 0, 0.04);
+  --pf-color-bg-pressed: rgba(0, 0, 0, 0.08);
+  --pf-color-bg-selected: #e9f2fd;
+  --pf-color-workspace: #f0eeec;
+  --pf-color-page: #ffffff;
+
+  --pf-color-border: #e1dfdd;
+  --pf-color-border-strong: #c8c6c4;
+  --pf-color-divider: #edebe9;
+
+  --pf-color-text-primary: #201f1e;
+  --pf-color-text-secondary: #605e5c;
+  --pf-color-text-disabled: #a19f9d;
+  --pf-color-text-on-accent: #ffffff;
+
+  --pf-color-accent: #0f6cbd;
+  --pf-color-accent-hover: #115ea3;
+  --pf-color-accent-pressed: #0c3b5e;
+  --pf-color-accent-text: #0f6cbd;
+  --pf-color-accent-subtle: #e9f2fd;
+  --pf-color-focus-ring: #0f6cbd;
+
+  --pf-color-danger: #c50f1f;
+  --pf-color-warning: #8a5300;
+  --pf-color-success: #0e700e;
+
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --pf-color-bg-app: #1b1a19;
+  --pf-color-bg-surface: #252423;
+  --pf-color-bg-surface-raised: #2d2c2b;
+  --pf-color-bg-subtle: #323130;
+  --pf-color-bg-hover: rgba(255, 255, 255, 0.06);
+  --pf-color-bg-pressed: rgba(255, 255, 255, 0.1);
+  --pf-color-bg-selected: #0d2c45;
+  --pf-color-workspace: #141313;
+  --pf-color-page: #ffffff;
+
+  --pf-color-border: #3b3a39;
+  --pf-color-border-strong: #565452;
+  --pf-color-divider: #323130;
+
+  --pf-color-text-primary: #f3f2f1;
+  --pf-color-text-secondary: #c8c6c4;
+  --pf-color-text-disabled: #797775;
+  --pf-color-text-on-accent: #ffffff;
+
+  --pf-color-accent: #0f6cbd;
+  --pf-color-accent-hover: #2886de;
+  --pf-color-accent-pressed: #479ef5;
+  --pf-color-accent-text: #479ef5;
+  --pf-color-accent-subtle: #0d2c45;
+  --pf-color-focus-ring: #479ef5;
+
+  --pf-color-danger: #ff99a4;
+  --pf-color-warning: #fdd376;
+  --pf-color-success: #9fd89f;
+
+  --pf-shadow-2: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --pf-shadow-8: 0 4px 8px rgba(0, 0, 0, 0.45);
+  --pf-shadow-16: 0 8px 16px rgba(0, 0, 0, 0.5);
+
+  color-scheme: dark;
+}
