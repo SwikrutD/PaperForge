@@ -109,6 +109,7 @@ export function PdfPageView({
             key={highlight.id}
             className={highlight.active ? styles.highlightActive : styles.highlight}
             style={position}
+            data-search-highlight={highlight.active ? 'current' : 'match'}
             aria-hidden="true"
           />
         );

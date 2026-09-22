@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
-import { buildPdf, threePageDocument } from '../../fixtures/pdf';
+import { buildPdf, navigationDocument, threePageDocument } from '../../fixtures/pdf';
 
 /**
  * Reads the generated fixtures with PDF.js itself, in Node.
@@ -24,6 +24,23 @@ async function load(bytes: Buffer, password?: string): Promise<LoadedFixture> {
   const document = await task.promise;
   // The loading task owns the worker; the document proxy has no destroy().
   return Object.assign(document, { close: () => task.destroy() });
+}
+
+/** The shapes of the PDF.js results this file asserts on. */
+interface OutlineEntry {
+  title: string;
+  bold?: boolean;
+  items?: OutlineEntry[];
+}
+
+interface AttachmentEntry {
+  filename: string;
+  description?: string;
+}
+
+interface OptionalContent {
+  getOrder: () => unknown[] | null;
+  getGroup: (id: string) => { name: string | null } | undefined;
 }
 
 async function textOfPage(document: LoadedFixture, pageNumber: number): Promise<string> {
@@ -94,6 +111,36 @@ describe('generated PDF fixtures', () => {
       [1684, 1190],
       [200, 2000],
     ]);
+    await document.close();
+  });
+
+  it('produces a document with an outline, labels, an attachment and a layer', async () => {
+    const document = await load(navigationDocument());
+
+    // Page labels: roman front matter, then the body from 1.
+    expect(await document.getPageLabels()).toEqual(['i', 'ii', '1', '2', '3']);
+
+    const outline = (await document.getOutline()) as OutlineEntry[] | null;
+    expect(outline?.map((item) => item.title)).toEqual(['Front matter', 'Report']);
+    expect(outline?.[0]?.bold).toBe(true);
+    expect(outline?.[1]?.items?.map((item) => item.title)).toEqual(['Findings', 'Appendix']);
+
+    // PDF.js hands attachments back as a Map keyed by name.
+    const attachments = (await document.getAttachments()) as Map<string, AttachmentEntry>;
+    expect([...attachments.values()].map((file) => file.filename)).toEqual([
+      'notes.txt',
+      'installer.exe',
+    ]);
+    expect(attachments.get('notes.txt')?.description).toBe('Reviewer notes');
+
+    const optionalContent = (await document.getOptionalContentConfig()) as OptionalContent;
+    const order = optionalContent.getOrder() ?? [];
+    expect(order).toHaveLength(1);
+    const group = optionalContent.getGroup(String(order[0]));
+    expect(group?.name).toBe('Watermark layer');
+
+    // The last page carries no text, which is what search must be honest about.
+    expect(await textOfPage(document, 5)).toBe('');
     await document.close();
   });
 

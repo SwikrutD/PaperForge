@@ -15,12 +15,41 @@ export interface PageSpec {
   rotate?: number;
   /** Text drawn near the top of the page. */
   text?: string;
+  /** Puts the page's text inside this optional content group, by name. */
+  layer?: string;
+}
+
+/** One outline entry. Children nest to any depth. */
+export interface OutlineSpec {
+  title: string;
+  /** One-based page the entry points at. */
+  page: number;
+  bold?: boolean;
+  italic?: boolean;
+  /** Colour components in 0–1, as PDFs write them. */
+  color?: [number, number, number];
+  children?: OutlineSpec[];
+}
+
+export interface AttachmentSpec {
+  fileName: string;
+  content: string;
+  description?: string;
 }
 
 export interface PdfSpec {
   pages: PageSpec[];
   /** Encrypts the file with 40-bit RC4 and the standard security handler. */
   password?: string;
+  outline?: OutlineSpec[];
+  /**
+   * Numbers the first `romanPages` pages i, ii, iii… and the rest from 1,
+   * which is how a document with a preface labels its pages.
+   */
+  romanPages?: number;
+  attachments?: AttachmentSpec[];
+  /** Optional content groups, by name, in the order the panel should show them. */
+  layers?: string[];
 }
 
 interface PdfObject {
@@ -47,24 +76,36 @@ export function buildPdf(spec: PdfSpec): Buffer {
   };
 
   // 1: catalog, 2: page tree, 3: font — fixed so the layout stays readable.
-  const catalogNumber = add('<< /Type /Catalog /Pages 2 0 R >>');
+  const catalogNumber = add('placeholder');
   const pagesNumber = add('placeholder');
   const fontNumber = add(
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
   );
+
+  // Optional content groups come before the pages that reference them.
+  const layerNumbers = new Map<string, number>();
+  for (const name of spec.layers ?? []) {
+    layerNumbers.set(name, add(`<< /Type /OCG /Name ${pdfString(name)} >>`));
+  }
 
   const pageNumbers: number[] = [];
   for (const page of spec.pages) {
     const width = page.width ?? LETTER.width;
     const height = page.height ?? LETTER.height;
     const text = page.text ?? '';
-    const content = `BT /F1 24 Tf 1 0 0 1 60 ${height - 80} Tm ${pdfString(text)} Tj ET\n`;
+    const layerNumber = page.layer === undefined ? undefined : layerNumbers.get(page.layer);
+    const drawing = `BT /F1 24 Tf 1 0 0 1 60 ${height - 80} Tm ${pdfString(text)} Tj ET\n`;
+    // Marked content ties the drawing to an optional content group.
+    const content = layerNumber === undefined ? drawing : `/OC /MC0 BDC\n${drawing}EMC\n`;
     const contentNumber = add(`<< /Length ${content.length} >>\nstream\n${content}endstream`);
+    const properties =
+      layerNumber === undefined ? '' : ` /Properties << /MC0 ${layerNumber} 0 R >>`;
     pageNumbers.push(
       add(
         `<< /Type /Page /Parent ${pagesNumber} 0 R /MediaBox [0 0 ${width} ${height}]` +
           `${page.rotate === undefined ? '' : ` /Rotate ${page.rotate}`}` +
-          ` /Resources << /Font << /F1 ${fontNumber} 0 R >> >> /Contents ${contentNumber} 0 R >>`,
+          ` /Resources << /Font << /F1 ${fontNumber} 0 R >>${properties} >>` +
+          ` /Contents ${contentNumber} 0 R >>`,
       ),
     );
   }
@@ -74,6 +115,55 @@ export function buildPdf(spec: PdfSpec): Buffer {
       `<< /Type /Pages /Kids [${pageNumbers.map((number) => `${number} 0 R`).join(' ')}] /Count ${pageNumbers.length} >>`,
     ),
   };
+
+  const catalogEntries: string[] = [`/Type /Catalog /Pages ${pagesNumber} 0 R`];
+
+  if (spec.outline !== undefined && spec.outline.length > 0) {
+    const outlineNumber = add('placeholder');
+    const roots = writeOutlineLevel(add, objects, spec.outline, outlineNumber, pageNumbers);
+    objects[outlineNumber - 1] = {
+      body: latin1(
+        `<< /Type /Outlines /First ${roots.first} 0 R /Last ${roots.last} 0 R /Count ${roots.count} >>`,
+      ),
+    };
+    catalogEntries.push(`/Outlines ${outlineNumber} 0 R`);
+  }
+
+  if (spec.romanPages !== undefined) {
+    catalogEntries.push(
+      `/PageLabels << /Nums [0 << /S /r >> ${spec.romanPages} << /S /D /St 1 >>] >>`,
+    );
+  }
+
+  if (spec.attachments !== undefined && spec.attachments.length > 0) {
+    const names: string[] = [];
+    for (const attachment of spec.attachments) {
+      const streamNumber = add(
+        `<< /Type /EmbeddedFile /Length ${attachment.content.length} ` +
+          `/Params << /Size ${attachment.content.length} >> >>
+stream
+${attachment.content}
+endstream`,
+      );
+      const specNumber = add(
+        `<< /Type /Filespec /F ${pdfString(attachment.fileName)} /UF ${pdfString(attachment.fileName)}` +
+          `${attachment.description === undefined ? '' : ` /Desc ${pdfString(attachment.description)}`}` +
+          ` /EF << /F ${streamNumber} 0 R >> >>`,
+      );
+      names.push(`${pdfString(attachment.fileName)} ${specNumber} 0 R`);
+    }
+    const namesNumber = add(`<< /Names [${names.join(' ')}] >>`);
+    catalogEntries.push(`/Names << /EmbeddedFiles ${namesNumber} 0 R >>`);
+  }
+
+  if (spec.layers !== undefined && spec.layers.length > 0) {
+    const refs = spec.layers.map((name) => `${layerNumbers.get(name) ?? 0} 0 R`).join(' ');
+    catalogEntries.push(
+      `/OCProperties << /OCGs [${refs}] /D << /ON [${refs}] /Order [${refs}] >> >>`,
+    );
+  }
+
+  objects[catalogNumber - 1] = { body: latin1(`<< ${catalogEntries.join(' ')} >>`) };
 
   const fileId = createHash('md5').update(JSON.stringify(spec)).digest();
   let encryptNumber: number | undefined;
@@ -93,6 +183,56 @@ export function buildPdf(spec: PdfSpec): Buffer {
     ...(encryptNumber === undefined ? {} : { encryptNumber }),
     ...(encryptionKey === undefined ? {} : { encryptionKey }),
   });
+}
+
+/**
+ * Writes one level of the outline tree and links the siblings together.
+ *
+ * Every entry is reserved before its children are written, so a child can
+ * point back at its parent.
+ */
+function writeOutlineLevel(
+  add: (body: string | Buffer) => number,
+  objects: PdfObject[],
+  entries: readonly OutlineSpec[],
+  parentNumber: number,
+  pageNumbers: readonly number[],
+): { first: number; last: number; count: number } {
+  const numbers = entries.map(() => add('placeholder'));
+
+  entries.forEach((entry, index) => {
+    const number = numbers[index] as number;
+    const pageRef = pageNumbers[entry.page - 1];
+    const parts = [`/Title ${pdfString(entry.title)}`, `/Parent ${parentNumber} 0 R`];
+
+    const previous = numbers[index - 1];
+    const next = numbers[index + 1];
+    if (previous !== undefined) parts.push(`/Prev ${previous} 0 R`);
+    if (next !== undefined) parts.push(`/Next ${next} 0 R`);
+    if (pageRef !== undefined) parts.push(`/Dest [${pageRef} 0 R /XYZ null null null]`);
+
+    const flags = (entry.italic === true ? 1 : 0) + (entry.bold === true ? 2 : 0);
+    if (flags !== 0) parts.push(`/F ${flags}`);
+    if (entry.color !== undefined) parts.push(`/C [${entry.color.join(' ')}]`);
+
+    if (entry.children !== undefined && entry.children.length > 0) {
+      const children = writeOutlineLevel(add, objects, entry.children, number, pageNumbers);
+      parts.push(
+        `/First ${children.first} 0 R`,
+        `/Last ${children.last} 0 R`,
+        // A negative count means the entry starts collapsed.
+        `/Count ${children.count}`,
+      );
+    }
+
+    objects[number - 1] = { body: latin1(`<< ${parts.join(' ')} >>`) };
+  });
+
+  return {
+    first: numbers[0] as number,
+    last: numbers[numbers.length - 1] as number,
+    count: entries.length,
+  };
 }
 
 interface AssembleOptions {
@@ -235,6 +375,41 @@ export function threePageDocument(): Buffer {
       { text: 'PaperForge alpha page' },
       { text: 'PaperForge beta page' },
       { text: 'PaperForge gamma page' },
+    ],
+  });
+}
+
+/**
+ * A document that exercises every navigation panel: an outline with a nested
+ * entry, roman-numbered front matter, an embedded file, an optional content
+ * group, and a page with no text at all.
+ */
+export function navigationDocument(): Buffer {
+  return buildPdf({
+    romanPages: 2,
+    layers: ['Watermark layer'],
+    pages: [
+      { text: 'Preface about forging paper' },
+      { text: 'Contents of the report' },
+      { text: 'Findings about the invoice' },
+      { text: 'Layered notice', layer: 'Watermark layer' },
+      { text: '' },
+    ],
+    outline: [
+      { title: 'Front matter', page: 1, bold: true },
+      {
+        title: 'Report',
+        page: 3,
+        color: [0.8, 0.1, 0.1],
+        children: [
+          { title: 'Findings', page: 3, italic: true },
+          { title: 'Appendix', page: 5 },
+        ],
+      },
+    ],
+    attachments: [
+      { fileName: 'notes.txt', content: 'Attached notes.', description: 'Reviewer notes' },
+      { fileName: 'installer.exe', content: 'MZ not really' },
     ],
   });
 }
