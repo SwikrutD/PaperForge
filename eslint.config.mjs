@@ -65,7 +65,7 @@ export default tseslint.config(
   },
   {
     // Renderer is browser-only and must never reach for Node APIs.
-    files: ['src/renderer/**/*.ts', 'src/renderer/**/*.tsx'],
+    files: ['src/renderer/**/*.ts', 'src/renderer/**/*.tsx', 'src/pdf/**/*.ts'],
     languageOptions: { globals: globals.browser },
     plugins: {
       'react-hooks': reactHooks,

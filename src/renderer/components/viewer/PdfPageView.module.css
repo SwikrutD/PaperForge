@@ -1,0 +1,110 @@
+.page {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--pf-color-page);
+  box-shadow: var(--pf-shadow-8);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * The text layer sits exactly over the canvas. Its spans are transparent and
+ * carry the real glyph positions, which is what makes selection and search
+ * highlighting line up with what is drawn.
+ */
+.textLayer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  line-height: 1;
+  text-align: initial;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: currentColor;
+  z-index: 2;
+}
+
+.textLayer :global(span),
+.textLayer :global(br) {
+  position: absolute;
+  white-space: pre;
+  color: transparent;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+
+.textLayer :global(.markedContent) {
+  top: 0;
+  height: 0;
+}
+
+.textLayer :global(::selection) {
+  background-color: color-mix(in srgb, var(--pf-color-accent) 40%, transparent);
+}
+
+.textLayer :global(.endOfContent) {
+  display: block;
+  position: absolute;
+  inset: 100% 0 0;
+  z-index: -1;
+  cursor: default;
+  user-select: none;
+}
+
+.textLayer :global(.endOfContent.active) {
+  top: 0;
+}
+
+.link {
+  position: absolute;
+  z-index: 3;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background-color: transparent;
+  cursor: pointer;
+}
+
+.link:hover {
+  background-color: color-mix(in srgb, var(--pf-color-accent) 18%, transparent);
+  border-color: var(--pf-color-accent);
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--pf-color-focus-ring);
+  outline-offset: 1px;
+}
+
+.failed {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--pf-space-200);
+  background-color: var(--pf-color-bg-subtle);
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-300);
+  text-align: center;
+}
+
+.badge {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 4;
+  padding: 1px 6px;
+  border-radius: var(--pf-radius-round);
+  background-color: color-mix(in srgb, var(--pf-color-bg-app) 78%, transparent);
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-100);
+  pointer-events: none;
+}

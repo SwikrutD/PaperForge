@@ -63,9 +63,9 @@ export type SerializedAppError = z.infer<typeof serializedAppErrorSchema>;
 
 export interface AppErrorOptions {
   /** Overrides the default user-facing message for the code. */
-  message?: string;
+  message?: string | undefined;
   /** Diagnostic text shown behind a "Details" expander. Never user-critical. */
-  details?: string;
+  details?: string | undefined;
   cause?: unknown;
 }
 

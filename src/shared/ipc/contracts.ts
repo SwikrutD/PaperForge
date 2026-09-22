@@ -83,6 +83,11 @@ export const invokeContracts = {
     request: z.strictObject({ sessionIds: z.array(z.string().min(1)).min(1).max(50) }),
     response: z.array(recoveryEntrySchema),
   },
+
+  'shell:openExternal': {
+    request: z.strictObject({ url: z.string().min(1).max(4096) }),
+    response: z.void(),
+  },
 } as const satisfies Record<InvokeChannel, InvokeContract>;
 
 /** Request payload as callers pass it. */

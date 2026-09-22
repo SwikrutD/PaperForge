@@ -6,13 +6,35 @@ import type {
   OpenFailure,
   OpenResult,
 } from '@shared/schemas/document';
+import type { ZoomMode } from '../components/viewer/viewerLayout';
 import { invoke, subscribe } from '../services/ipcClient';
 import { useUiStore } from './uiStore';
+
+/** Per-tab view state, kept so switching tabs returns you where you were. */
+export interface DocumentViewState {
+  zoomMode: ZoomMode;
+  scale: number;
+  rotation: 0 | 90 | 180 | 270;
+  pageNumber: number;
+  scrollTop: number;
+  /** Set by a command; the viewer scrolls there and clears it. */
+  pendingPage: number | null;
+}
+
+export const DEFAULT_VIEW_STATE: DocumentViewState = {
+  zoomMode: 'fitWidth',
+  scale: 1,
+  rotation: 0,
+  pageNumber: 1,
+  scrollTop: 0,
+  pendingPage: null,
+};
 
 export interface DocumentTab {
   session: DocumentSession;
   /** Set when the file changed underneath us; cleared once acknowledged. */
   externalChange: FileChangeKind | null;
+  view: DocumentViewState;
 }
 
 export interface DocumentStore {
@@ -31,6 +53,7 @@ export interface DocumentStore {
   activate: (sessionId: string) => void;
   move: (sessionId: string, toIndex: number) => void;
   dismissChange: (sessionId: string) => void;
+  updateView: (sessionId: string, patch: Partial<DocumentViewState>) => void;
 }
 
 let unsubscribe: (() => void) | undefined;
@@ -44,7 +67,7 @@ export function mergeSessions(
   for (const session of sessions) {
     const index = merged.findIndex((tab) => tab.session.id === session.id);
     if (index >= 0) merged[index] = { ...merged[index]!, session };
-    else merged.push({ session, externalChange: null });
+    else merged.push({ session, externalChange: null, view: { ...DEFAULT_VIEW_STATE } });
   }
   return merged;
 }
@@ -134,6 +157,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => {
           tabs: state.tabs.map((tab) =>
             tab.session.id === event.sessionId
               ? {
+                  ...tab,
                   session: event.file === null ? tab.session : { ...tab.session, file: event.file },
                   externalChange: event.change,
                 }
@@ -204,6 +228,13 @@ export const useDocumentStore = create<DocumentStore>((set, get) => {
       set((state) => ({
         tabs: state.tabs.map((tab) =>
           tab.session.id === sessionId ? { ...tab, externalChange: null } : tab,
+        ),
+      })),
+
+    updateView: (sessionId, patch) =>
+      set((state) => ({
+        tabs: state.tabs.map((tab) =>
+          tab.session.id === sessionId ? { ...tab, view: { ...tab.view, ...patch } } : tab,
         ),
       })),
   };

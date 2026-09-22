@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# Generated at build time from pdfjs-dist
+public/
+
 # Build output
 .vite/
 out/

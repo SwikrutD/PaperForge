@@ -1,3 +1,5 @@
+import { DOCUMENT_SCHEME } from '@shared/constants/app';
+
 /**
  * Content Security Policy for the renderer.
  *
@@ -12,8 +14,10 @@ export function buildContentSecurityPolicy(devServerOrigin?: string): string {
   const devWs = devServerOrigin === undefined ? '' : devServerOrigin.replace(/^http/, 'ws');
 
   const scriptSrc = devServerOrigin === undefined ? `'self'` : `'self' 'unsafe-inline' ${devHttp}`;
+  // Document bytes come from the pfdoc scheme, which only serves open sessions.
+  const baseConnect = `'self' blob: data: ${DOCUMENT_SCHEME}:`;
   const connectSrc =
-    devServerOrigin === undefined ? `'self' blob: data:` : `'self' blob: data: ${devHttp} ${devWs}`;
+    devServerOrigin === undefined ? baseConnect : `${baseConnect} ${devHttp} ${devWs}`;
 
   return [
     `default-src 'none'`,

@@ -25,6 +25,7 @@ export const INVOKE_CHANNEL_NAMES = [
   'recovery:list',
   'recovery:restore',
   'recovery:discard',
+  'shell:openExternal',
 ] as const;
 
 export type InvokeChannel = (typeof INVOKE_CHANNEL_NAMES)[number];

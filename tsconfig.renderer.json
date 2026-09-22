@@ -1,7 +1,7 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "paths": { "@shared/*": ["./src/shared/*"] },
+    "paths": { "@shared/*": ["./src/shared/*"], "@pdf/*": ["./src/pdf/*"] },
     "module": "ESNext",
     "moduleResolution": "bundler",
     "verbatimModuleSyntax": true,
@@ -9,5 +9,10 @@
     "types": ["vite/client"],
     "jsx": "react-jsx"
   },
-  "include": ["src/renderer/**/*.ts", "src/renderer/**/*.tsx", "src/shared/**/*.ts"]
+  "include": [
+    "src/renderer/**/*.ts",
+    "src/renderer/**/*.tsx",
+    "src/pdf/**/*.ts",
+    "src/shared/**/*.ts"
+  ]
 }

@@ -14,7 +14,7 @@ import { ToastHost } from '../components/overlays/ToastHost';
 import { ProgressCenter } from '../components/progress/ProgressCenter';
 import { HomeScreen } from '../components/home/HomeScreen';
 import { AppShell } from '../components/shell/AppShell';
-import { DocumentView } from '../components/workspace/DocumentView';
+import { PdfViewer } from '../components/viewer/PdfViewer';
 import { ErrorMessageBar } from '../components/surfaces/MessageBar';
 import { invoke } from '../services/ipcClient';
 import { useAppStore } from '../stores/appStore';
@@ -129,7 +129,7 @@ export function App(): ReactElement {
         {activeTab === null ? (
           <HomeScreen recentFiles={recentFiles} />
         ) : (
-          <DocumentView key={activeTab.session.id} tab={activeTab} />
+          <PdfViewer key={activeTab.session.id} tab={activeTab} />
         )}
       </AppErrorBoundary>
     </AppShell>

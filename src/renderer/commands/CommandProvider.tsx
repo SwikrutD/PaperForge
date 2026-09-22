@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, type ReactElement, type ReactNode } fr
 import { AppError } from '@shared/errors/appError';
 import { invoke } from '../services/ipcClient';
 import type { LeftPanelId, RightPanelId } from '@shared/schemas/settings';
+import { nextZoomStep, type ZoomMode } from '../components/viewer/viewerLayout';
 import { focusNextRegion } from '../keyboard/focusRegions';
 import { buildShortcutTable, findShortcutCommand } from '../keyboard/shortcuts';
 import { useAppStore } from '../stores/appStore';
@@ -47,6 +48,37 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         await invoke('files:revealInExplorer', { path: tab.session.file.path });
       },
       closeWindow: () => invoke('window:close'),
+
+      setZoomMode: (mode: ZoomMode) => {
+        const id = activeSessionId();
+        if (id !== null) documents().updateView(id, { zoomMode: mode });
+      },
+      zoomBy: (direction) => {
+        const id = activeSessionId();
+        const current = documents().tabs.find((tab) => tab.session.id === id);
+        if (id === null || current === undefined) return;
+        documents().updateView(id, {
+          zoomMode: 'custom',
+          scale: nextZoomStep(current.view.scale, direction),
+        });
+      },
+      rotateView: (direction) => {
+        const id = activeSessionId();
+        const current = documents().tabs.find((tab) => tab.session.id === id);
+        if (id === null || current === undefined) return;
+        const next = (((current.view.rotation + direction * 90) % 360) + 360) % 360;
+        documents().updateView(id, { rotation: next as 0 | 90 | 180 | 270 });
+      },
+      goToPage: (pageNumber) => {
+        const id = activeSessionId();
+        if (id !== null) documents().updateView(id, { pendingPage: pageNumber });
+      },
+      goToRelativePage: (offset) => {
+        const id = activeSessionId();
+        const current = documents().tabs.find((tab) => tab.session.id === id);
+        if (id === null || current === undefined) return;
+        documents().updateView(id, { pendingPage: current.view.pageNumber + offset });
+      },
       setThemePreference: (preference) => app().setThemePreference(preference),
       patchSettings: (patch) => app().patchSettings(patch),
       setLeftPanel: (panel: LeftPanelId) =>
@@ -78,6 +110,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
       appInfo,
       recentFiles,
       activeDocument: tabs.find((tab) => tab.session.id === activeTabId)?.session ?? null,
+      activeView: tabs.find((tab) => tab.session.id === activeTabId)?.view ?? null,
       openDocumentCount: tabs.length,
       fullScreen: windowState?.fullScreen ?? false,
       actions,

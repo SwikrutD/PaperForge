@@ -15,6 +15,7 @@ import { RecentFilesStore } from './services/recentFiles/recentFilesStore';
 import { SessionWorkspaces } from './services/recovery/recoveryJournal';
 import { SettingsStore } from './services/settings/settingsStore';
 import { ThemeController } from './theme/themeController';
+import { registerDocumentProtocol, registerDocumentScheme } from './windows/documentProtocol';
 import { createMainWindow } from './windows/mainWindow';
 import { registerRendererProtocol, registerRendererScheme } from './windows/rendererProtocol';
 
@@ -29,6 +30,7 @@ if (process.platform === 'win32') {
 }
 app.enableSandbox();
 registerRendererScheme();
+registerDocumentScheme();
 
 function installProcessGuards(logger: Logger): void {
   process.on('uncaughtException', (error) => {
@@ -87,6 +89,7 @@ async function bootstrap(): Promise<void> {
   } else {
     applyDevSecurityHeaders(session.defaultSession, contentSecurityPolicy, devServerUrl);
   }
+  registerDocumentProtocol(documents, logger);
 
   const openWindow = (): BrowserWindow =>
     createMainWindow({ settings, theme, logger, preloadPath, devServerUrl });

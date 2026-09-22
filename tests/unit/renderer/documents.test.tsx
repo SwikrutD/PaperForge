@@ -4,11 +4,12 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DocumentSession } from '../../../src/shared/schemas/document';
-import { DocumentView } from '../../../src/renderer/components/workspace/DocumentView';
+import { DocumentProperties } from '../../../src/renderer/components/workspace/DocumentProperties';
 import { FileDropZone } from '../../../src/renderer/components/shell/FileDropZone';
 import { RecentFilesList } from '../../../src/renderer/components/home/RecentFilesList';
 import { TabStrip } from '../../../src/renderer/components/shell/TabStrip';
 import {
+  DEFAULT_VIEW_STATE,
   mergeSessions,
   moveTab,
   nextActiveId,
@@ -42,7 +43,12 @@ function session(
 }
 
 function tab(id: string, name: string, overrides: Partial<DocumentTab> = {}): DocumentTab {
-  return { session: session(id, name), externalChange: null, ...overrides };
+  return {
+    session: session(id, name),
+    externalChange: null,
+    view: { ...DEFAULT_VIEW_STATE },
+    ...overrides,
+  };
 }
 
 function seedTabs(tabs: DocumentTab[], activeId: string | null): void {
@@ -127,7 +133,7 @@ describe('document store', () => {
 
   it('asks before closing a document with unsaved changes', async () => {
     const bridge = installBridgeStub({ 'files:close': { ok: true, data: undefined } });
-    seedTabs([{ session: session('a', 'a.pdf', { dirty: true }), externalChange: null }], 'a');
+    seedTabs([tab('a', 'a.pdf', { session: session('a', 'a.pdf', { dirty: true }) })], 'a');
 
     await useDocumentStore.getState().close('a');
 
@@ -184,8 +190,8 @@ describe('tab strip', () => {
   it('shows unsaved and changed-on-disk markers', () => {
     seedTabs(
       [
-        { session: session('a', 'a.pdf', { dirty: true }), externalChange: null },
-        { session: session('b', 'b.pdf'), externalChange: 'modified' },
+        tab('a', 'a.pdf', { session: session('a', 'a.pdf', { dirty: true }) }),
+        tab('b', 'b.pdf', { externalChange: 'modified' }),
       ],
       'a',
     );
@@ -228,12 +234,11 @@ describe('tab strip', () => {
   });
 });
 
-describe('document view', () => {
+describe('document properties', () => {
   it('shows the facts read from the file', () => {
     const current = tab('a', 'Rapport final.pdf');
-    renderWithCommands(<DocumentView tab={current} />);
+    renderWithCommands(<DocumentProperties tab={current} />);
 
-    expect(screen.getByRole('heading', { name: 'Rapport final.pdf' })).toBeInTheDocument();
     expect(screen.getByText('C:/Docs/Rapport final.pdf')).toBeInTheDocument();
     expect(screen.getByText('2 KB')).toBeInTheDocument();
     expect(screen.getByText('1.7')).toBeInTheDocument();
@@ -241,6 +246,7 @@ describe('document view', () => {
 
   it('flags read-only and password-protected files', () => {
     const current: DocumentTab = {
+      view: { ...DEFAULT_VIEW_STATE },
       session: session('a', 'locked.pdf', {
         file: {
           path: 'C:/Docs/locked.pdf',
@@ -254,16 +260,16 @@ describe('document view', () => {
       }),
       externalChange: null,
     };
-    renderWithCommands(<DocumentView tab={current} />);
+    renderWithCommands(<DocumentProperties tab={current} />);
 
     expect(screen.getByText('Read-only file')).toBeInTheDocument();
     expect(screen.getByText('Password protected')).toBeInTheDocument();
   });
 
   it('warns when the file changed underneath the session', async () => {
-    seedTabs([{ session: session('a', 'a.pdf'), externalChange: 'modified' }], 'a');
-    const current: DocumentTab = { session: session('a', 'a.pdf'), externalChange: 'modified' };
-    renderWithCommands(<DocumentView tab={current} />);
+    seedTabs([tab('a', 'a.pdf', { externalChange: 'modified' })], 'a');
+    const current: DocumentTab = tab('a', 'a.pdf', { externalChange: 'modified' });
+    renderWithCommands(<DocumentProperties tab={current} />);
 
     expect(screen.getByRole('alert')).toHaveTextContent('changed outside PaperForge');
 

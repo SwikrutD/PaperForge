@@ -2,6 +2,8 @@ import type { ReactElement } from 'react';
 import { MousePointerSquareDashed, Wrench, X } from 'lucide-react';
 import type { RightPanelId } from '@shared/schemas/settings';
 import { useCommands } from '../../commands/useCommands';
+import { useDocumentStore } from '../../stores/documentStore';
+import { DocumentProperties } from '../workspace/DocumentProperties';
 import { cx } from '../../utils/classNames';
 import { IconButton } from '../controls/IconButton';
 import { ToolCard } from '../home/ToolCard';
@@ -17,6 +19,10 @@ const TABS: Array<{ id: RightPanelId; label: string }> = [
 /** Properties and tools for whatever is selected in the workspace. */
 export function RightPanel({ panel }: { panel: RightPanelId }): ReactElement {
   const { execute, context, resolve } = useCommands();
+  const activeTab = useDocumentStore((state) => {
+    const active = state.activeId;
+    return state.tabs.find((tab) => tab.session.id === active) ?? null;
+  });
 
   const select = (id: RightPanelId): void => {
     void context?.actions.setRightPanel(id);
@@ -60,11 +66,15 @@ export function RightPanel({ panel }: { panel: RightPanelId }): ReactElement {
 
       <div className={styles.body} role="tabpanel">
         {panel === 'properties' ? (
-          <EmptyPanelState
-            icon={MousePointerSquareDashed}
-            title="Nothing selected"
-            description="Select text, an image, an annotation or a form field to see its properties."
-          />
+          activeTab === null ? (
+            <EmptyPanelState
+              icon={MousePointerSquareDashed}
+              title="Nothing selected"
+              description="Open a document, then select text, an image, an annotation or a form field."
+            />
+          ) : (
+            <DocumentProperties tab={activeTab} />
+          )
         ) : availableTools.length === 0 ? (
           <EmptyPanelState
             icon={Wrench}

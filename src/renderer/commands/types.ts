@@ -10,6 +10,8 @@ import type {
   ThemePreference,
 } from '@shared/schemas/settings';
 import type { ThemeState } from '@shared/schemas/theme';
+import type { ZoomMode } from '../components/viewer/viewerLayout';
+import type { DocumentViewState } from '../stores/documentStore';
 import type { DialogId, ToastInput } from '../types/ui';
 
 export type CommandCategory = 'file' | 'edit' | 'view' | 'tools' | 'window' | 'help';
@@ -22,6 +24,7 @@ export interface CommandContext {
   readonly recentFiles: readonly RecentFileEntry[];
   /** The document the workspace is showing, if any. */
   readonly activeDocument: DocumentSession | null;
+  readonly activeView: DocumentViewState | null;
   readonly openDocumentCount: number;
   readonly fullScreen: boolean;
   readonly actions: CommandActions;
@@ -34,6 +37,11 @@ export interface CommandActions {
   closeActiveDocument(): Promise<void>;
   closeAllDocuments(): Promise<void>;
   revealActiveDocument(): Promise<void>;
+  setZoomMode(mode: ZoomMode): void;
+  zoomBy(direction: 1 | -1): void;
+  rotateView(direction: 1 | -1): void;
+  goToPage(pageNumber: number): void;
+  goToRelativePage(offset: number): void;
   closeWindow(): Promise<void>;
   setThemePreference(preference: ThemePreference): Promise<void>;
   patchSettings(patch: SettingsPatch): Promise<void>;

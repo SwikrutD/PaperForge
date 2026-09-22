@@ -1,24 +1,9 @@
 .view {
   display: flex;
   flex-direction: column;
-  gap: var(--pf-space-200);
-  max-width: 820px;
-  margin: 0 auto;
-  padding: var(--pf-space-400) var(--pf-space-300) var(--pf-space-500);
-}
-
-.header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--pf-space-100);
-}
-
-.title {
-  font-family: var(--pf-font-family-display);
-  font-size: var(--pf-font-size-600);
-  font-weight: var(--pf-font-weight-medium);
-  line-height: var(--pf-line-height-600);
-  overflow-wrap: anywhere;
+  align-items: flex-start;
+  gap: var(--pf-space-150);
+  padding: var(--pf-space-150);
 }
 
 .badges {
@@ -78,14 +63,11 @@
 
 .facts {
   display: grid;
-  grid-template-columns: minmax(120px, auto) 1fr;
-  gap: var(--pf-space-100) var(--pf-space-200);
+  grid-template-columns: minmax(74px, auto) 1fr;
+  gap: var(--pf-space-050) var(--pf-space-150);
+  width: 100%;
   margin: 0;
-  padding: var(--pf-space-200);
-  border: 1px solid var(--pf-color-border);
-  border-radius: var(--pf-radius-xl);
-  background-color: var(--pf-color-bg-surface);
-  font-size: var(--pf-font-size-300);
+  font-size: var(--pf-font-size-200);
 }
 
 .fact {
@@ -99,27 +81,4 @@
 .factValue {
   margin: 0;
   overflow-wrap: anywhere;
-}
-
-.note {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--pf-space-100);
-  color: var(--pf-color-text-secondary);
-  font-size: var(--pf-font-size-300);
-  line-height: var(--pf-line-height-400);
-}
-
-.noteIcon {
-  width: 16px;
-  height: 16px;
-  margin-top: 2px;
-  flex: 0 0 auto;
-  color: var(--pf-color-accent-text);
-}
-
-.actions {
-  display: flex;
-  gap: var(--pf-space-100);
-  flex-wrap: wrap;
 }

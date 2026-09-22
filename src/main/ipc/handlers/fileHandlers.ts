@@ -18,6 +18,9 @@ export interface FileHandlerDeps {
 
 const EMPTY_RESULT: OpenResult = { sessions: [], failures: [], canceled: false };
 
+/** Schemes a document link may use. Anything else is refused outright. */
+const ALLOWED_EXTERNAL_SCHEMES = new Set(['http:', 'https:', 'mailto:']);
+
 /** Opening, closing, restoring and recovering document sessions. */
 export function registerFileHandlers(registerInvoke: RegisterInvoke, deps: FileHandlerDeps): void {
   registerInvoke('files:openDialog', async (_input, event) => {
@@ -62,6 +65,31 @@ export function registerFileHandlers(registerInvoke: RegisterInvoke, deps: FileH
       });
     }
     shell.showItemInFolder(filePath);
+  });
+
+  /**
+   * Opens a link from a document in the system browser. The renderer has
+   * already asked the user; this only lets through schemes that cannot run
+   * anything locally.
+   */
+  registerInvoke('shell:openExternal', async ({ url }) => {
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      throw new AppError('internal/unexpected', {
+        message: 'That link is not a valid address.',
+        details: url.slice(0, 200),
+      });
+    }
+
+    if (!ALLOWED_EXTERNAL_SCHEMES.has(parsed.protocol)) {
+      throw new AppError('internal/unexpected', {
+        message: `PaperForge does not open ${parsed.protocol} links.`,
+        details: url.slice(0, 200),
+      });
+    }
+    await shell.openExternal(parsed.toString());
   });
 
   registerInvoke('recentFiles:list', () => deps.recentFiles.list());

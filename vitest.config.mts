@@ -6,6 +6,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@shared': fileURLToPath(new URL('./src/shared', import.meta.url)),
+      '@pdf': fileURLToPath(new URL('./src/pdf', import.meta.url)),
     },
   },
   plugins: [react({})],
