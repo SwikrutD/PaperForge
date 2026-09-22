@@ -2,16 +2,16 @@
 
 ## Current status
 
-- Last completed segment: **1 — Fluent Workspace shell and command system**
-- Next segment: **2 — File service, tabs, recovery architecture**
+- Last completed segment: **2 — File service, tabs, recovery architecture**
+- Next segment: **3 — PDF.js viewer foundation**
 - Build status: `npm run package` succeeds; packaged app launches and closes cleanly on Windows 11 x64
-- Test status: 105 unit tests passing (15 files); typecheck and lint clean
+- Test status: 149 unit tests (19 files) and 5 Playwright end-to-end tests passing; typecheck and lint clean
 
 ## Completed segments
 
 - [x] 0 Repository foundation
 - [x] 1 Fluent Workspace shell and command system
-- [ ] 2 File service, tabs, recovery architecture
+- [x] 2 File service, tabs, recovery architecture
 - [ ] 3 PDF.js viewer foundation
 - [ ] 4 Navigation panels and search
 - [ ] 5 Mutation engine, save pipeline, undo/redo
@@ -35,121 +35,121 @@
 **Toolchain.** Electron 44 + Electron Forge 7 (Vite plugin) + Vite 8 + React 19 + TypeScript 6
 (strict, four projects) + ESLint 10 (type-aware) + Prettier + Vitest 5.
 
-**Working features:** window with saved and validated geometry, light/dark/system theme resolved by
-the main process and persisted, environment diagnostics with copy-to-clipboard, status bar, error
-boundaries, local rotating log with secret redaction, atomic settings persistence with recovery from
-a corrupt file.
-
-| Area            | Files                                                                                                                            |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Build           | `forge.config.ts`, `vite.{main,preload,renderer}.config.mts`, `vitest.config.mts`, `tsconfig*.json`, `eslint.config.mjs`         |
-| Main process    | `src/main/index.ts`, `windows/`, `security/`, `ipc/`, `theme/`, `services/`                                                      |
-| Preload         | `src/preload/{index,api}.ts`                                                                                                     |
-| Shared contract | `src/shared/ipc/*`, `src/shared/schemas/*`, `src/shared/errors/appError.ts`, `src/shared/types/bridge.ts`                        |
-| Assets          | `scripts/generate-icon.mjs` produces `resources/icons/icon.{ico,png}`                                                            |
-| Docs            | `README.md`, `docs/{ARCHITECTURE,SECURITY,DEPENDENCIES,KEYBOARD_SHORTCUTS,QA_CHECKLIST}.md`, `THIRD_PARTY_NOTICES.md`, `LICENSE` |
+Secure window and preload bridge, typed and schema-validated IPC, atomic settings with repair,
+light/dark/system theme owned by the main process, local rotating log with secret redaction, the
+Fluent Workspace tokens, and the hand-written app icon generator.
 
 ## Segment 1 — what landed
 
-**Command system.** A single registry (`src/renderer/commands`) backs the menu bar, left rail,
-command palette, keyboard shortcuts and shell buttons. Commands declare their own availability and
-checked state; the registry rejects duplicate ids and duplicate chords and refuses to execute an
-unknown or disabled command. Nineteen commands are registered — every one of them works.
+**Command system.** One registry (`src/renderer/commands`) backs the menu bar, left rail, command
+palette, keyboard shortcuts and shell buttons. Commands declare their own availability and checked
+state; duplicate ids and duplicate chords are refused, and an unknown or disabled command cannot be
+executed.
 
-**Shell.** Title bar, registry-driven menu bar with a command search field, left rail, resizable and
-persisted left and right panels, workspace region and status bar. All six regions are `F6` targets.
+**Shell.** Title bar, menu bar with command search, left rail, resizable and persisted side panels,
+workspace and status bar, all six of them `F6` focus regions.
 
-**Home screen.** Intro, recent and pinned files from the local store, and the tool catalogue from
-`CLAUDE.md` section 6.2.
+**Home screen, overlays, jobs.** Recent files from the local store, the tool catalogue, modal
+dialogs with focus trap and restore, `Ctrl+K` palette, toasts, and the progress centre on a real
+job store.
 
-**Overlays.** Modal dialog with focus trap and focus restore (Settings, About), `Ctrl+K` command
-palette, toast host, and the progress centre backed by a real job store.
+## Segment 2 — what landed
 
-**Main process.** Recent-files store with retention and pin handling, window runtime state
-(`window:getState`, `window:toggleFullScreen`, `window:stateChanged`) so `F11` uses the real window,
-and a shared BOM-tolerant JSON reader used by both stores.
+**Document sessions (main process).** `documentInspector` reads what a file itself can tell:
+header version, trailer encryption marker, size, modified time, read-only state. `DocumentService`
+turns that into a session with a working directory and a recovery journal, reuses the session when
+the same file is opened again, watches the file for outside modification or deletion, and clears
+its directory on close.
 
-| Area         | Key files                                                                                            |
-| ------------ | ---------------------------------------------------------------------------------------------------- |
-| Commands     | `commands/{registry,definitions,types,CommandProvider,commandApiContext,useCommands,filterCommands}` |
-| Keyboard     | `keyboard/{shortcuts,focusRegions}.ts`                                                               |
-| Shell        | `components/shell/{AppShell,TitleBar,CommandBar,LeftRail,PanelResizer,StatusBar}`                    |
-| Panels       | `components/panels/{LeftPanel,RightPanel,EmptyPanelState}`                                           |
-| Home         | `components/home/{HomeScreen,ToolCard,toolCatalog,RecentFilesList}`                                  |
-| Overlays     | `components/overlays/{Dialog,SettingsDialog,AboutDialog,CommandPalette,ToastHost}`                   |
-| Progress     | `components/progress/ProgressCenter`, `stores/jobStore.ts`                                           |
-| Main process | `services/recentFiles/recentFilesStore.ts`, `services/filesystem/readJsonFile.ts`                    |
-| Shared       | `schemas/{settings,recentFiles,windowState}.ts`                                                      |
+**Recovery.** A session directory exists exactly while a document is open, so whatever survives a
+crash is what the recovery dialog offers back. A clean exit clears them all.
+
+**Tabs and workspace (renderer).** A document store owning tabs, activation, reordering, close,
+close others and close to the right; a tab strip with unsaved and changed-on-disk markers,
+middle-click close and a context menu; a document view showing the real file facts and saying
+plainly that page rendering is still to come.
+
+**Ways in.** Native file picker (`Ctrl+O`), drag and drop onto the window, and the recent list,
+which is now live — click to open, pin, remove, show in Explorer. Session restore reopens the
+previous documents, subject to a setting in the Settings dialog.
+
+**End-to-end tests.** Playwright drives the built application through the real main process: home
+screen, opening a PDF, refusing a non-PDF, the tab and document view, closing, and reporting a file
+that has since been deleted.
+
+| Area         | Key files                                                                                                                                       |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Main process | `services/documents/{documentInspector,documentService}.ts`, `services/recovery/recoveryJournal.ts`                                             |
+| IPC          | `ipc/handlers/fileHandlers.ts`, `shared/schemas/document.ts`                                                                                    |
+| Renderer     | `stores/documentStore.ts`, `components/shell/{TabStrip,FileDropZone}`, `components/workspace/DocumentView`                                      |
+| Overlays     | `components/overlays/{ConfirmationDialog,RecoveryDialog}`                                                                                       |
+| Controls     | `components/controls/{ContextMenu,Toggle}`                                                                                                      |
+| Tests        | `tests/unit/main/{documentInspector,documentService,recoveryJournal}.test.ts`, `tests/unit/renderer/documents.test.tsx`, `tests/e2e/app.e2e.ts` |
 
 ## Architecture decisions
 
-1. **Channel allowlist separate from schemas.** `shared/ipc/channelNames.ts` imports nothing, so the
-   preload bundle stays tiny and carries no validation library; `contracts.ts` holds the Zod schemas
-   and is `satisfies Record<InvokeChannel, …>`, so the two cannot drift. A unit test asserts it too.
-2. **IPC never rejects.** Handlers resolve an `IpcResult` envelope; the renderer's client rethrows a
-   typed `AppError`. Requests, responses and pushed events are each schema-validated.
-3. **`app://` scheme instead of `file://` for the packaged renderer.** Gives a real origin, lets the
-   protocol handler attach the CSP itself (webRequest does not see custom schemes), and confines
-   every request to the renderer output directory with traversal protection.
-4. **Main process owns theme resolution.** `nativeTheme` is the single source of truth and pushes
-   `theme:changed`, so "Follow system" stays correct when Windows changes at runtime.
-5. **CommonJS main and preload.** Sandboxed preload scripts cannot be ES modules; making the package
-   ESM would force a mixed-format build for no benefit. Vite configs use `.mts` so they can still use
-   `import.meta`.
-6. **Four TypeScript projects** (tooling, main/preload/shared, renderer/shared, tests) with different
-   libs and globals, plus ESLint rules that forbid `electron`, `fs` and `path` imports in the
-   renderer.
-7. **Deny-by-default packaging.** `forge.config.ts` ships only `.vite/**`, `package.json`, `LICENSE`
-   and `THIRD_PARTY_NOTICES.md`.
+1. **Channel allowlist separate from schemas**, so the preload carries no validation library and
+   the two cannot drift.
+2. **IPC never rejects**: handlers resolve an `IpcResult` envelope and the renderer rethrows a typed
+   `AppError`. Requests, responses and events are each schema-validated.
+3. **`app://` scheme instead of `file://`** for the packaged renderer: a real origin, a CSP the
+   protocol handler attaches itself, and traversal-protected paths.
+4. **Main process owns theme resolution**, so "Follow system" stays correct at runtime.
+5. **CommonJS main and preload**, because sandboxed preload scripts cannot be ES modules.
+6. **Four TypeScript projects** with different libs and globals, plus lint rules keeping Node APIs
+   out of the renderer.
+7. **Deny-by-default packaging**: only build output, `package.json` and the notices reach the asar.
 8. **Electron fuses on**: no `ELECTRON_RUN_AS_NODE`, no `NODE_OPTIONS`, no CLI inspect arguments,
-   cookie encryption, embedded asar integrity validation, load-only-from-asar.
-9. **Hand-written icon generator.** `scripts/generate-icon.mjs` renders original geometry into a
-   multi-size `.ico` with no image tooling and no network, matching the in-app `LogoMark`.
-10. **TypeScript pinned to 6.0.3, not 7.x**, because `typescript-eslint@8` peer-requires `<6.1.0` and
-    type-aware lint rules are worth more than the newest compiler.
-11. **Fluent UI React Components still not installed.** The shell's controls are small and specific
-    (menu bar, rail, resizer, palette); adding a control library now would mean theming two systems.
-    The tokens stay framework-neutral, so the decision remains open.
-12. **Squirrel maker deferred to Segment 18**, where the installer is actually specified.
-13. **Only working commands are registered.** A capability that does not exist has no command, so it
-    cannot appear in a menu or the palette. That is why the bar shows View, Tools and Help and no
-    others yet — File and Edit arrive with the commands that fill them.
-14. **The tool catalogue is the one place planned tools are visible.** The home screen shows all
-    fifteen tools from the specification; a card is interactive only when its command exists, and
-    every other card is a disabled button marked "Not yet available" that does nothing when clicked.
-    This was a deliberate trade-off against `CLAUDE.md` 0.2: the segment explicitly asks for tool
-    cards, and a visibly disabled control is honest where a silent no-op would not be. The tools
-    panel takes the opposite approach and lists only usable tools, so the working surface carries no
-    dead entries.
-15. **Panel geometry lives in settings, not component state.** Dragging a divider uses local state
-    for the duration of the gesture only; the width is written once, on release.
-16. **The main process owns full screen.** `F11` calls `BrowserWindow.setFullScreen` over IPC rather
-    than the HTML fullscreen API, and the window pushes its state back, so the renderer and the
-    window cannot disagree.
-17. **Recent files have a real store now, with a deliberately narrow IPC surface.** The store
-    supports add, pin, remove and clear and is unit-tested; only list and clear are exposed over IPC
-    because nothing can open a file yet. Segment 2 adds the rest together with the UI that uses it.
-18. **Commands live in the renderer**, not `src/shared/commands` as sketched in `CLAUDE.md`
-    section 4, because every implementation is renderer-side. If a native Windows menu ever needs the
-    ids, the id list moves to `shared` then.
+   cookie encryption, asar integrity, load-only-from-asar.
+9. **Hand-written icon generator** — no image tooling, no network.
+10. **TypeScript 6.0.3, not 7.x**, so type-aware lint rules keep working.
+11. **Fluent UI React Components still not installed**; the tokens stay framework-neutral.
+12. **Squirrel maker deferred to Segment 18.**
+13. **Only working commands are registered**, so a menu or the palette can never offer something
+    PaperForge cannot do.
+14. **The tool catalogue is the one place planned tools are visible**, as clearly disabled cards;
+    the tools panel lists only usable tools.
+15. **Panel geometry lives in settings**, with local state only for the duration of a drag.
+16. **The main process owns full screen**, so the renderer and the window cannot disagree.
+17. **Opening is read-only and identified by content.** A file is a document only if it really
+    starts with a PDF header; the extension is not trusted. PaperForge never writes to the file it
+    opened.
+18. **Commands live in the renderer**, not `shared/commands`, because every implementation is
+    renderer-side.
+19. **A session directory is the crash signal.** It exists exactly while a document is open, so
+    recovery needs no heartbeat, no lock file and no "was I closed properly" flag — anything left on
+    disk at startup was left by a crash.
+20. **Opening the same file twice reuses its session**, so two tabs can never disagree about one
+    document. Duplicate views of one document (spec section 8) will be a view concern, not a second
+    session.
+21. **The renderer owns tab order and activation; the main process owns sessions.** `files:list`
+    lets a window that has just loaded pick up sessions that already exist, which is also how a
+    second window and a reload stay correct.
+22. **Drag and drop resolves paths through `webUtils` in the preload.** Chromium removed
+    `File.path`; a file that yields no path gets an explanation rather than silence.
+23. **End-to-end tests drive the unpackaged build.** The inspector fuse that protects the packaged
+    application also blocks a test runner, so Playwright launches the same bundle with the Electron
+    binary and the packaged build is smoke-tested separately.
 
 ## Known limitations
 
-- No PDF capability yet of any kind — that begins in Segment 3. The home screen says so plainly.
-- No document can be opened, so document tabs, the tab strip in the title bar and every
-  document-dependent panel show empty states. Those arrive in Segments 2 and 3.
-- Fourteen of the fifteen home-screen tool cards are disabled because their capability is not built;
-  see decision 14.
-- Tooltips use the native `title` attribute. A styled tooltip component can come later; the
-  accessible name and the hover text are correct today.
-- The left panel has no keyboard shortcut yet — `docs/KEYBOARD_SHORTCUTS.md` explains why.
-- No end-to-end tests yet; Playwright arrives with the first real user flow (Segment 2).
+- No page rendering yet: an open document shows its file facts, not its pages. The viewer is
+  Segment 3, and the document view says so.
+- `dirty` is always false because nothing can modify a document yet. The close-warning path, the
+  tab marker and the journal flag are implemented and unit-tested, and become reachable in
+  Segment 5.
+- Fourteen of the fifteen home-screen tool cards are disabled because their capability is not built.
+- Tabs reorder by dragging or the context menu; there is no keyboard chord for reordering yet.
+- The encryption marker is a trailer scan, not a parse. The viewer will confirm it properly.
+- File watching uses `fs.watch`, which reports a change but not who made it; a file replaced by a
+  rename is reported as modified.
+- Tooltips use the native `title` attribute.
 - `resources/bundled-tools` and `resources/tessdata` exist but are empty and git-ignored. qpdf,
   Tesseract and LibreOffice are not integrated.
 - The Windows installer, file associations and "Open with" are not built (Segment 18); `npm run make`
   produces a zip.
-- Prettier reformatted `CLAUDE.md` once during Segment 0 (markdown whitespace only, no content
-  change) before it was added to `.prettierignore`; it will not be touched again.
+- Prettier reformatted `CLAUDE.md` once during Segment 0 (whitespace only) before it was added to
+  `.prettierignore`.
 
 ## Required local tools
 
@@ -163,18 +163,18 @@ Nothing is downloaded at runtime, then or now.
 
 Run on Windows 11 x64, Node 24.19.0, npm 11.17.0:
 
-| Command                     | Result                                                                                                          |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                                  |
-| `npm run typecheck`         | Pass — four projects, no errors                                                                                 |
-| `npm run lint`              | Pass — no errors, no warnings                                                                                   |
-| `npm test`                  | Pass — 105 tests in 15 files                                                                                    |
-| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                                       |
-| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`, asar 2.3 MB                                                   |
-| Packaged launch/close smoke | Pass — window ready in ~700 ms, closes cleanly, writes valid `settings.json` including the new layout section   |
-| Settings upgrade            | Pass — a Segment 0 `settings.json` with no `layout` section is repaired in place, keeping the values it had     |
-| Corrupt-settings recovery   | Pass — invalid `settings.json` logs a warning, the app starts on defaults and rewrites a valid file             |
-| Shell appearance            | Checked in light and dark by capturing the running renderer: panels, menus, empty states and tool cards correct |
+| Command                     | Result                                                                                                  |
+| --------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                          |
+| `npm run typecheck`         | Pass — four projects, no errors                                                                         |
+| `npm run lint`              | Pass — no errors, no warnings                                                                           |
+| `npm test`                  | Pass — 149 tests in 19 files                                                                            |
+| `npm run test:e2e`          | Pass — 5 Playwright tests against the built application                                                 |
+| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                               |
+| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                        |
+| Packaged launch/close smoke | Pass — window ready in ~400 ms, closes cleanly, and `%TEMP%/PaperForge/sessions` is empty afterwards    |
+| Settings upgrade            | Pass — a settings file without the new `session` section is repaired in place                           |
+| Appearance                  | Checked in light and dark by capturing the running renderer: tabs, document view and status bar correct |
 
 ## Manual setup required
 

@@ -39,6 +39,10 @@ application.
   cannot be ES modules; making the package ESM would force a mixed-format build for no gain.
 - **Vite config files use the `.mts` extension** so they may use `import.meta` while
   `forge.config.ts` is still loaded as CommonJS by ts-node.
+- **End-to-end tests run the build unpackaged.** The packaged application has the Node inspector
+  fuse disabled, which is precisely what stops a test runner from attaching to it. Playwright
+  therefore launches `.vite/build/main.js` with the Electron binary: same code, same `app://`
+  renderer, without the fuses. The packaged build is smoke-tested separately.
 - **No Squirrel maker yet.** `@electron-forge/maker-squirrel` pulls in `electron-winstaller` and a
   large, partly outdated dependency tree; the installer is a Segment 18 deliverable, so it is added
   there rather than carried unused.

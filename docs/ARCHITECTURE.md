@@ -29,7 +29,7 @@ src/
     security/      CSP construction, web contents and session hardening
     ipc/           validated IPC registrar and handler registration
     theme/         nativeTheme ownership and broadcast
-    services/      settings, recent files, logging, filesystem helpers, app info
+    services/      settings, documents, recovery, recent files, logging, filesystem, app info
   preload/         contextBridge surface (no dependencies, no Node APIs re-exported)
   renderer/
     app/           App root and error boundaries
@@ -42,7 +42,8 @@ src/
       overlays/    dialog shell, settings, about, command palette, toasts
       panels/      left panel, right panel, shared empty state
       progress/    progress centre
-      shell/       title bar, command bar, rail, resizer, status bar, frame
+      shell/       title bar, tabs, command bar, rail, resizer, status bar, drop zone
+      workspace/   the open-document view
       surfaces/    card, message bar
     design-system/ tokens.css and base.css
     services/      typed IPC client
@@ -53,10 +54,11 @@ src/
     constants/     names, scheme, file names
     errors/        AppError and its serializable form
     ipc/           channel allowlist, Zod contracts, result envelope
-    schemas/       settings, app info, theme, window state, recent files
+    schemas/       settings, app info, theme, window state, recent files, documents
     types/         the preload bridge interface
 scripts/           build-time tooling (icon generation)
 tests/unit/        Vitest suites mirroring src/
+tests/e2e/         Playwright tests that drive the built application
 resources/         icons and, later, staged local sidecars and tessdata
 ```
 
@@ -129,6 +131,35 @@ from the gesture and is written to settings once, on release.
 counts, cancellable, result path) and the progress centre renders from it. Long operations register
 here as they are built; the heavy work itself belongs in workers, utility processes or native
 sidecars, never on the renderer's event loop.
+
+## Documents, sessions and recovery
+
+Opening a file never touches it. `documentInspector` reads the stat record, the header and the
+trailer — enough for the version, an encryption marker, the size and whether the file is read-only —
+and throws a typed error for anything that is not a readable PDF.
+
+`DocumentService` turns that into a session:
+
+```
+open → inspect → session id + document id → working directory + journal
+     → watch the file → renderer receives the session
+```
+
+- The **document id** is a hash of the folded absolute path, so the same file opened twice reuses
+  its session rather than opening a second copy of it.
+- Each session owns a directory under `%TEMP%/PaperForge/sessions/<session id>` holding its
+  recovery journal. Segment 5 puts working copies and change entries in the same place.
+- The directory exists exactly as long as the document is open. A clean close removes it, and the
+  app removes every one of them before quitting — so **anything still there at startup is the
+  remains of a crash**, which is what the recovery dialog offers back.
+- A `fs.watch` per session, debounced, reports a file modified or deleted outside PaperForge. The
+  tab marks it, the document view explains it, and nothing is written back.
+- `settings.session.openDocuments` tracks what is open so the next start can restore it, subject to
+  `restoreOnStartup`.
+
+Tabs live in the renderer (`stores/documentStore.ts`); sessions live in the main process. The two
+meet through `files:*` channels, and `files:list` lets a freshly loaded window pick up the sessions
+that already exist.
 
 ## Error model
 

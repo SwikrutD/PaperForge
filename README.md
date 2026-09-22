@@ -4,11 +4,13 @@ PaperForge is an offline-first PDF workspace for Windows. It is being built to c
 work people do with a PDF tool — read, annotate, organize, edit, recognize text, convert, protect
 and redact — on a local machine, with no account, no telemetry and no cloud services.
 
-**Status: early development.** This repository currently contains Segments 0 and 1 of the build plan
+**Status: early development.** This repository currently contains Segments 0 to 2 of the build plan
 in [`CLAUDE.md`](./CLAUDE.md): the secure Electron foundation with typed IPC and validated settings,
-and the Fluent Workspace shell — menu bar, command registry, command palette, keyboard shortcuts,
-resizable panels, home screen, dialogs, toasts and the progress centre. Opening and viewing PDFs
-lands in later segments. [`PROGRESS.md`](./PROGRESS.md) is the authoritative status file.
+the Fluent Workspace shell (menu bar, command registry, palette, shortcuts, resizable panels, home
+screen, dialogs, toasts, progress centre), and the file layer — opening PDFs into tabs, recent and
+pinned files, watching files for outside changes, session restore and crash recovery. Page
+rendering arrives with the viewer in the next segment. [`PROGRESS.md`](./PROGRESS.md) is the
+authoritative status file.
 
 ## Principles
 
@@ -44,6 +46,7 @@ Quality gates, all of which must stay green:
 npm run typecheck   # four strict TypeScript projects: tooling, main, renderer, tests
 npm run lint        # ESLint with type-aware rules
 npm test            # Vitest unit tests
+npm run test:e2e    # packages the app, then runs the Playwright end-to-end suite
 npm run format      # Prettier
 ```
 

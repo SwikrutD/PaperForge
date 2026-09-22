@@ -5,6 +5,7 @@ import { useAppStore } from '../../stores/appStore';
 import { useUiStore } from '../../stores/uiStore';
 import { Button } from '../controls/Button';
 import { ThemeSwitcher } from '../controls/ThemeSwitcher';
+import { Toggle } from '../controls/Toggle';
 import { Dialog } from './Dialog';
 import styles from './SettingsDialog.module.css';
 
@@ -34,6 +35,7 @@ function SettingRow({ label, description, children }: SettingRowProps): ReactEle
 export function SettingsDialog({ settings }: { settings: Settings }): ReactElement {
   const closeDialog = useUiStore((state) => state.closeDialog);
   const setThemePreference = useAppStore((state) => state.setThemePreference);
+  const patchSettings = useAppStore((state) => state.patchSettings);
   const recentFiles = useAppStore((state) => state.recentFiles);
   const { execute, resolve } = useCommands();
 
@@ -50,6 +52,20 @@ export function SettingsDialog({ settings }: { settings: Settings }): ReactEleme
         </Button>
       }
     >
+      <section className={styles.section} aria-label="General">
+        <h3 className={styles.sectionTitle}>General</h3>
+        <SettingRow
+          label="Reopen documents"
+          description="Open the documents from your last session when PaperForge starts."
+        >
+          <Toggle
+            checked={settings.session.restoreOnStartup}
+            label={settings.session.restoreOnStartup ? 'On' : 'Off'}
+            onChange={(checked) => void patchSettings({ session: { restoreOnStartup: checked } })}
+          />
+        </SettingRow>
+      </section>
+
       <section className={styles.section} aria-label="Appearance">
         <h3 className={styles.sectionTitle}>Appearance</h3>
         <SettingRow label="Theme" description="Follow the Windows setting, or pick light or dark.">

@@ -7,20 +7,24 @@ refuses to start if two commands claim the same one.
 
 ## Implemented
 
-| Keys     | Command         | Notes                                                                        |
-| -------- | --------------- | ---------------------------------------------------------------------------- |
-| `Ctrl+K` | Command Palette | Search every command; unavailable ones show their reason                     |
-| `Ctrl+,` | Settings        | Appearance and privacy                                                       |
-| `F4`     | Tools Panel     | Show or hide the right panel                                                 |
-| `F6`     | Next Region     | Cycle command bar → rail → left panel → workspace → tools panel → status bar |
-| `F11`    | Full Screen     | Uses the real window, not HTML fullscreen                                    |
-| `Alt+F4` | Close window    | Native; window position and size are saved                                   |
+| Keys           | Command         | Notes                                                                        |
+| -------------- | --------------- | ---------------------------------------------------------------------------- |
+| `Ctrl+O`       | Open…           | Native Windows file picker; several files at once                            |
+| `Ctrl+W`       | Close Document  | Asks first when the document has unsaved changes                             |
+| `Ctrl+Shift+W` | Close Window    | Closes this window only                                                      |
+| `Ctrl+K`       | Command Palette | Search every command; unavailable ones show their reason                     |
+| `Ctrl+,`       | Settings        | Appearance and privacy                                                       |
+| `F4`           | Tools Panel     | Show or hide the right panel                                                 |
+| `F6`           | Next Region     | Cycle command bar → rail → left panel → workspace → tools panel → status bar |
+| `F11`          | Full Screen     | Uses the real window, not HTML fullscreen                                    |
+| `Alt+F4`       | Close window    | Native; window position and size are saved                                   |
 
 Shell behaviour that needs no chord:
 
 | Keys                | Behaviour                                                                |
 | ------------------- | ------------------------------------------------------------------------ |
 | `Tab` / `Shift+Tab` | Move between controls, with a visible focus ring                         |
+| Middle-click a tab  | Close that document                                                      |
 | `Arrow keys`        | Move within a menu, the palette results, the theme options, or a divider |
 | `Home` / `End`      | On a panel divider: minimum and maximum width                            |
 | `Enter` / `Space`   | Activate the focused control                                             |
@@ -35,12 +39,9 @@ Taken from `CLAUDE.md` section 7; each lands with the segment that implements th
 
 | Keys                           | Command                            | Segment  |
 | ------------------------------ | ---------------------------------- | -------- |
-| `Ctrl+O`                       | Open                               | 2        |
-| `Ctrl+Shift+O`                 | Open recent / open options         | 2        |
+| `Ctrl+Shift+O`                 | Open recent / open options         | 3        |
 | `Ctrl+S`                       | Save                               | 5        |
 | `Ctrl+Shift+S`                 | Save As                            | 5        |
-| `Ctrl+W`                       | Close tab                          | 2        |
-| `Ctrl+Shift+W`                 | Close window                       | 2        |
 | `Ctrl+P`                       | Print                              | 18       |
 | `Ctrl+F`                       | Find                               | 4        |
 | `Ctrl+H`                       | Advanced search                    | 4        |

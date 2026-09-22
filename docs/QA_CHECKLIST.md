@@ -72,3 +72,31 @@ Run in both light and dark themes:
 - [ ] Every tool card on the home screen is disabled, says "Not yet available", and does nothing
       when clicked. The tools panel shows its empty state rather than a list of dead entries.
 - [ ] Narrow the window to its minimum: the shell stays usable and nothing overlaps.
+
+## Segment 2 — files, tabs and recovery
+
+- [ ] `Ctrl+O` opens the Windows file picker; choosing several PDFs opens a tab for each.
+- [ ] Dragging PDFs from Explorer onto the window opens them; the drop overlay appears while
+      dragging and disappears when the pointer leaves.
+- [ ] Dropping a file that is not a PDF shows an error toast naming the file, and opens nothing.
+- [ ] The document view shows the real location, size, modified time and PDF version, and marks a
+      read-only or password-protected file.
+- [ ] Tabs: click to switch, middle-click to close, drag to reorder, right-click for close others,
+      close to the right, and move left/right.
+- [ ] `Ctrl+W` closes the active document; the next tab becomes active; closing the last one
+      returns to the home screen.
+- [ ] Recent files: a freshly opened file appears at the top, clicking a row opens it, pin moves it
+      to the top and survives a restart, remove takes it out of the list.
+- [ ] Clicking a recent file that has since been deleted reports "The file could not be found."
+- [ ] Edit an open document in another application: the tab shows the changed marker and the
+      document view offers the refreshed details.
+- [ ] Delete an open document in Explorer: the tab shows the marker and the view says the file is
+      no longer there. PaperForge must not modify or recreate it.
+- [ ] With "Reopen documents" on, close PaperForge with documents open and restart: the same
+      documents come back. With the setting off, they do not.
+- [ ] Kill PaperForge from Task Manager with a document open, then start it again: the recovery
+      dialog lists that document; Reopen restores it, Discard forgets it.
+- [ ] After a normal exit, `%TEMP%/PaperForge/sessions` is empty.
+- [ ] Open the same file twice: it activates the existing tab instead of opening a duplicate.
+- [ ] Files with spaces and non-ASCII names in their path open and display correctly.
+- [ ] "New Window" opens a second window with its own tabs; closing one leaves the other running.

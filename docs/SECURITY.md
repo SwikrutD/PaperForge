@@ -66,11 +66,26 @@ logged and answered with 403. This is covered by unit tests including spaces and
   `ipc/invalid-request` or `ipc/invalid-response` error instead of untyped data.
 - There is no generic "run this command" or "read this file" channel, and there never will be.
 
+## Files and paths
+
+- Opening is read-only. PaperForge reads a header and a trailer slice to identify a PDF, and never
+  writes to the file the user opened.
+- Paths reach the main process only from the native file picker, from a drop the user performed, or
+  from the local recent-files list. The preload exposes `getPathForFile`, which resolves the path of
+  a file the user just dropped and nothing else — Chromium removed `File.path`, and this is the
+  documented replacement.
+- A path is accepted as a document only if the file really starts with a PDF header, so an
+  extension cannot talk PaperForge into treating something else as a document.
+- Working directories live under `%TEMP%/PaperForge/sessions/<session id>` and are removed on close
+  and before quitting. They hold PaperForge's own journal, not user content.
+- `shell.showItemInFolder` is the only way a path leaves the application, and only for a file the
+  user is already working with.
+
 ## Logging and privacy
 
 Logs are local only, in `%APPDATA%/PaperForge/logs/paperforge.log`, rotated at 1 MB. The logger
 redacts password, passphrase, secret and token values before writing. Document content is not
-logged. Nothing is transmitted anywhere: PaperForge makes no network requests, and the dev server
+logged; file names appear only in the open/close lines. Nothing is transmitted anywhere: PaperForge makes no network requests, and the dev server
 is bound to `127.0.0.1`.
 
 ## Planned controls

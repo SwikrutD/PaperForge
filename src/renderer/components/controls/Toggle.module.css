@@ -1,0 +1,70 @@
+.wrapper {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+}
+
+.input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  margin: 0;
+}
+
+.track {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pf-space-100);
+  cursor: pointer;
+  font-size: var(--pf-font-size-300);
+}
+
+.track::before {
+  content: '';
+  display: inline-block;
+  width: 38px;
+  height: 20px;
+  flex: 0 0 auto;
+  border: 1px solid var(--pf-color-border-strong);
+  border-radius: var(--pf-radius-round);
+  background-color: var(--pf-color-bg-subtle);
+  transition:
+    background-color var(--pf-duration-fast) var(--pf-ease-standard),
+    border-color var(--pf-duration-fast) var(--pf-ease-standard);
+}
+
+.thumb {
+  position: absolute;
+  left: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--pf-radius-round);
+  background-color: var(--pf-color-text-secondary);
+  transition: transform var(--pf-duration-normal) var(--pf-ease-standard);
+  pointer-events: none;
+}
+
+.input:checked + .track::before {
+  background-color: var(--pf-color-accent);
+  border-color: transparent;
+}
+
+.input:checked + .track .thumb {
+  transform: translateX(18px);
+  background-color: var(--pf-color-text-on-accent);
+}
+
+.input:focus-visible + .track::before {
+  outline: 2px solid var(--pf-color-focus-ring);
+  outline-offset: 2px;
+}
+
+.input:disabled + .track {
+  color: var(--pf-color-text-disabled);
+  cursor: default;
+}
+
+.text {
+  white-space: nowrap;
+}
