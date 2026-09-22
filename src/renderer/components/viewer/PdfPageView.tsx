@@ -9,6 +9,8 @@ interface PdfPageViewProps {
   scale: number;
   rotation: number;
   label: string | null;
+  /** Bumped when layer visibility changes, which requires a repaint. */
+  layersVersion: number;
   onFollowLink: (link: PdfLink) => void;
 }
 
@@ -23,6 +25,7 @@ export function PdfPageView({
   scale,
   rotation,
   label,
+  layersVersion,
   onFollowLink,
 }: PdfPageViewProps): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -61,7 +64,7 @@ export function PdfPageView({
     });
 
     return () => controller.abort();
-  }, [pdf, box.pageNumber, scale, rotation]);
+  }, [pdf, box.pageNumber, scale, rotation, layersVersion]);
 
   useEffect(() => {
     let cancelled = false;

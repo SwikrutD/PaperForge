@@ -1,0 +1,28 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.list {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: var(--pf-space-150) var(--pf-space-150) var(--pf-space-100);
+  list-style: none;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-150);
+}
+
+.item {
+  display: flex;
+}
+
+.note {
+  padding: var(--pf-space-100) var(--pf-space-150);
+  border-top: 1px solid var(--pf-color-divider);
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+  line-height: var(--pf-line-height-300);
+}

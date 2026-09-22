@@ -6,10 +6,10 @@ import { useUiStore } from '../../stores/uiStore';
 import { invoke } from '../../services/ipcClient';
 import { ErrorMessageBar } from '../surfaces/MessageBar';
 import { Button } from '../controls/Button';
+import { usePdfDocumentContext } from './pdfDocumentContextValue';
 import { PasswordPrompt } from './PasswordPrompt';
 import { PdfPageView } from './PdfPageView';
 import { ViewerToolbar } from './ViewerToolbar';
-import { usePdfDocument } from './usePdfDocument';
 import {
   currentPage as currentPageOf,
   layoutPages,
@@ -29,7 +29,7 @@ import styles from './PdfViewer.module.css';
  */
 export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const sessionId = tab.session.id;
-  const state = usePdfDocument(sessionId);
+  const state = usePdfDocumentContext();
   const updateView = useDocumentStore((store) => store.updateView);
   const showToast = useUiStore((store) => store.showToast);
   const requestConfirmation = useUiStore((store) => store.requestConfirmation);
@@ -218,6 +218,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                   scale={scale}
                   rotation={view.rotation}
                   label={pages[pageNumber - 1]?.label ?? null}
+                  layersVersion={state.layersVersion}
                   onFollowLink={followLink}
                 />
               );

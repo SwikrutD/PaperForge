@@ -1,0 +1,66 @@
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.node {
+  display: block;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: var(--pf-space-100);
+}
+
+.row:hover {
+  background-color: var(--pf-color-bg-hover);
+}
+
+.twisty,
+.twistySpacer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 24px;
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--pf-color-text-secondary);
+  cursor: pointer;
+}
+
+.twistyIcon {
+  width: 13px;
+  height: 13px;
+}
+
+.title {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: var(--pf-space-050) 0;
+  border: 0;
+  background: transparent;
+  color: var(--pf-color-text-primary);
+  font-family: inherit;
+  font-size: var(--pf-font-size-300);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.inert {
+  color: var(--pf-color-text-disabled);
+  cursor: default;
+}
+
+.page {
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+  flex: 0 0 auto;
+}

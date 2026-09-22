@@ -34,7 +34,7 @@ const INITIAL: LoadState = {
  * shown. Bytes come from the `pfdoc` scheme, so the renderer works from a
  * session id and never sees a filesystem path.
  */
-export function usePdfDocument(sessionId: string): PdfDocumentState {
+export function usePdfDocument(sessionId: string | null): PdfDocumentState {
   const [state, setState] = useState<LoadState>(INITIAL);
   const [attempt, setAttempt] = useState(0);
   const [loadedFor, setLoadedFor] = useState({ sessionId, attempt });
@@ -65,6 +65,8 @@ export function usePdfDocument(sessionId: string): PdfDocumentState {
   }, []);
 
   useEffect(() => {
+    if (sessionId === null) return;
+
     const controller = new AbortController();
     let loaded: LoadedPdfDocument | null = null;
     let disposed = false;

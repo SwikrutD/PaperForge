@@ -14,6 +14,7 @@ import { ToastHost } from '../components/overlays/ToastHost';
 import { ProgressCenter } from '../components/progress/ProgressCenter';
 import { HomeScreen } from '../components/home/HomeScreen';
 import { AppShell } from '../components/shell/AppShell';
+import { PdfDocumentProvider } from '../components/viewer/PdfDocumentContext';
 import { PdfViewer } from '../components/viewer/PdfViewer';
 import { ErrorMessageBar } from '../components/surfaces/MessageBar';
 import { invoke } from '../services/ipcClient';
@@ -105,7 +106,8 @@ export function App(): ReactElement {
   const viewText = activeTab === null ? null : describeView(activeTab.view);
 
   return (
-    <AppShell
+    <PdfDocumentProvider tab={activeTab}>
+      <AppShell
       settings={effectiveSettings}
       version={appInfo?.version ?? null}
       status={status}
@@ -148,6 +150,7 @@ export function App(): ReactElement {
           <PdfViewer key={activeTab.session.id} tab={activeTab} />
         )}
       </AppErrorBoundary>
-    </AppShell>
+      </AppShell>
+    </PdfDocumentProvider>
   );
 }

@@ -59,8 +59,12 @@ describe('AppShell layout', () => {
 
   it('shows the panel chosen by activeLeftPanel', () => {
     renderShell(settingsWith({ activeLeftPanel: 'bookmarks' }));
-    expect(screen.getByRole('region', { name: 'Bookmarks' })).toBeInTheDocument();
-    expect(screen.getByText("A document's outline appears here when it has one.")).toBeVisible();
+    const panel = screen.getByRole('region', { name: 'Bookmarks' });
+    // With no document open every navigation panel says so plainly.
+    expect(within(panel).getByText('No document open')).toBeVisible();
+    expect(
+      within(panel).getByText('Open a PDF to see its pages, bookmarks, attachments and layers.'),
+    ).toBeVisible();
   });
 
   it('can hide the command bar', () => {

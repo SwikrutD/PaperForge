@@ -31,3 +31,9 @@
   min-height: 0;
   overflow: auto;
 }
+
+.loading {
+  padding: var(--pf-space-200);
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-300);
+}
