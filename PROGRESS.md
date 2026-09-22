@@ -5,7 +5,7 @@
 - Last completed segment: **4 — Navigation panels and search**
 - Next segment: **5 — Mutation engine, save pipeline, undo/redo**
 - Build status: `npm run package` succeeds; packaged app launches and closes cleanly on Windows 11 x64
-- Test status: 259 unit tests (26 files) and 23 Playwright end-to-end tests passing; typecheck, lint and format clean
+- Test status: 259 unit tests (28 files) and 23 Playwright end-to-end tests passing; typecheck, lint and format clean
 
 ## Completed segments
 
@@ -300,7 +300,7 @@ Run on Windows 11 x64, Node 24.19.0, npm 11.17.0:
 | `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                                        |
 | `npm run typecheck`         | Pass — four projects, no errors                                                                                       |
 | `npm run lint`              | Pass — no errors, no warnings                                                                                         |
-| `npm test`                  | Pass — 259 tests in 26 files                                                                                          |
+| `npm test`                  | Pass — 259 tests in 28 files                                                                                          |
 | `npm run test:e2e`          | Pass — 23 Playwright tests against the built application                                                              |
 | `npm run format:check`      | Pass — Prettier clean                                                                                                 |
 | `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                                             |
