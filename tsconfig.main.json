@@ -1,12 +1,19 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "paths": { "@shared/*": ["./src/shared/*"] },
+    "paths": { "@shared/*": ["./src/shared/*"], "@pdf/*": ["./src/pdf/*"] },
     "module": "ESNext",
     "moduleResolution": "bundler",
     "verbatimModuleSyntax": true,
     "lib": ["ES2023"],
     "types": ["node"]
   },
-  "include": ["src/main/**/*.ts", "src/preload/**/*.ts", "src/shared/**/*.ts"]
+  "include": [
+    "src/main/**/*.ts",
+    "src/preload/**/*.ts",
+    "src/shared/**/*.ts",
+    // The mutation engine runs in the main process, which owns the files it
+    // writes. The render engine stays renderer-only.
+    "src/pdf/mutate/**/*.ts"
+  ]
 }

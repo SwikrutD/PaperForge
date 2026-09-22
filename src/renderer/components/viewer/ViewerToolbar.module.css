@@ -61,3 +61,11 @@
   min-width: 48px;
   text-align: center;
 }
+
+.divider {
+  width: 1px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin: 0 var(--pf-space-025);
+  background-color: var(--pf-color-divider);
+}

@@ -1,0 +1,78 @@
+import { dialog, type BrowserWindow } from 'electron';
+import path from 'node:path';
+import type { SaveMode, SaveOutcome } from '@shared/schemas/edit';
+import type { DocumentEditor } from '../../services/documents/documentEditor';
+import type { DocumentService } from '../../services/documents/documentService';
+import type { QpdfService } from '../../services/qpdf/qpdfService';
+import type { RegisterInvoke } from '../registry';
+
+export interface EditHandlerDeps {
+  documents: DocumentService;
+  editor: DocumentEditor;
+  qpdf: QpdfService;
+  senderWindow: (event: Electron.IpcMainInvokeEvent) => BrowserWindow;
+}
+
+const CANCELED: SaveOutcome = {
+  canceled: true,
+  session: null,
+  edit: null,
+  path: null,
+  checkedWithQpdf: false,
+};
+
+/** Changing a document, taking those changes back, and writing them out. */
+export function registerEditHandlers(registerInvoke: RegisterInvoke, deps: EditHandlerDeps): void {
+  registerInvoke('edit:state', ({ sessionId }) => deps.editor.state(sessionId));
+  registerInvoke('edit:apply', ({ sessionId, transaction }) =>
+    deps.editor.apply(sessionId, transaction),
+  );
+  registerInvoke('edit:undo', ({ sessionId }) => deps.editor.undo(sessionId));
+  registerInvoke('edit:redo', ({ sessionId }) => deps.editor.redo(sessionId));
+  registerInvoke('edit:revert', ({ sessionId }) => deps.editor.revert(sessionId));
+
+  registerInvoke('files:save', async ({ sessionId, mode, force }, event) => {
+    // Save As and Save a Copy ask where to write. The dialog is a native
+    // Windows one, so the renderer never handles a path.
+    const destination =
+      mode === 'save' ? undefined : await askWhereToWrite(deps, sessionId, mode, event);
+    if (mode !== 'save' && destination === undefined) return CANCELED;
+
+    return deps.editor.save({
+      sessionId,
+      mode,
+      ...(destination === undefined ? {} : { destination }),
+      ...(force === undefined ? {} : { force }),
+    });
+  });
+
+  registerInvoke('tools:qpdfStatus', () => deps.qpdf.status());
+}
+
+async function askWhereToWrite(
+  deps: EditHandlerDeps,
+  sessionId: string,
+  mode: SaveMode,
+  event: Electron.IpcMainInvokeEvent,
+): Promise<string | undefined> {
+  const session = deps.documents.get(sessionId);
+  const current = session?.file.path ?? '';
+  const suggestion =
+    mode === 'saveCopy' && current !== ''
+      ? path.join(
+          path.dirname(current),
+          `${path.basename(current, path.extname(current))} copy${path.extname(current) || '.pdf'}`,
+        )
+      : current;
+
+  const result = await dialog.showSaveDialog(deps.senderWindow(event), {
+    title: mode === 'saveCopy' ? 'Save a Copy' : 'Save As',
+    buttonLabel: 'Save',
+    defaultPath: suggestion,
+    filters: [{ name: 'PDF documents', extensions: ['pdf'] }],
+    properties: ['createDirectory', 'showOverwriteConfirmation'],
+  });
+
+  if (result.canceled || result.filePath === undefined || result.filePath === '') return undefined;
+  return result.filePath;
+}

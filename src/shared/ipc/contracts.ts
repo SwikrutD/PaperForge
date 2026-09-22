@@ -6,6 +6,13 @@ import {
   openResultSchema,
   recoveryEntrySchema,
 } from '../schemas/document';
+import {
+  documentEditStateSchema,
+  editTransactionSchema,
+  qpdfStatusSchema,
+  saveModeSchema,
+  saveOutcomeSchema,
+} from '../schemas/edit';
 import { recentFilesListSchema } from '../schemas/recentFiles';
 import { settingsPatchSchema, settingsSchema } from '../schemas/settings';
 import { themeStateSchema } from '../schemas/theme';
@@ -73,6 +80,40 @@ export const invokeContracts = {
     request: z.strictObject({ path: z.string().min(1) }),
     response: z.void(),
   },
+
+  'edit:state': {
+    request: z.strictObject({ sessionId: z.string().min(1) }),
+    response: documentEditStateSchema,
+  },
+  'edit:apply': {
+    request: z.strictObject({
+      sessionId: z.string().min(1),
+      transaction: editTransactionSchema,
+    }),
+    response: documentEditStateSchema,
+  },
+  'edit:undo': {
+    request: z.strictObject({ sessionId: z.string().min(1) }),
+    response: documentEditStateSchema,
+  },
+  'edit:redo': {
+    request: z.strictObject({ sessionId: z.string().min(1) }),
+    response: documentEditStateSchema,
+  },
+  'edit:revert': {
+    request: z.strictObject({ sessionId: z.string().min(1) }),
+    response: documentEditStateSchema,
+  },
+  'files:save': {
+    request: z.strictObject({
+      sessionId: z.string().min(1),
+      mode: saveModeSchema,
+      /** Save anyway, after the reader was warned the file changed on disk. */
+      force: z.boolean().optional(),
+    }),
+    response: saveOutcomeSchema,
+  },
+  'tools:qpdfStatus': { request: z.void(), response: qpdfStatusSchema },
 
   'recovery:list': { request: z.void(), response: z.array(recoveryEntrySchema) },
   'recovery:restore': {

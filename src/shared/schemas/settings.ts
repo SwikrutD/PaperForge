@@ -53,12 +53,22 @@ export const sessionSettingsSchema = z.object({
 });
 export type SessionSettings = z.infer<typeof sessionSettingsSchema>;
 
+export const toolsSettingsSchema = z.object({
+  /**
+   * Where the local qpdf executable is, when the reader has pointed PaperForge
+   * at one. Null means "look for it in the usual places".
+   */
+  qpdfPath: z.string().max(4096).nullable(),
+});
+export type ToolsSettings = z.infer<typeof toolsSettingsSchema>;
+
 export const settingsSchema = z.object({
   version: z.literal(SETTINGS_VERSION),
   appearance: appearanceSettingsSchema,
   window: windowStateSchema,
   layout: layoutSettingsSchema,
   session: sessionSettingsSchema,
+  tools: toolsSettingsSchema,
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
@@ -76,11 +86,12 @@ export const settingsPatchSchema = z.strictObject({
     })
     .optional(),
   session: sessionSettingsSchema.partial().optional(),
+  tools: toolsSettingsSchema.partial().optional(),
 });
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
 
 /** Top-level sections, used when repairing a partially valid settings file. */
-const SETTINGS_SECTIONS = ['appearance', 'window', 'layout', 'session'] as const;
+const SETTINGS_SECTIONS = ['appearance', 'window', 'layout', 'session', 'tools'] as const;
 
 export const DEFAULT_SETTINGS: Settings = {
   version: SETTINGS_VERSION,
@@ -94,6 +105,7 @@ export const DEFAULT_SETTINGS: Settings = {
     commandBarVisible: true,
   },
   session: { restoreOnStartup: true, openDocuments: [] },
+  tools: { qpdfPath: null },
 };
 
 /**
@@ -121,7 +133,20 @@ export function applySettingsPatch(current: Settings, patch: SettingsPatch): Set
       rightPanel: mergeDefined(current.layout.rightPanel, patch.layout?.rightPanel),
     },
     session: mergeDefined(current.session, patch.session),
+    tools: mergeTools(current.tools, patch.tools),
   });
+}
+
+/**
+ * Tool paths are the one setting that can be cleared: passing null means "go
+ * back to looking for it", which `mergeDefined` would read as "leave alone".
+ */
+function mergeTools(
+  current: ToolsSettings,
+  patch: { qpdfPath?: string | null | undefined } | undefined,
+): ToolsSettings {
+  if (patch === undefined || !('qpdfPath' in patch)) return current;
+  return { ...current, qpdfPath: patch.qpdfPath ?? null };
 }
 
 /**

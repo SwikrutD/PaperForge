@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import type { AppInfo } from '@shared/schemas/appInfo';
 import type { DocumentSession } from '@shared/schemas/document';
+import type { DocumentEditState, SaveMode } from '@shared/schemas/edit';
 import type { RecentFileEntry } from '@shared/schemas/recentFiles';
 import type {
   LeftPanelId,
@@ -25,6 +26,10 @@ export interface CommandContext {
   /** The document the workspace is showing, if any. */
   readonly activeDocument: DocumentSession | null;
   readonly activeView: DocumentViewState | null;
+  /** Unsaved changes and undo history of the active document. */
+  readonly activeEdit: DocumentEditState | null;
+  /** Pages the active document has, as the viewer counts them. */
+  readonly activePageCount: number;
   readonly openDocumentCount: number;
   readonly fullScreen: boolean;
   /** True while the window shows only the document. */
@@ -47,6 +52,12 @@ export interface CommandActions {
   zoomBy(direction: 1 | -1): void;
   rotateView(direction: 1 | -1): void;
   goToPage(pageNumber: number): void;
+  rotateCurrentPage(direction: 1 | -1): void;
+  deleteCurrentPage(): void;
+  undo(): void;
+  redo(): void;
+  revert(): void;
+  saveDocument(mode: SaveMode): void;
   openFind(options?: { expandOptions?: boolean }): void;
   closeFind(): void;
   findNext(): void;

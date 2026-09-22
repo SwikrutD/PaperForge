@@ -2,6 +2,15 @@ import {
   Activity,
   AppWindow,
   BookOpen,
+  Copy,
+  FileDown,
+  TimerReset,
+  Redo2,
+  RotateCcwSquare,
+  RotateCwSquare,
+  Save,
+  Trash,
+  Undo2,
   ChevronDown,
   ChevronUp,
   ChevronsDown,
@@ -108,6 +117,66 @@ export function buildCommands(): CommandDefinition[] {
       run: (context) => context.actions.revealActiveDocument(),
     },
     {
+      id: 'file.save',
+      title: 'Save',
+      description: 'Write the changes back to the file this document came from.',
+      category: 'file',
+      group: 'save',
+      icon: Save,
+      shortcut: 'Ctrl+S',
+      keywords: ['write', 'store', 'keep'],
+      isAvailable: (context) => {
+        if (context.activeDocument === null) {
+          return { enabled: false, reason: 'No document is open.' };
+        }
+        if (context.activeEdit?.dirty !== true) {
+          return { enabled: false, reason: 'This document has no unsaved changes.' };
+        }
+        if (context.activeDocument.file.readOnly) {
+          return { enabled: false, reason: 'This file is read-only. Use Save a Copy instead.' };
+        }
+        return true;
+      },
+      run: (context) => context.actions.saveDocument('save'),
+    },
+    {
+      id: 'file.saveAs',
+      title: 'Save As…',
+      description: 'Write this document to a new file and keep working in it.',
+      category: 'file',
+      group: 'save',
+      icon: FileDown,
+      shortcut: 'Ctrl+Shift+S',
+      keywords: ['rename', 'new file', 'another name'],
+      isAvailable: documentRequired,
+      run: (context) => context.actions.saveDocument('saveAs'),
+    },
+    {
+      id: 'file.saveCopy',
+      title: 'Save a Copy',
+      description: 'Write a copy elsewhere and carry on in this document.',
+      category: 'file',
+      group: 'save',
+      icon: Copy,
+      keywords: ['duplicate', 'backup', 'export'],
+      isAvailable: documentRequired,
+      run: (context) => context.actions.saveDocument('saveCopy'),
+    },
+    {
+      id: 'file.revert',
+      title: 'Revert to Saved',
+      description: 'Go back to the document as it was last saved. This can be undone.',
+      category: 'file',
+      group: 'save',
+      icon: TimerReset,
+      keywords: ['discard', 'undo all', 'reload'],
+      isAvailable: (context) =>
+        context.activeEdit?.dirty === true
+          ? true
+          : { enabled: false, reason: 'This document has no unsaved changes.' },
+      run: (context) => context.actions.revert(),
+    },
+    {
       id: 'file.closeDocument',
       title: 'Close Document',
       category: 'file',
@@ -139,6 +208,75 @@ export function buildCommands(): CommandDefinition[] {
       shortcut: 'Ctrl+Shift+W',
       keywords: ['quit', 'exit'],
       run: (context) => context.actions.closeWindow(),
+    },
+    {
+      id: 'edit.undo',
+      title: 'Undo',
+      category: 'edit',
+      group: 'history',
+      icon: Undo2,
+      shortcut: 'Ctrl+Z',
+      keywords: ['back', 'revert', 'mistake'],
+      isAvailable: (context) =>
+        context.activeEdit?.canUndo === true
+          ? true
+          : { enabled: false, reason: 'There is nothing to undo.' },
+      run: (context) => context.actions.undo(),
+    },
+    {
+      id: 'edit.redo',
+      title: 'Redo',
+      category: 'edit',
+      group: 'history',
+      icon: Redo2,
+      shortcut: 'Ctrl+Y',
+      keywords: ['forward', 'again'],
+      isAvailable: (context) =>
+        context.activeEdit?.canRedo === true
+          ? true
+          : { enabled: false, reason: 'There is nothing to redo.' },
+      run: (context) => context.actions.redo(),
+    },
+    {
+      id: 'edit.rotatePageRight',
+      title: 'Rotate Page Right',
+      description: 'Turn this page a quarter clockwise in the document itself.',
+      category: 'edit',
+      group: 'pages',
+      icon: RotateCwSquare,
+      keywords: ['turn', 'page', 'clockwise', 'permanent'],
+      isAvailable: documentRequired,
+      run: (context) => context.actions.rotateCurrentPage(1),
+    },
+    {
+      id: 'edit.rotatePageLeft',
+      title: 'Rotate Page Left',
+      description: 'Turn this page a quarter anticlockwise in the document itself.',
+      category: 'edit',
+      group: 'pages',
+      icon: RotateCcwSquare,
+      keywords: ['turn', 'page', 'anticlockwise', 'permanent'],
+      isAvailable: documentRequired,
+      run: (context) => context.actions.rotateCurrentPage(-1),
+    },
+    {
+      id: 'edit.deletePage',
+      title: 'Delete Page',
+      description: 'Remove this page from the document. Undo brings it back.',
+      category: 'edit',
+      group: 'pages',
+      icon: Trash,
+      keywords: ['remove', 'page', 'drop'],
+      isAvailable: (context) => {
+        if (context.activeDocument === null) {
+          return { enabled: false, reason: 'No document is open.' };
+        }
+        // A PDF has to keep at least one page.
+        return context.activePageCount > 1
+          ? true
+          : { enabled: false, reason: 'A document must keep at least one page.' };
+      },
+      run: (context) => context.actions.deleteCurrentPage(),
     },
     {
       id: 'edit.find',

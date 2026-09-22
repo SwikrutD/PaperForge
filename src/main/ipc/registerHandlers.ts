@@ -3,12 +3,15 @@ import { AppError } from '@shared/errors/appError';
 import type { WindowRuntimeState } from '@shared/schemas/windowState';
 import { eventContracts, type EventChannel, type EventPayload } from '@shared/ipc/contracts';
 import { buildAppInfo } from '../services/appInfo';
+import type { DocumentEditor } from '../services/documents/documentEditor';
 import type { DocumentService } from '../services/documents/documentService';
+import type { QpdfService } from '../services/qpdf/qpdfService';
 import type { RecentFilesStore } from '../services/recentFiles/recentFilesStore';
 import type { SessionWorkspaces } from '../services/recovery/recoveryJournal';
 import type { SettingsStore } from '../services/settings/settingsStore';
 import type { Logger } from '../services/logging/logger';
 import type { ThemeController } from '../theme/themeController';
+import { registerEditHandlers } from './handlers/editHandlers';
 import { registerFileHandlers } from './handlers/fileHandlers';
 import { createIpcRegistrar } from './registry';
 
@@ -16,6 +19,8 @@ export interface IpcDependencies {
   settings: SettingsStore;
   recentFiles: RecentFilesStore;
   documents: DocumentService;
+  editor: DocumentEditor;
+  qpdf: QpdfService;
   workspaces: SessionWorkspaces;
   theme: ThemeController;
   logger: Logger;
@@ -69,6 +74,13 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
   });
   registerInvoke('window:close', (_input, event) => {
     senderWindow(event).close();
+  });
+
+  registerEditHandlers(registerInvoke, {
+    documents: deps.documents,
+    editor: deps.editor,
+    qpdf: deps.qpdf,
+    senderWindow,
   });
 
   registerFileHandlers(registerInvoke, {

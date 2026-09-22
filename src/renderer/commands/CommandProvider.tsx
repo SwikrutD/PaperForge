@@ -3,6 +3,8 @@ import { AppError } from '@shared/errors/appError';
 import { invoke } from '../services/ipcClient';
 import type { LeftPanelId, RightPanelId } from '@shared/schemas/settings';
 import { nextZoomStep, type ZoomMode } from '../components/viewer/viewerLayout';
+import { describeOperation } from '@pdf/mutate/operations';
+import type { RotationDegrees } from '@shared/schemas/edit';
 import { focusNextRegion } from '../keyboard/focusRegions';
 import { buildShortcutTable, findShortcutCommand } from '../keyboard/shortcuts';
 import { useAppStore } from '../stores/appStore';
@@ -78,6 +80,47 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         const id = activeSessionId();
         if (id !== null) documents().updateView(id, { pendingPage: pageNumber });
       },
+      rotateCurrentPage: (direction) => {
+        const id = activeSessionId();
+        const current = documents().tabs.find((tab) => tab.session.id === id);
+        if (id === null || current === undefined) return;
+        const degrees: RotationDegrees = direction === 1 ? 90 : 270;
+        const operation = {
+          kind: 'rotatePages' as const,
+          pages: [current.view.pageNumber],
+          degrees,
+        };
+        void documents().applyEdit(id, {
+          label: describeOperation(operation),
+          operations: [operation],
+        });
+      },
+      deleteCurrentPage: () => {
+        const id = activeSessionId();
+        const current = documents().tabs.find((tab) => tab.session.id === id);
+        if (id === null || current === undefined) return;
+        const operation = { kind: 'deletePages' as const, pages: [current.view.pageNumber] };
+        void documents().applyEdit(id, {
+          label: describeOperation(operation),
+          operations: [operation],
+        });
+      },
+      undo: () => {
+        const id = activeSessionId();
+        if (id !== null) void documents().undo(id);
+      },
+      redo: () => {
+        const id = activeSessionId();
+        if (id !== null) void documents().redo(id);
+      },
+      revert: () => {
+        const id = activeSessionId();
+        if (id !== null) void documents().revert(id);
+      },
+      saveDocument: (mode) => {
+        const id = activeSessionId();
+        if (id !== null) void documents().save(id, mode);
+      },
       goToRelativePage: (offset) => {
         const id = activeSessionId();
         const current = documents().tabs.find((tab) => tab.session.id === id);
@@ -121,6 +164,8 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
       recentFiles,
       activeDocument: tabs.find((tab) => tab.session.id === activeTabId)?.session ?? null,
       activeView: tabs.find((tab) => tab.session.id === activeTabId)?.view ?? null,
+      activeEdit: tabs.find((tab) => tab.session.id === activeTabId)?.edit ?? null,
+      activePageCount: tabs.find((tab) => tab.session.id === activeTabId)?.pageCount ?? 0,
       openDocumentCount: tabs.length,
       fullScreen: windowState?.fullScreen ?? false,
       readingMode,

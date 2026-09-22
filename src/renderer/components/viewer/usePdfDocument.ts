@@ -31,17 +31,24 @@ const INITIAL: LoadState = {
  * Loads the PDF behind an open session and keeps it alive while the tab is
  * shown. Bytes come from the `pfdoc` scheme, so the renderer works from a
  * session id and never sees a filesystem path.
+ *
+ * A change to the document arrives as a new revision, which is a different URL
+ * and therefore a fresh load of what the main process has written.
  */
-export function usePdfDocument(sessionId: string | null): PdfDocumentState {
+export function usePdfDocument(sessionId: string | null, revision = 0): PdfDocumentState {
   const [state, setState] = useState<LoadState>(INITIAL);
   const [attempt, setAttempt] = useState(0);
-  const [loadedFor, setLoadedFor] = useState({ sessionId, attempt });
+  const [loadedFor, setLoadedFor] = useState({ sessionId, attempt, revision });
   const passwordResolver = useRef<((password: string | null) => void) | null>(null);
 
   // Reset while rendering rather than in an effect, so a tab switch never
   // shows the previous document for a frame.
-  if (loadedFor.sessionId !== sessionId || loadedFor.attempt !== attempt) {
-    setLoadedFor({ sessionId, attempt });
+  if (
+    loadedFor.sessionId !== sessionId ||
+    loadedFor.attempt !== attempt ||
+    loadedFor.revision !== revision
+  ) {
+    setLoadedFor({ sessionId, attempt, revision });
     setState(INITIAL);
   }
 
@@ -71,7 +78,7 @@ export function usePdfDocument(sessionId: string | null): PdfDocumentState {
 
     void renderEngine
       .load({
-        url: documentUrlForSession(sessionId),
+        url: documentUrlForSession(sessionId, revision),
         signal: controller.signal,
         requestPassword: (retry) =>
           new Promise<string | null>((resolve) => {
@@ -104,7 +111,7 @@ export function usePdfDocument(sessionId: string | null): PdfDocumentState {
       controller.abort();
       void loaded?.destroy();
     };
-  }, [sessionId, attempt]);
+  }, [sessionId, attempt, revision]);
 
   return { ...state, submitPassword, cancelPassword, reload };
 }

@@ -32,12 +32,25 @@ export function toFileSystemError(error: unknown, context: string): AppError {
   }
 }
 
+export interface AtomicWriteOptions {
+  /**
+   * Called with the temporary file once it is on disk and flushed, before it
+   * replaces the destination. Throwing here leaves the destination untouched,
+   * which is how the save pipeline refuses to publish a file it cannot reopen.
+   */
+  validate?: (tempPath: string) => Promise<void>;
+}
+
 /**
  * Writes a file without ever leaving a half-written destination behind:
- * write to a sibling temp file, flush it to disk, then rename over the target.
- * This is the foundation the document save pipeline builds on.
+ * write to a sibling temp file, flush it to disk, optionally check it, then
+ * rename over the target. This is what the document save pipeline builds on.
  */
-export async function writeFileAtomic(filePath: string, data: string | Uint8Array): Promise<void> {
+export async function writeFileAtomic(
+  filePath: string,
+  data: string | Uint8Array,
+  options: AtomicWriteOptions = {},
+): Promise<void> {
   const directory = path.dirname(filePath);
   const tempPath = path.join(
     directory,
@@ -62,6 +75,15 @@ export async function writeFileAtomic(filePath: string, data: string | Uint8Arra
     throw toFileSystemError(error, `write temporary file for ${filePath}`);
   } finally {
     await handle?.close().catch(() => undefined);
+  }
+
+  if (options.validate !== undefined) {
+    try {
+      await options.validate(tempPath);
+    } catch (error) {
+      await fs.rm(tempPath, { force: true }).catch(() => undefined);
+      throw error;
+    }
   }
 
   try {

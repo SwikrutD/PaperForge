@@ -1,11 +1,12 @@
 import { create } from 'zustand';
-import { AppError } from '@shared/errors/appError';
+import { AppError, type SerializedAppError } from '@shared/errors/appError';
 import type {
   DocumentSession,
   FileChangeKind,
   OpenFailure,
   OpenResult,
 } from '@shared/schemas/document';
+import type { DocumentEditState, EditTransaction, SaveMode } from '@shared/schemas/edit';
 import type { ZoomMode } from '../components/viewer/viewerLayout';
 import { invoke, subscribe } from '../services/ipcClient';
 import { useUiStore } from './uiStore';
@@ -30,11 +31,30 @@ export const DEFAULT_VIEW_STATE: DocumentViewState = {
   pendingPage: null,
 };
 
+/** A document nobody has changed yet. */
+export function initialEditState(sessionId: string): DocumentEditState {
+  return {
+    sessionId,
+    revision: 0,
+    dirty: false,
+    canUndo: false,
+    canRedo: false,
+    undoLabel: null,
+    redoLabel: null,
+    savedAt: null,
+    historyTrimmed: false,
+  };
+}
+
 export interface DocumentTab {
   session: DocumentSession;
   /** Set when the file changed underneath us; cleared once acknowledged. */
   externalChange: FileChangeKind | null;
   view: DocumentViewState;
+  /** Unsaved changes, undo and redo, as the main process reports them. */
+  edit: DocumentEditState;
+  /** Pages the viewer found, once the document has been read. */
+  pageCount: number;
 }
 
 export interface DocumentStore {
@@ -54,6 +74,14 @@ export interface DocumentStore {
   move: (sessionId: string, toIndex: number) => void;
   dismissChange: (sessionId: string) => void;
   updateView: (sessionId: string, patch: Partial<DocumentViewState>) => void;
+  /** Recorded by the viewer once it has read the document. */
+  setPageCount: (sessionId: string, pageCount: number) => void;
+  /** Applies one undoable change to a document. */
+  applyEdit: (sessionId: string, transaction: EditTransaction) => Promise<void>;
+  undo: (sessionId: string) => Promise<void>;
+  redo: (sessionId: string) => Promise<void>;
+  revert: (sessionId: string) => Promise<void>;
+  save: (sessionId: string, mode: SaveMode) => Promise<void>;
 }
 
 let unsubscribe: (() => void) | undefined;
@@ -67,7 +95,15 @@ export function mergeSessions(
   for (const session of sessions) {
     const index = merged.findIndex((tab) => tab.session.id === session.id);
     if (index >= 0) merged[index] = { ...merged[index]!, session };
-    else merged.push({ session, externalChange: null, view: { ...DEFAULT_VIEW_STATE } });
+    else {
+      merged.push({
+        session,
+        externalChange: null,
+        view: { ...DEFAULT_VIEW_STATE },
+        edit: initialEditState(session.id),
+        pageCount: 0,
+      });
+    }
   }
   return merged;
 }
@@ -133,6 +169,35 @@ export const useDocumentStore = create<DocumentStore>((set, get) => {
       });
     } finally {
       set({ busy: false });
+    }
+  };
+
+  /** Puts the edit state on the tab, and keeps the dirty marker in step. */
+  const applyEditState = (edit: DocumentEditState): void => {
+    set((state) => ({
+      tabs: state.tabs.map((tab) =>
+        tab.session.id === edit.sessionId
+          ? { ...tab, edit, session: { ...tab.session, dirty: edit.dirty } }
+          : tab,
+      ),
+    }));
+  };
+
+  /** Runs an edit request and reports anything that goes wrong in plain words. */
+  const runEdit = async (
+    operation: () => Promise<DocumentEditState>,
+    onError?: (error: SerializedAppError) => boolean,
+  ): Promise<void> => {
+    try {
+      applyEditState(await operation());
+    } catch (error) {
+      const serialized = AppError.serialize(error);
+      if (onError?.(serialized) === true) return;
+      useUiStore.getState().showToast({
+        title: serialized.message,
+        description: serialized.details,
+        intent: 'error',
+      });
     }
   };
 
@@ -237,5 +302,86 @@ export const useDocumentStore = create<DocumentStore>((set, get) => {
           tab.session.id === sessionId ? { ...tab, view: { ...tab.view, ...patch } } : tab,
         ),
       })),
+
+    setPageCount: (sessionId, pageCount) =>
+      set((state) => ({
+        tabs: state.tabs.map((tab) =>
+          tab.session.id === sessionId && tab.pageCount !== pageCount ? { ...tab, pageCount } : tab,
+        ),
+      })),
+
+    applyEdit: (sessionId, transaction) =>
+      runEdit(() => invoke('edit:apply', { sessionId, transaction })),
+
+    undo: (sessionId) => runEdit(() => invoke('edit:undo', { sessionId })),
+    redo: (sessionId) => runEdit(() => invoke('edit:redo', { sessionId })),
+    revert: (sessionId) => runEdit(() => invoke('edit:revert', { sessionId })),
+
+    save: async (sessionId, mode) => {
+      const ui = useUiStore.getState();
+      const tab = get().tabs.find((candidate) => candidate.session.id === sessionId);
+      if (tab === undefined) return;
+
+      const write = async (force: boolean): Promise<void> => {
+        const outcome = await invoke('files:save', {
+          sessionId,
+          mode,
+          ...(force ? { force: true } : {}),
+        });
+        if (outcome.canceled) return;
+
+        if (outcome.session !== null && outcome.edit !== null) {
+          const session = outcome.session;
+          const edit = outcome.edit;
+          set((state) => ({
+            tabs: state.tabs.map((candidate) =>
+              candidate.session.id === sessionId
+                ? { ...candidate, session, edit, externalChange: null }
+                : candidate,
+            ),
+          }));
+        }
+        ui.showToast({
+          title:
+            mode === 'saveCopy'
+              ? 'A copy was saved.'
+              : `${outcome.session?.file.displayName ?? tab.session.file.displayName} was saved.`,
+          description: outcome.path ?? undefined,
+          intent: 'success',
+        });
+      };
+
+      try {
+        await write(false);
+      } catch (error) {
+        const serialized = AppError.serialize(error);
+        // The one failure the reader can answer: somebody else changed the
+        // file since it was opened.
+        if (serialized.code === 'io/changed-externally') {
+          ui.requestConfirmation({
+            title: serialized.message,
+            message: 'Saving now replaces what is on disk with your version.',
+            confirmLabel: 'Overwrite',
+            danger: true,
+            onConfirm: () => {
+              void write(true).catch((retryError: unknown) => {
+                const failure = AppError.serialize(retryError);
+                ui.showToast({
+                  title: failure.message,
+                  description: failure.details,
+                  intent: 'error',
+                });
+              });
+            },
+          });
+          return;
+        }
+        ui.showToast({
+          title: serialized.message,
+          description: serialized.details,
+          intent: 'error',
+        });
+      }
+    },
   };
 });

@@ -9,7 +9,10 @@ import {
   hardenWebContents,
   rejectInsecureCertificates,
 } from './security/hardening';
+import { DocumentEditor } from './services/documents/documentEditor';
 import { DocumentService } from './services/documents/documentService';
+import { QpdfService } from './services/qpdf/qpdfService';
+import { PdfLibMutationEngine } from '@pdf/mutate/pdfLibEngine';
 import { createLogger, parseLogLevel, type Logger } from './services/logging/logger';
 import { RecentFilesStore } from './services/recentFiles/recentFilesStore';
 import { SessionWorkspaces } from './services/recovery/recoveryJournal';
@@ -74,6 +77,29 @@ async function bootstrap(): Promise<void> {
     },
   });
 
+  const qpdf = new QpdfService({
+    logger,
+    resourcesRoot: app.isPackaged
+      ? process.resourcesPath
+      : path.join(app.getAppPath(), 'resources'),
+    configuredPath: settings.get().tools.qpdfPath,
+  });
+  const editor = new DocumentEditor({
+    documents,
+    engine: new PdfLibMutationEngine(),
+    qpdf,
+    logger,
+    workspaceDirectory: (sessionId) => workspaces.directoryFor(sessionId),
+    setDirty: (sessionId, dirty) => documents.setDirty(sessionId, dirty),
+  });
+  // Closing a document throws its working copies away with it.
+  documents.onClosed((sessionId) => {
+    void editor.dispose(sessionId);
+  });
+  settings.onChange((next) => {
+    qpdf.setConfiguredPath(next.tools.qpdfPath);
+  });
+
   const contentSecurityPolicy = buildContentSecurityPolicy(devServerUrl ?? undefined);
   const trustedOrigins =
     devServerUrl === null ? [RENDERER_ORIGIN] : [RENDERER_ORIGIN, devServerUrl];
@@ -89,7 +115,9 @@ async function bootstrap(): Promise<void> {
   } else {
     applyDevSecurityHeaders(session.defaultSession, contentSecurityPolicy, devServerUrl);
   }
-  registerDocumentProtocol(documents, logger);
+  // The viewer reads the current revision once a document has been changed,
+  // and the original file until then.
+  registerDocumentProtocol(documents, logger, (sessionId) => editor.currentBytesPath(sessionId));
 
   const openWindow = (): BrowserWindow =>
     createMainWindow({ settings, theme, logger, preloadPath, devServerUrl });
@@ -98,6 +126,8 @@ async function bootstrap(): Promise<void> {
     settings,
     recentFiles,
     documents,
+    editor,
+    qpdf,
     workspaces,
     theme,
     logger,

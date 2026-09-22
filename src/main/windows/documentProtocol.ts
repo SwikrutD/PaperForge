@@ -35,7 +35,12 @@ function deny(status: number, reason: string): Response {
  * only sessions that are currently open resolve. Range requests are honoured so
  * the viewer can show the first page of a large file without reading all of it.
  */
-export function registerDocumentProtocol(documents: DocumentService, logger: Logger): void {
+export function registerDocumentProtocol(
+  documents: DocumentService,
+  logger: Logger,
+  /** Where a session's bytes currently live, when it has unsaved changes. */
+  currentBytesPath: (sessionId: string) => string | undefined = () => undefined,
+): void {
   protocol.handle(DOCUMENT_SCHEME, async (request) => {
     const url = new URL(request.url);
     if (url.host !== DOCUMENT_HOST) return deny(404, 'Not found');
@@ -47,7 +52,7 @@ export function registerDocumentProtocol(documents: DocumentService, logger: Log
       return deny(404, 'Not found');
     }
 
-    const filePath = session.file.path;
+    const filePath = currentBytesPath(sessionId) ?? session.file.path;
     let size: number;
     try {
       size = (await fs.stat(filePath)).size;

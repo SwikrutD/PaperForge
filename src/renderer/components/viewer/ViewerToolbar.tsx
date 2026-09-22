@@ -4,14 +4,21 @@ import {
   ChevronUp,
   Maximize,
   MoveHorizontal,
+  Redo2,
   RotateCcw,
+  RotateCcwSquare,
   RotateCw,
+  RotateCwSquare,
+  Save,
   Scan,
+  Trash,
+  Undo2,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
 import { useDocumentStore, type DocumentTab } from '../../stores/documentStore';
 import { cx } from '../../utils/classNames';
+import { useCommands } from '../../commands/useCommands';
 import { IconButton } from '../controls/IconButton';
 import { resolvePageEntry } from './pageEntry';
 import { nextZoomStep, type ZoomMode } from './viewerLayout';
@@ -140,6 +147,18 @@ export function ViewerToolbar({
       </div>
 
       <div className={cx(styles.group, styles.trailing)}>
+        {/*
+          These change the document itself, so they sit apart from the view
+          rotation beside them, which only turns the page on screen.
+        */}
+        <CommandButton id="edit.rotatePageLeft" icon={RotateCcwSquare} disabled={disabled} />
+        <CommandButton id="edit.rotatePageRight" icon={RotateCwSquare} disabled={disabled} />
+        <CommandButton id="edit.deletePage" icon={Trash} disabled={disabled} />
+        <span className={styles.divider} aria-hidden="true" />
+        <CommandButton id="edit.undo" icon={Undo2} disabled={disabled} />
+        <CommandButton id="edit.redo" icon={Redo2} disabled={disabled} />
+        <CommandButton id="file.save" icon={Save} disabled={disabled} />
+        <span className={styles.divider} aria-hidden="true" />
         <IconButton
           icon={RotateCcw}
           label="Rotate view left"
@@ -154,5 +173,38 @@ export function ViewerToolbar({
         />
       </div>
     </div>
+  );
+}
+
+/**
+ * A toolbar button backed by a command, so the toolbar, the menus and the
+ * keyboard cannot disagree about whether something is possible or why not.
+ */
+function CommandButton({
+  id,
+  icon,
+  disabled,
+}: {
+  id: string;
+  icon: typeof Scan;
+  disabled: boolean;
+}): ReactElement | null {
+  const { execute, resolve } = useCommands();
+  const command = resolve(id);
+  if (command === undefined) return null;
+
+  const label = command.definition.shortcut
+    ? `${command.definition.title} (${command.definition.shortcut})`
+    : command.definition.title;
+
+  return (
+    <IconButton
+      icon={icon}
+      label={command.definition.title}
+      tooltip={label}
+      disabled={disabled || !command.enabled}
+      disabledReason={command.reason}
+      onClick={() => execute(id)}
+    />
   );
 }

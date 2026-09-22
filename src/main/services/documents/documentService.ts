@@ -15,6 +15,8 @@ import { documentIdForPath, inspectDocument } from './documentInspector';
 
 /** Coalesces the burst of events Windows emits for a single save. */
 const WATCH_DEBOUNCE_MS = 250;
+/** How long after PaperForge writes a file its own changes are ignored. */
+const SELF_WRITE_GRACE_MS = 2000;
 
 export interface OpenOptions {
   /** Restoring a session should not reorder the recent files list. */
@@ -34,6 +36,12 @@ interface TrackedSession {
   session: DocumentSession;
   watcher: FSWatcher | undefined;
   timer: NodeJS.Timeout | undefined;
+  /**
+   * Set while PaperForge is writing the file itself. The watcher cannot tell
+   * who changed a file, so a save would otherwise report itself as an outside
+   * change.
+   */
+  ignoreChangesUntil: number;
 }
 
 /**
@@ -45,6 +53,7 @@ interface TrackedSession {
  */
 export class DocumentService {
   private readonly tracked = new Map<string, TrackedSession>();
+  private readonly closeListeners = new Set<(sessionId: string) => void>();
 
   constructor(private readonly deps: DocumentServiceDeps) {}
 
@@ -115,6 +124,7 @@ export class DocumentService {
       session,
       watcher: this.startWatching(session),
       timer: undefined,
+      ignoreChangesUntil: 0,
     });
 
     if (options.recordAsRecent !== false) {
@@ -129,6 +139,11 @@ export class DocumentService {
     return session;
   }
 
+  /** Notified when a session closes, so its working copies can be removed. */
+  onClosed(listener: (sessionId: string) => void): void {
+    this.closeListeners.add(listener);
+  }
+
   async close(sessionId: string): Promise<void> {
     const entry = this.tracked.get(sessionId);
     if (entry === undefined) return;
@@ -136,6 +151,7 @@ export class DocumentService {
     if (entry.timer !== undefined) clearTimeout(entry.timer);
     entry.watcher?.close();
     this.tracked.delete(sessionId);
+    for (const listener of this.closeListeners) listener(sessionId);
     // A session directory that survives the process is what recovery looks for,
     // so a clean close must remove it.
     await this.deps.workspaces.remove(sessionId);
@@ -161,6 +177,72 @@ export class DocumentService {
       dirty,
       lastTouchedAt: new Date().toISOString(),
     });
+  }
+
+  /**
+   * Re-reads the file after PaperForge itself wrote it, and ignores the change
+   * events that write is about to produce.
+   */
+  async markSavedByUs(sessionId: string): Promise<DocumentSession> {
+    const entry = this.tracked.get(sessionId);
+    if (entry === undefined) {
+      throw new AppError('internal/unexpected', {
+        message: 'That document is no longer open.',
+        details: `session ${sessionId}`,
+      });
+    }
+
+    entry.ignoreChangesUntil = Date.now() + SELF_WRITE_GRACE_MS;
+    const file = await inspectDocument(entry.session.file.path);
+    entry.session = { ...entry.session, file, dirty: false };
+    return entry.session;
+  }
+
+  /**
+   * Points a session at a different file, after Save As. The session keeps its
+   * id, so the tab, its view state and its undo history all survive.
+   */
+  async retarget(sessionId: string, filePath: string): Promise<DocumentSession> {
+    const entry = this.tracked.get(sessionId);
+    if (entry === undefined) {
+      throw new AppError('internal/unexpected', {
+        message: 'That document is no longer open.',
+        details: `session ${sessionId}`,
+      });
+    }
+
+    const file = await inspectDocument(filePath);
+    entry.watcher?.close();
+    entry.ignoreChangesUntil = Date.now() + SELF_WRITE_GRACE_MS;
+    entry.session = {
+      ...entry.session,
+      documentId: documentIdForPath(file.path),
+      file,
+      dirty: false,
+    };
+    entry.watcher = this.startWatching(entry.session);
+
+    await this.deps.recentFiles.add({
+      path: file.path,
+      displayName: file.displayName,
+      sizeBytes: file.sizeBytes,
+    });
+
+    const journal = await this.deps.workspaces.read(sessionId);
+    if (journal !== undefined) {
+      await this.deps.workspaces.write({
+        ...journal,
+        documentId: entry.session.documentId,
+        path: file.path,
+        displayName: file.displayName,
+        dirty: false,
+        lastTouchedAt: new Date().toISOString(),
+      });
+    }
+
+    this.notifyOpenPaths();
+    this.deps.logger.info('A document was saved under a new name.', file.displayName);
+    return entry.session;
   }
 
   /** Session ids currently open, so recovery can ignore them. */
@@ -200,6 +282,7 @@ export class DocumentService {
     const entry = this.tracked.get(sessionId);
     if (entry === undefined) return;
     entry.timer = undefined;
+    if (Date.now() < entry.ignoreChangesUntil) return;
 
     try {
       const stats = await fs.stat(entry.session.file.path);

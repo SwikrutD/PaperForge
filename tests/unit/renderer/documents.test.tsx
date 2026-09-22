@@ -10,6 +10,7 @@ import { RecentFilesList } from '../../../src/renderer/components/home/RecentFil
 import { TabStrip } from '../../../src/renderer/components/shell/TabStrip';
 import {
   DEFAULT_VIEW_STATE,
+  initialEditState,
   mergeSessions,
   moveTab,
   nextActiveId,
@@ -47,6 +48,8 @@ function tab(id: string, name: string, overrides: Partial<DocumentTab> = {}): Do
     session: session(id, name),
     externalChange: null,
     view: { ...DEFAULT_VIEW_STATE },
+    edit: initialEditState(id),
+    pageCount: 3,
     ...overrides,
   };
 }
@@ -247,6 +250,8 @@ describe('document properties', () => {
   it('flags read-only and password-protected files', () => {
     const current: DocumentTab = {
       view: { ...DEFAULT_VIEW_STATE },
+      edit: initialEditState('a'),
+      pageCount: 1,
       session: session('a', 'locked.pdf', {
         file: {
           path: 'C:/Docs/locked.pdf',

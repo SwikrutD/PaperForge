@@ -12,6 +12,8 @@ function makeContext(overrides: Partial<CommandContext> = {}): CommandContext {
     recentFiles: [],
     activeDocument: null,
     activeView: null,
+    activeEdit: null,
+    activePageCount: 0,
     openDocumentCount: 0,
     fullScreen: false,
     readingMode: false,

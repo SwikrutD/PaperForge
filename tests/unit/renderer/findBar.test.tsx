@@ -4,7 +4,11 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { FindBar } from '../../../src/renderer/components/search/FindBar';
-import { DEFAULT_VIEW_STATE, useDocumentStore } from '../../../src/renderer/stores/documentStore';
+import {
+  DEFAULT_VIEW_STATE,
+  initialEditState,
+  useDocumentStore,
+} from '../../../src/renderer/stores/documentStore';
 import type { DocumentSession } from '../../../src/shared/schemas/document';
 import {
   EMPTY_RESULTS,
@@ -50,6 +54,8 @@ function openTabs(...ids: string[]): void {
       session: session(id, `${id}.pdf`),
       externalChange: null,
       view: { ...DEFAULT_VIEW_STATE },
+      edit: initialEditState(id),
+      pageCount: 5,
     })),
     activeId: ids[0] ?? null,
     busy: false,
