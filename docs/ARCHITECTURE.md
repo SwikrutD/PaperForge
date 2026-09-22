@@ -30,6 +30,8 @@ src/
     ipc/           validated IPC registrar and handler registration
     theme/         nativeTheme ownership and broadcast
     services/      settings, documents, recovery, recent files, logging, filesystem, app info
+                   documents/ also owns the editor, its revisions and the save pipeline
+                   qpdf/      the optional local sidecar, launched only from here
   preload/         contextBridge surface (no dependencies, no Node APIs re-exported)
   renderer/
     app/           App root and error boundaries
@@ -60,6 +62,7 @@ src/
     types/         the preload bridge interface
   pdf/             PDF engine layer, free of UI
     render/        engine contract and its PDF.js implementation
+    mutate/        write contract, its pdf-lib implementation, operation arithmetic
     search/        matching and match geometry, pure and unit-tested
 scripts/           build-time tooling (icon generation)
 tests/unit/        Vitest suites mirroring src/
@@ -240,6 +243,21 @@ work from one PDF.js document rather than opening the file several times.
 - **Honesty about scans.** The find bar counts pages that carry no text and
   says so instead of reporting no matches. It does not offer OCR, because OCR
   does not exist yet.
+
+## Changing a document
+
+A change is described in terms of the document, applied in the main process, and written to a
+working copy that the viewer is then pointed at. Undo steps back by reading an earlier revision
+rather than by reversing an operation, and saving publishes a file only after it has been reopened
+— and, when qpdf is installed, inspected by it. `docs/EDITING_MODEL.md` describes the whole
+pipeline, its budgets and its limits.
+
+Two rules matter architecturally:
+
+- **Only the main process writes.** The renderer composes transactions and never learns a path.
+  qpdf is launched from one wrapper, with an argument array and no shell.
+- **Only `src/pdf/mutate/pdfLibEngine.ts` imports pdf-lib**, as only `pdfjsEngine.ts` imports
+  PDF.js. Everything else talks to `PdfMutationEngine`.
 
 ## Error model
 

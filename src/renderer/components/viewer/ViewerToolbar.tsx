@@ -120,6 +120,16 @@ export function ViewerToolbar({
       </div>
 
       <div className={styles.group}>
+        <CommandButton id="edit.rotatePageLeft" icon={RotateCcwSquare} disabled={disabled} />
+        <CommandButton id="edit.rotatePageRight" icon={RotateCwSquare} disabled={disabled} />
+        <CommandButton id="edit.deletePage" icon={Trash} disabled={disabled} />
+        <span className={styles.divider} aria-hidden="true" />
+        <CommandButton id="edit.undo" icon={Undo2} disabled={disabled} />
+        <CommandButton id="edit.redo" icon={Redo2} disabled={disabled} />
+        <CommandButton id="file.save" icon={Save} disabled={disabled} />
+      </div>
+
+      <div className={cx(styles.group, styles.trailing)}>
         <IconButton
           icon={ZoomOut}
           label="Zoom out"
@@ -144,21 +154,12 @@ export function ViewerToolbar({
             onClick={() => setZoom(mode)}
           />
         ))}
-      </div>
 
-      <div className={cx(styles.group, styles.trailing)}>
+        <span className={styles.divider} aria-hidden="true" />
         {/*
-          These change the document itself, so they sit apart from the view
-          rotation beside them, which only turns the page on screen.
+          View rotation only turns the page on screen. The commands that turn
+          the page in the document sit with the other document actions.
         */}
-        <CommandButton id="edit.rotatePageLeft" icon={RotateCcwSquare} disabled={disabled} />
-        <CommandButton id="edit.rotatePageRight" icon={RotateCwSquare} disabled={disabled} />
-        <CommandButton id="edit.deletePage" icon={Trash} disabled={disabled} />
-        <span className={styles.divider} aria-hidden="true" />
-        <CommandButton id="edit.undo" icon={Undo2} disabled={disabled} />
-        <CommandButton id="edit.redo" icon={Redo2} disabled={disabled} />
-        <CommandButton id="file.save" icon={Save} disabled={disabled} />
-        <span className={styles.divider} aria-hidden="true" />
         <IconButton
           icon={RotateCcw}
           label="Rotate view left"

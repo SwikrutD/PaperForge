@@ -2,10 +2,10 @@
 
 ## Current status
 
-- Last completed segment: **4 — Navigation panels and search**
-- Next segment: **5 — Mutation engine, save pipeline, undo/redo**
+- Last completed segment: **5 — Mutation engine, save pipeline, undo/redo**
+- Next segment: **6 — Comments and annotations**
 - Build status: `npm run package` succeeds; packaged app launches and closes cleanly on Windows 11 x64
-- Test status: 259 unit tests (28 files) and 23 Playwright end-to-end tests passing; typecheck, lint and format clean
+- Test status: 315 unit tests (33 files) and 31 Playwright end-to-end tests passing; typecheck, lint and format clean
 
 ## Completed segments
 
@@ -14,7 +14,7 @@
 - [x] 2 File service, tabs, recovery architecture
 - [x] 3 PDF.js viewer foundation
 - [x] 4 Navigation panels and search
-- [ ] 5 Mutation engine, save pipeline, undo/redo
+- [x] 5 Mutation engine, save pipeline, undo/redo
 - [ ] 6 Comments and annotations
 - [ ] 7 Organize Pages
 - [ ] 8 Create PDF and Combine Files
@@ -169,6 +169,53 @@ end-to-end suite checks layer visibility by counting ink on the canvas.
 | Viewer | `renderer/components/viewer/{pageGeometry,pageEntry,PdfDocumentContext,renderEngine}.ts(x)`                               |
 | Tests  | `tests/unit/renderer/{pageGeometry,searchNavigation,findBar,pageEntry}.test.*`, `tests/e2e/navigation.e2e.ts`             |
 
+## Segment 5 — what landed
+
+**The write engine.** `src/pdf/mutate` states a `PdfMutationEngine` contract and implements it with
+pdf-lib, the only file that imports it — the same arrangement the render engine has with PDF.js. It
+rotates and deletes pages, leaves the document's own metadata alone rather than stamping PaperForge
+as its producer, and refuses an encrypted document with a typed error instead of writing something
+broken. The operation arithmetic sits apart from the library and is unit-tested on its own.
+
+**Revisions as undo.** A change is applied in the main process and written as a whole new document
+inside the session's working directory; the viewer is pointed at that file instead of the original.
+Undo steps back by reading an earlier revision rather than by reversing an operation, so it cannot
+drift from what was actually written. Revision 0 is a snapshot of the document as it was opened,
+taken at the first change, which is what keeps undo and revert working after a save has replaced
+the original. History is capped at 30 revisions or 512 MB, oldest first, and says when it has been
+trimmed.
+
+**The save pipeline.** Save, Save As and Save a Copy write through a temporary sibling that is
+reopened — and inspected by qpdf when qpdf is installed — before it replaces anything, so a file
+PaperForge cannot read back is never published and a failed save leaves the original untouched. A
+save over the original refuses a read-only file (pointing at Save a Copy) and a file that changed
+on disk (unless the reader says overwrite). Revert goes back to the saved revision and can itself
+be undone.
+
+**qpdf, optional and found rather than required.** A configured path, then a copy staged in the
+application, then the PATH. Missing means saved files are not double-checked, not that saving
+fails. It is launched from one main-process wrapper with an argument array and no shell, a
+cancelled run kills the child, and its exit codes are read properly: 3 is warnings, which plenty of
+good PDFs produce and which does not block a save.
+
+**In the workspace.** Rotate Page, Delete Page, Undo, Redo, Save, Save As, Save a Copy and Revert
+to Saved are commands with the usual chords, so menus, palette, keyboard and the new toolbar group
+share one implementation and one answer about what is possible. Page rotation sits apart from view
+rotation because they are different things. The viewer reloads on a revision change, the tab's
+unsaved marker follows the same state, and saving no longer looks like somebody else editing the
+file.
+
+**Settings → Local tools** reports whether qpdf was found, where and which version, with a native
+picker to point at another one or go back to looking automatically.
+
+| Area     | Key files                                                                                                 |
+| -------- | --------------------------------------------------------------------------------------------------------- |
+| Engine   | `src/pdf/mutate/{types,operations,pdfLibEngine}.ts`, `src/shared/schemas/edit.ts`                         |
+| Pipeline | `main/services/documents/{documentEditor,revisionHistory}.ts`, `main/services/qpdf/qpdfService.ts`        |
+| IPC      | `main/ipc/handlers/editHandlers.ts`                                                                       |
+| Renderer | `renderer/stores/documentStore.ts`, `renderer/commands/*`, `renderer/components/overlays/QpdfSetting.tsx` |
+| Tests    | `tests/unit/main/{documentEditor,revisionHistory,qpdfService}.test.ts`, `tests/e2e/editing.e2e.ts`        |
+
 ## Architecture decisions
 
 1. **Channel allowlist separate from schemas**, so the preload carries no validation library and
@@ -248,6 +295,29 @@ end-to-end suite checks layer visibility by counting ink on the canvas.
     monospaced text and close enough elsewhere for a highlight; the rectangles are never used for
     anything but drawing.
 
+37. **Undo is a stack of documents, not of inverse operations.** Each change writes a whole
+    revision into the session directory and undo reads an earlier one. It costs disk and a rewrite
+    per change; it buys an undo that cannot corrupt a document by failing to reverse an operation
+    exactly, which for PDF content streams is the likelier failure.
+38. **Revision 0 is written at the first change, not at open.** Opening stays free, and the
+    document as it was opened survives a save that replaces the original file.
+39. **Only the main process writes.** The renderer composes transactions in terms of pages; the
+    main process owns the bytes, the temporary files and the sidecar. The renderer still never
+    learns a path.
+40. **The revision is part of the document URL.** A change asks the viewer for a document it has
+    not seen, which is a cleaner reload than invalidating a cache.
+41. **A save is published only after it has been read back.** The atomic write gained a validation
+    hook that runs between flush and rename, so the reopen — and the qpdf check — happen while the
+    destination is still untouched.
+42. **qpdf is a second opinion, not a dependency.** PaperForge validates its own output; qpdf makes
+    that check stronger when it is installed. Its absence is stated plainly and changes nothing
+    else.
+43. **Encrypted documents are refused for editing, not mangled.** pdf-lib cannot decrypt, and the
+    password the viewer holds stays in the renderer. Decryption belongs with the qpdf-based
+    security tools in Segment 14.
+44. **pdf-lib's page cache is not to be trusted after a removal.** It is not invalidated by
+    `removePage`, so the engine holds pages by identity and keeps the running order itself.
+
 ## Known limitations
 
 - The viewer is continuous scrolling only. Single page, two-page spread, cover page, the hand and
@@ -267,9 +337,17 @@ end-to-end suite checks layer visibility by counting ink on the canvas.
 - Form fields are drawn from their appearance streams but are not interactive; that is Segment 11.
 - The encryption marker shown in the properties panel is still a trailer scan. The viewer knows the
   truth once a document is open, and the two are not yet reconciled.
-- `dirty` is always false because nothing can modify a document yet. The close-warning path, the
-  tab marker and the journal flag are implemented and unit-tested, and become reachable in
-  Segment 5.
+- Editing is page rotation and page deletion. They exercise the whole pipeline; the Organize
+  workspace (Segment 7) and the content editors build on it.
+- An encrypted document can be read but not changed, and says so.
+- Every change rewrites the whole document. That is fine for page operations on ordinary files; a
+  very large document and a rapid series of changes would be the first thing to batch.
+- Unsaved changes are not recovered after a crash. The revisions are in the session directory and
+  the journal records that the document was dirty, but the recovery screen reopens the file as it
+  is on disk rather than offering the working copy. That is Segment 19 territory, and until then
+  the honest description is "PaperForge knows a document had unsaved changes, not what they were".
+- PaperForge does not claim byte-level incremental saving: pdf-lib rewrites the file. The internal
+  recovery journal is the "incremental" of `CLAUDE.md` section 9.
 - Fourteen of the fifteen home-screen tool cards are disabled because their capability is not built.
 - Tabs reorder by dragging or the context menu; there is no keyboard chord for reordering yet.
 - The encryption marker is a trailer scan, not a parse. The viewer will confirm it properly.
@@ -285,7 +363,9 @@ end-to-end suite checks layer visibility by counting ink on the canvas.
 
 ## Required local tools
 
-- qpdf: not required yet — integrated in Segment 5/14
+- qpdf: optional. Saved files are checked with it when it is installed; Settings → Local tools
+  reports what was found and can point at a different one. Encryption and repair follow in
+  Segment 14.
 - Tesseract: not required yet — integrated in Segment 12
 - LibreOffice: not required yet — optional, integrated in Segment 13
 
@@ -300,8 +380,8 @@ Run on Windows 11 x64, Node 24.19.0, npm 11.17.0:
 | `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                                        |
 | `npm run typecheck`         | Pass — four projects, no errors                                                                                       |
 | `npm run lint`              | Pass — no errors, no warnings                                                                                         |
-| `npm test`                  | Pass — 259 tests in 28 files                                                                                          |
-| `npm run test:e2e`          | Pass — 23 Playwright tests against the built application                                                              |
+| `npm test`                  | Pass — 315 tests in 33 files                                                                                          |
+| `npm run test:e2e`          | Pass — 31 Playwright tests against the built application                                                              |
 | `npm run format:check`      | Pass — Prettier clean                                                                                                 |
 | `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                                             |
 | `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                                      |

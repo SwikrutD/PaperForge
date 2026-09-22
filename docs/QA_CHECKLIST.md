@@ -164,3 +164,39 @@ Run in both light and dark themes:
       the shell with the panels as they were.
 - [ ] Highlights stay on the words when the page is zoomed and when the view is rotated, on a page
       that carries its own `/Rotate` as well as on an upright one.
+
+## Segment 5 — changing and saving documents
+
+- [ ] Rotate Page Right turns the page on screen and in the thumbnail, and the tab gains the
+      unsaved marker. The file on disk does not change (its modified time stays put).
+- [ ] View rotation and page rotation are clearly different: turning the view leaves the tab clean,
+      turning the page does not.
+- [ ] Undo and Redo step back and forward, and their menu entries are disabled with a reason when
+      there is nothing to undo or redo.
+- [ ] Delete Page removes the page, the page count drops, and undo brings it back in its old place.
+- [ ] Delete Page is disabled, with a reason, on a one-page document.
+- [ ] `Ctrl+S` saves, the marker clears, and a toast names the file. Reopening the file shows the
+      change; opening it in another PDF reader shows the same.
+- [ ] Undo still works after a save, and saving again writes the earlier state back.
+- [ ] Save As writes a new file, the tab follows it (title, properties panel, recent files), and
+      the file it came from is left as it was.
+- [ ] Save a Copy writes elsewhere and leaves the document dirty and pointing at the original.
+- [ ] Revert to Saved goes back to the last saved state; Redo brings the discarded change back.
+- [ ] Save is disabled on a document with no unsaved changes, and on a read-only file it explains
+      that Save a Copy is the way.
+- [ ] Closing a changed document warns first. Cancel keeps it open; Close without saving discards.
+- [ ] Change a document, then change the same file in another application, then save: PaperForge
+      says it changed on disk and only overwrites after Overwrite is chosen.
+- [ ] Save a document, then watch the tab: saving does not report itself as an outside change.
+- [ ] Open a password-protected document and try to rotate a page: PaperForge says plainly that it
+      cannot change an encrypted document yet, and nothing is written.
+- [ ] Settings → Local tools reports whether qpdf was found, and its version when it is. Locate…
+      accepts an executable and the status updates; Use automatic goes back to looking.
+- [ ] With qpdf installed, a save still works and is quietly checked; with qpdf absent, saving
+      works exactly the same.
+- [ ] After a change, `%TEMP%/PaperForge/sessions/<id>/revisions` holds the revision files; closing
+      the document removes them, and a clean exit leaves `sessions` empty.
+- [ ] Make thirty or more changes to one document: undo keeps working, memory and disk stay bounded,
+      and nothing in the UI claims history that is no longer there.
+- [ ] Kill PaperForge with unsaved changes, restart: the recovery screen offers the document, and
+      the file on disk is untouched.

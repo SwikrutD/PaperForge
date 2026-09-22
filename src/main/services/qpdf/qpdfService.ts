@@ -72,7 +72,7 @@ export class QpdfService {
         path: null,
         version: null,
         problem:
-          'qpdf was not found. PaperForge works without it; install it, or set its location in Settings, to have saved files checked.',
+          'Not found. PaperForge saves without it and checks its own work; with qpdf, saved files are inspected a second time before they replace yours.',
       };
     }
 

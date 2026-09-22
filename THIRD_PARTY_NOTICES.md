@@ -18,6 +18,7 @@ These end up inside the packaged application.
 | Zustand             | 5.0.15  | MIT        | Renderer state                                                                                                                                 |
 | lucide-react        | 1.47.0  | ISC        | Generic icon set; no third-party product icons are used                                                                                        |
 | pdfjs-dist (PDF.js) | 6.3.289 | Apache-2.0 | The rendering engine. Its worker, character maps, standard fonts and colour profiles are copied into the renderer bundle at build time.        |
+| pdf-lib             | 1.17.1  | MIT        | The write engine, used in the main process. Brings @pdf-lib/standard-fonts (MIT), @pdf-lib/upng (MIT), pako (MIT AND Zlib) and tslib (0BSD).   |
 
 ## Development only
 
@@ -54,12 +55,11 @@ Not redistributed with the application.
 
 Not present in the repository yet. Listed so licensing stays visible as they are integrated.
 
-| Component     | Expected license | Segment | Distribution intent                                                        |
-| ------------- | ---------------- | ------- | -------------------------------------------------------------------------- |
-| pdf-lib       | MIT              | 5       | Bundled                                                                    |
-| qpdf          | Apache-2.0       | 5 / 14  | Local sidecar binary, staged separately                                    |
-| Tesseract OCR | Apache-2.0       | 12      | Local sidecar binary plus tessdata, staged separately                      |
-| LibreOffice   | MPL-2.0 / LGPL   | 13      | Optional, never bundled; invoked only if the user already has it installed |
+| Component     | Expected license | Segment | Distribution intent                                                                                             |
+| ------------- | ---------------- | ------- | --------------------------------------------------------------------------------------------------------------- |
+| qpdf          | Apache-2.0       | 14      | Local sidecar binary, staged separately. PaperForge uses one that is already installed; nothing is bundled yet. |
+| Tesseract OCR | Apache-2.0       | 12      | Local sidecar binary plus tessdata, staged separately                                                           |
+| LibreOffice   | MPL-2.0 / LGPL   | 13      | Optional, never bundled; invoked only if the user already has it installed                                      |
 
 No AGPL-licensed component is used in the core product. Ghostscript and MuPDF are deliberately
 avoided for licensing reasons (see `CLAUDE.md` section 2.5).

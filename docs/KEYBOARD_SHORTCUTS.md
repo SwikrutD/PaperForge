@@ -19,6 +19,10 @@ refuses to start if two commands claim the same one.
 | `Ctrl+0`       | Fit Page        | Fits the page being read                                                     |
 | `Ctrl+1`       | Actual Size     | 100%                                                                         |
 | `Ctrl+2`       | Fit Width       | Fits the widest page, so nothing scrolls sideways                            |
+| `Ctrl+S`       | Save            | Writes the changes back to the file the document came from                   |
+| `Ctrl+Shift+S` | Save As…        | Writes to a new file and carries on there                                    |
+| `Ctrl+Z`       | Undo            | Steps back through the changes made in this session                          |
+| `Ctrl+Y`       | Redo            | Steps forward again                                                          |
 | `Ctrl+F`       | Find            | Opens the find bar over the document and selects what is in it               |
 | `Ctrl+H`       | Find Options    | Find, with the scope and page-range row expanded                             |
 | `F3`           | Find Next       | Wraps around; works while the find field has focus                           |
@@ -55,10 +59,7 @@ Taken from `CLAUDE.md` section 7; each lands with the segment that implements th
 | Keys                           | Command                           | Segment  |
 | ------------------------------ | --------------------------------- | -------- |
 | `Ctrl+Shift+O`                 | Open recent / open options        | later    |
-| `Ctrl+S`                       | Save                              | 5        |
-| `Ctrl+Shift+S`                 | Save As                           | 5        |
 | `Ctrl+P`                       | Print                             | 18       |
-| `Ctrl+Z` / `Ctrl+Y`            | Undo / Redo                       | 5        |
 | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / Cut / Paste in context     | 6 onward |
 | `Ctrl+A`                       | Select all in the current context | 6 onward |
 

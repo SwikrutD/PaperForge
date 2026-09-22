@@ -61,7 +61,7 @@ describe('QpdfService when qpdf is not installed', () => {
     expect(status.available).toBe(false);
     expect(status.path).toBeNull();
     expect(status.version).toBeNull();
-    expect(status.problem).toContain('qpdf was not found');
+    expect(status.problem).toContain('Not found');
   });
 
   it('checks nothing rather than failing a save', async () => {

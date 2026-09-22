@@ -44,7 +44,11 @@ export class SettingsStore {
     const { settings, repaired } = parseStoredSettings(raw);
     this.settings = settings;
     if (repaired && raw !== undefined) {
-      this.logger.warn('Settings file contained invalid values; repaired with defaults.');
+      // A file written by an older version is missing whatever sections have
+      // been added since, which lands here too — hence "or missing".
+      this.logger.warn(
+        'Settings file had invalid or missing values; those were replaced with defaults.',
+      );
     }
     return settings;
   }

@@ -6,13 +6,14 @@ each one is here and what would have to happen to remove it.
 
 ## Runtime
 
-| Package          | Why                                                                                                                                                                                   |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| react, react-dom | UI framework for the renderer. Chosen in `CLAUDE.md` section 2.2.                                                                                                                     |
-| zod              | Runtime validation at the IPC boundary and for persisted settings. Shared by main and renderer, so a schema is written once and enforced on both sides.                               |
-| zustand          | Small, unopinionated renderer state container. Used for the app store today, workspace and tab state later.                                                                           |
-| lucide-react     | Generic icon set (ISC). Deliberately generic — no product-specific or third-party branded icons.                                                                                      |
-| pdfjs-dist       | The PDF rendering engine (Apache-2.0), used behind the engine contract in `src/pdf/render`. Its worker, character maps, standard fonts and colour profiles ship with the application. |
+| Package          | Why                                                                                                                                                                                                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| react, react-dom | UI framework for the renderer. Chosen in `CLAUDE.md` section 2.2.                                                                                                                                                                                                              |
+| zod              | Runtime validation at the IPC boundary and for persisted settings. Shared by main and renderer, so a schema is written once and enforced on both sides.                                                                                                                        |
+| zustand          | Small, unopinionated renderer state container. Used for the app store today, workspace and tab state later.                                                                                                                                                                    |
+| lucide-react     | Generic icon set (ISC). Deliberately generic — no product-specific or third-party branded icons.                                                                                                                                                                               |
+| pdfjs-dist       | The PDF rendering engine (Apache-2.0), used behind the engine contract in `src/pdf/render`. Its worker, character maps, standard fonts and colour profiles ship with the application.                                                                                          |
+| pdf-lib          | The PDF write engine (MIT), used behind `PdfMutationEngine` in `src/pdf/mutate` and only from the main process. Pure JavaScript, so it needs no native build; it rewrites a whole file rather than appending an incremental update, which is what makes a revision a snapshot. |
 
 Electron itself is a development dependency that becomes the runtime: Forge packages it into the
 application.
