@@ -6,12 +6,13 @@ each one is here and what would have to happen to remove it.
 
 ## Runtime
 
-| Package          | Why                                                                                                                                                     |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| react, react-dom | UI framework for the renderer. Chosen in `CLAUDE.md` section 2.2.                                                                                       |
-| zod              | Runtime validation at the IPC boundary and for persisted settings. Shared by main and renderer, so a schema is written once and enforced on both sides. |
-| zustand          | Small, unopinionated renderer state container. Used for the app store today, workspace and tab state later.                                             |
-| lucide-react     | Generic icon set (ISC). Deliberately generic — no product-specific or third-party branded icons.                                                        |
+| Package          | Why                                                                                                                                                                                   |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| react, react-dom | UI framework for the renderer. Chosen in `CLAUDE.md` section 2.2.                                                                                                                     |
+| zod              | Runtime validation at the IPC boundary and for persisted settings. Shared by main and renderer, so a schema is written once and enforced on both sides.                               |
+| zustand          | Small, unopinionated renderer state container. Used for the app store today, workspace and tab state later.                                                                           |
+| lucide-react     | Generic icon set (ISC). Deliberately generic — no product-specific or third-party branded icons.                                                                                      |
+| pdfjs-dist       | The PDF rendering engine (Apache-2.0), used behind the engine contract in `src/pdf/render`. Its worker, character maps, standard fonts and colour profiles ship with the application. |
 
 Electron itself is a development dependency that becomes the runtime: Forge packages it into the
 application.

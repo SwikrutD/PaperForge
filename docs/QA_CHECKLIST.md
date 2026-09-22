@@ -100,3 +100,27 @@ Run in both light and dark themes:
 - [ ] Open the same file twice: it activates the existing tab instead of opening a duplicate.
 - [ ] Files with spaces and non-ASCII names in their path open and display correctly.
 - [ ] "New Window" opens a second window with its own tabs; closing one leaves the other running.
+
+## Segment 3 — the viewer
+
+- [ ] Open a text PDF: pages render, and the text can be selected with the mouse and copied with
+      `Ctrl+C`.
+- [ ] Open a 500-page document: the first page appears quickly, scrolling stays smooth, and Task
+      Manager shows memory settling rather than climbing with every page scrolled past.
+- [ ] Scroll to the end of a long document and back: pages redraw and nothing is left blank.
+- [ ] Zoom with `Ctrl+=`, `Ctrl+-`, the toolbar and `Ctrl+wheel`; the percentage in the toolbar and
+      the status bar agree with what is on screen.
+- [ ] Fit width on a document that mixes portrait and landscape pages: nothing scrolls sideways.
+- [ ] Fit page shows a whole page; actual size reports 100%.
+- [ ] Rotate the view left and right: pages turn, the layout follows, and the file on disk is
+      untouched (its modified time does not change).
+- [ ] The page box accepts a number and jumps there; next and previous page move one page.
+- [ ] Open a document with internal links: clicking one jumps to its destination.
+- [ ] Click an external link: PaperForge asks first, and only opens the browser after Confirm.
+- [ ] Open a password-protected PDF: the prompt appears, a wrong password says so, and the right
+      one opens the document. Cancelling leaves the tab in an honest error state.
+- [ ] Open a damaged PDF: the error explains the problem and Try again is offered.
+- [ ] Switch between two open documents: each returns to its own scroll position, zoom and
+      rotation.
+- [ ] In dark mode the page itself stays white; only the surroundings are dark.
+- [ ] Pages stay sharp on a high-DPI display and after changing Windows scaling.

@@ -9,14 +9,15 @@ is added or upgraded.
 
 These end up inside the packaged application.
 
-| Package      | Version | License | Notes                                                                                                                                          |
-| ------------ | ------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Electron     | 44.4.3  | MIT     | Includes Chromium (BSD-3-Clause and others) and Node.js (MIT). Chromium's own notices ship in `LICENSES.chromium.html` next to the executable. |
-| React        | 19.3.0  | MIT     |                                                                                                                                                |
-| React DOM    | 19.3.0  | MIT     |                                                                                                                                                |
-| Zod          | 4.6.5   | MIT     | IPC and settings validation                                                                                                                    |
-| Zustand      | 5.0.15  | MIT     | Renderer state                                                                                                                                 |
-| lucide-react | 1.47.0  | ISC     | Generic icon set; no third-party product icons are used                                                                                        |
+| Package             | Version | License    | Notes                                                                                                                                          |
+| ------------------- | ------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Electron            | 44.4.3  | MIT        | Includes Chromium (BSD-3-Clause and others) and Node.js (MIT). Chromium's own notices ship in `LICENSES.chromium.html` next to the executable. |
+| React               | 19.3.0  | MIT        |                                                                                                                                                |
+| React DOM           | 19.3.0  | MIT        |                                                                                                                                                |
+| Zod                 | 4.6.5   | MIT        | IPC and settings validation                                                                                                                    |
+| Zustand             | 5.0.15  | MIT        | Renderer state                                                                                                                                 |
+| lucide-react        | 1.47.0  | ISC        | Generic icon set; no third-party product icons are used                                                                                        |
+| pdfjs-dist (PDF.js) | 6.3.289 | Apache-2.0 | The rendering engine. Its worker, character maps, standard fonts and colour profiles are copied into the renderer bundle at build time.        |
 
 ## Development only
 
@@ -55,7 +56,6 @@ Not present in the repository yet. Listed so licensing stays visible as they are
 
 | Component     | Expected license | Segment | Distribution intent                                                        |
 | ------------- | ---------------- | ------- | -------------------------------------------------------------------------- |
-| PDF.js        | Apache-2.0       | 3       | Bundled                                                                    |
 | pdf-lib       | MIT              | 5       | Bundled                                                                    |
 | qpdf          | Apache-2.0       | 5 / 14  | Local sidecar binary, staged separately                                    |
 | Tesseract OCR | Apache-2.0       | 12      | Local sidecar binary plus tessdata, staged separately                      |

@@ -43,7 +43,8 @@ src/
       panels/      left panel, right panel, shared empty state
       progress/    progress centre
       shell/       title bar, tabs, command bar, rail, resizer, status bar, drop zone
-      workspace/   the open-document view
+      viewer/      page column, page rendering, toolbar, password prompt
+      workspace/   document properties
       surfaces/    card, message bar
     design-system/ tokens.css and base.css
     services/      typed IPC client
@@ -56,6 +57,8 @@ src/
     ipc/           channel allowlist, Zod contracts, result envelope
     schemas/       settings, app info, theme, window state, recent files, documents
     types/         the preload bridge interface
+  pdf/             PDF engine layer, free of UI
+    render/        engine contract and its PDF.js implementation
 scripts/           build-time tooling (icon generation)
 tests/unit/        Vitest suites mirroring src/
 tests/e2e/         Playwright tests that drive the built application
@@ -160,6 +163,41 @@ open → inspect → session id + document id → working directory + journal
 Tabs live in the renderer (`stores/documentStore.ts`); sessions live in the main process. The two
 meet through `files:*` channels, and `files:list` lets a freshly loaded window pick up the sessions
 that already exist.
+
+## Viewing a document
+
+```
+pfdoc://document/<session id>   →   PDF.js worker   →   page canvas
+                                                    →   text layer (selection)
+                                                    →   link hotspots
+```
+
+- **Bytes.** `documentProtocol.ts` serves an open session's file over the
+  `pfdoc` scheme with `Accept-Ranges`, so PDF.js fetches the trailer and the
+  first page without reading a large file end to end. Only sessions that are
+  open resolve; the renderer works from a session id and never learns a path.
+- **Engine.** `src/pdf/render` states what the viewer needs — page geometry,
+  render a page to a canvas, render a text layer, list links — and
+  `pdfjsEngine.ts` is the only file that imports PDF.js. The worker, character
+  maps, standard fonts and colour profiles are copied out of `pdfjs-dist` into
+  the renderer bundle at build time, so nothing is fetched at runtime.
+- **Layout.** `viewerLayout.ts` is pure arithmetic: page boxes, the visible
+  range, the current page, and the scale for each zoom mode. It is unit-tested
+  and knows nothing about React or PDF.js.
+- **Virtualization.** Only pages within a viewport-height band above and below
+  the screen are mounted. Unmounted pages keep their space but hold no canvas,
+  which is what bounds memory: a thousand-page document costs the same as a
+  short one. A render is cancelled when its page unmounts or the zoom changes.
+- **Annotations.** PDF.js draws annotations that carry an appearance stream
+  onto the page canvas. On top of that, link annotations become real buttons:
+  an internal destination scrolls, and an external URL asks for confirmation
+  before the main process opens it in the system browser — only `http`, `https`
+  and `mailto` are allowed through.
+- **Passwords.** An encrypted document raises the prompt inside the renderer.
+  The password goes straight to the PDF engine in that process: never over IPC,
+  never to disk, never to the log.
+- **View state** (zoom mode, scale, rotation, page, scroll offset) lives with
+  the tab, so switching documents returns the reader exactly where they were.
 
 ## Error model
 

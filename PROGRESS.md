@@ -2,17 +2,17 @@
 
 ## Current status
 
-- Last completed segment: **2 — File service, tabs, recovery architecture**
-- Next segment: **3 — PDF.js viewer foundation**
+- Last completed segment: **3 — PDF.js viewer foundation**
+- Next segment: **4 — Navigation panels and search**
 - Build status: `npm run package` succeeds; packaged app launches and closes cleanly on Windows 11 x64
-- Test status: 149 unit tests (19 files) and 5 Playwright end-to-end tests passing; typecheck and lint clean
+- Test status: 181 unit tests (21 files) and 13 Playwright end-to-end tests passing; typecheck and lint clean
 
 ## Completed segments
 
 - [x] 0 Repository foundation
 - [x] 1 Fluent Workspace shell and command system
 - [x] 2 File service, tabs, recovery architecture
-- [ ] 3 PDF.js viewer foundation
+- [x] 3 PDF.js viewer foundation
 - [ ] 4 Navigation panels and search
 - [ ] 5 Mutation engine, save pipeline, undo/redo
 - [ ] 6 Comments and annotations
@@ -86,6 +86,43 @@ that has since been deleted.
 | Controls     | `components/controls/{ContextMenu,Toggle}`                                                                                                      |
 | Tests        | `tests/unit/main/{documentInspector,documentService,recoveryJournal}.test.ts`, `tests/unit/renderer/documents.test.tsx`, `tests/e2e/app.e2e.ts` |
 
+## Segment 3 — what landed
+
+**Document bytes.** A new `pfdoc://document/<session id>` scheme serves an open session's file to
+the renderer with `Accept-Ranges`, so PDF.js fetches the trailer and the first page instead of
+reading a large file end to end. Only sessions that are open resolve, and the renderer still never
+learns a path.
+
+**Engine layer.** `src/pdf/render` states the contract — page geometry, render a page, render a
+text layer, list links — and `pdfjsEngine.ts` is the only file that imports PDF.js. The worker,
+character maps, standard fonts and colour profiles are copied out of `pdfjs-dist` at build time and
+ship with the application; nothing is fetched at runtime.
+
+**Viewer.** A continuous, virtualized page column: only pages within a viewport-height band are
+mounted, renders are cancelled when a page scrolls away or the zoom changes, and canvases render at
+the device pixel ratio. Zoom (fit page, fit width, actual size, steps, `Ctrl+wheel`), view rotation,
+page navigation and a page box, all reported in the status bar. View state lives with the tab.
+
+**Layers.** Text layer aligned to the canvas for selection and copying; annotations with appearance
+streams are drawn onto the page by PDF.js; link annotations become real buttons — internal
+destinations scroll, external URLs are confirmed and opened by the main process, which accepts only
+`http`, `https` and `mailto`.
+
+**Encrypted documents.** A password prompt inside the renderer, which hands the password straight to
+the engine in that process: never over IPC, never persisted, never logged. A wrong password says so
+and asks again.
+
+**Test fixtures.** `tests/fixtures/pdf.ts` builds deterministic PDFs byte by byte, including a
+40-bit RC4 encrypted one. A Node test reads each with PDF.js and checks page count, text, rotation,
+unusual page sizes and the password path; the end-to-end suite drives the real application.
+
+| Area   | Key files                                                                                                                               |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Bytes  | `main/windows/documentProtocol.ts`, `main/services/documents/rangeHeader.ts`                                                            |
+| Engine | `src/pdf/render/{types,pdfjsEngine}.ts`                                                                                                 |
+| Viewer | `renderer/components/viewer/{PdfViewer,PdfPageView,ViewerToolbar,PasswordPrompt,usePdfDocument,viewerLayout}`                           |
+| Tests  | `tests/fixtures/pdf.ts`, `tests/unit/shared/pdfFixtures.test.ts`, `tests/unit/renderer/viewerLayout.test.ts`, `tests/e2e/viewer.e2e.ts` |
+
 ## Architecture decisions
 
 1. **Channel allowlist separate from schemas**, so the preload carries no validation library and
@@ -127,14 +164,35 @@ that has since been deleted.
     second window and a reload stay correct.
 22. **Drag and drop resolves paths through `webUtils` in the preload.** Chromium removed
     `File.path`; a file that yields no path gets an explanation rather than silence.
-23. **End-to-end tests drive the unpackaged build.** The inspector fuse that protects the packaged
+23. **Document bytes travel over their own scheme, not IPC.** A large PDF would otherwise have to
+    be copied through the IPC boundary; `pfdoc` streams it with range support, and the renderer asks
+    for a session id rather than a path.
+24. **Nothing above `src/pdf/render` imports PDF.js.** The viewer is written against an interface,
+    so a second engine can be added later without touching the UI, and the layout arithmetic can be
+    unit-tested without a browser.
+25. **Virtualization is the memory budget.** Only pages near the viewport hold a canvas; the rest
+    keep their space and nothing else. A canvas cache for recently seen pages can come later if
+    profiling asks for it, but the bound is structural rather than a number to tune.
+26. **Fit width fits the widest page.** Fitting only the current page made a document that mixes
+    portrait and landscape scroll sideways; this way the column never does.
+27. **A document password never leaves the renderer.** It goes from the prompt straight into the
+    PDF engine in the same process.
+28. **The product version is injected at build time.** An unpackaged run has no `package.json`
+    beside the bundle, so `app.getVersion()` reported Electron's version in development.
+29. **End-to-end tests drive the unpackaged build.** The inspector fuse that protects the packaged
     application also blocks a test runner, so Playwright launches the same bundle with the Electron
     binary and the packaged build is smoke-tested separately.
 
 ## Known limitations
 
-- No page rendering yet: an open document shows its file facts, not its pages. The viewer is
-  Segment 3, and the document view says so.
+- The viewer is continuous scrolling only. Single page, two-page spread, cover page, the hand and
+  marquee-zoom tools and presentation mode are part of the fuller viewer in `CLAUDE.md` section 10
+  and are not built yet.
+- Page thumbnails, bookmarks, attachments, layers and search are Segment 4; those panels say so
+  rather than pretending to be empty.
+- Form fields are drawn from their appearance streams but are not interactive; that is Segment 11.
+- The encryption marker shown in the properties panel is still a trailer scan. The viewer knows the
+  truth once a document is open, and the two are not yet reconciled.
 - `dirty` is always false because nothing can modify a document yet. The close-warning path, the
   tab marker and the journal flag are implemented and unit-tested, and become reachable in
   Segment 5.
@@ -163,18 +221,18 @@ Nothing is downloaded at runtime, then or now.
 
 Run on Windows 11 x64, Node 24.19.0, npm 11.17.0:
 
-| Command                     | Result                                                                                                  |
-| --------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                          |
-| `npm run typecheck`         | Pass — four projects, no errors                                                                         |
-| `npm run lint`              | Pass — no errors, no warnings                                                                           |
-| `npm test`                  | Pass — 149 tests in 19 files                                                                            |
-| `npm run test:e2e`          | Pass — 5 Playwright tests against the built application                                                 |
-| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                               |
-| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                        |
-| Packaged launch/close smoke | Pass — window ready in ~400 ms, closes cleanly, and `%TEMP%/PaperForge/sessions` is empty afterwards    |
-| Settings upgrade            | Pass — a settings file without the new `session` section is repaired in place                           |
-| Appearance                  | Checked in light and dark by capturing the running renderer: tabs, document view and status bar correct |
+| Command                     | Result                                                                                               |
+| --------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                       |
+| `npm run typecheck`         | Pass — four projects, no errors                                                                      |
+| `npm run lint`              | Pass — no errors, no warnings                                                                        |
+| `npm test`                  | Pass — 149 tests in 19 files                                                                         |
+| `npm run test:e2e`          | Pass — 5 Playwright tests against the built application                                              |
+| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                            |
+| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                     |
+| Packaged launch/close smoke | Pass — window ready in ~400 ms, closes cleanly, and `%TEMP%/PaperForge/sessions` is empty afterwards |
+| Settings upgrade            | Pass — a settings file without the new `session` section is repaired in place                        |
+| Appearance                  | Checked in light and dark by driving the real application and screenshotting a rendered document     |
 
 ## Manual setup required
 

@@ -81,6 +81,20 @@ logged and answered with 403. This is covered by unit tests including spaces and
 - `shell.showItemInFolder` is the only way a path leaves the application, and only for a file the
   user is already working with.
 
+## Documents in the renderer
+
+- Document bytes are served over the `pfdoc` scheme, which resolves only
+  sessions that are currently open. A renderer cannot ask for an arbitrary file.
+- PDF.js runs with XFA disabled and never executes document JavaScript.
+  PaperForge does not enable the PDF.js scripting sandbox.
+- Links in a document cannot navigate the application: an internal destination
+  scrolls the page column, and an external URL is shown to the user, confirmed,
+  and then opened in the system browser by the main process, which accepts only
+  `http`, `https` and `mailto`.
+- A document password is entered in the renderer and handed straight to the PDF
+  engine there. It never crosses IPC, is never persisted, and never reaches the
+  log.
+
 ## Logging and privacy
 
 Logs are local only, in `%APPDATA%/PaperForge/logs/paperforge.log`, rotated at 1 MB. The logger
