@@ -108,3 +108,25 @@
   font-size: var(--pf-font-size-100);
   pointer-events: none;
 }
+
+/*
+ * Search results are drawn between the canvas and the text layer and multiply
+ * with the page, so the words underneath stay readable and selectable.
+ */
+.highlight,
+.highlightActive {
+  position: absolute;
+  z-index: 1;
+  border-radius: 1px;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+.highlight {
+  background-color: var(--pf-color-search-match);
+}
+
+.highlightActive {
+  background-color: var(--pf-color-search-match-active);
+  outline: 1px solid var(--pf-color-search-match-outline);
+}

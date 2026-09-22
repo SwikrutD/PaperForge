@@ -5,7 +5,20 @@ import { formatBytes } from '../../utils/format';
 import styles from './AttachmentsPanel.module.css';
 
 const RISKY_EXTENSIONS = new Set([
-  'exe', 'com', 'bat', 'cmd', 'msi', 'ps1', 'vbs', 'js', 'jse', 'wsf', 'scr', 'lnk', 'reg', 'jar',
+  'exe',
+  'com',
+  'bat',
+  'cmd',
+  'msi',
+  'ps1',
+  'vbs',
+  'js',
+  'jse',
+  'wsf',
+  'scr',
+  'lnk',
+  'reg',
+  'jar',
 ]);
 
 function extensionOf(fileName: string): string {
@@ -39,7 +52,11 @@ export function AttachmentsPanel({
               </span>
               {risky && (
                 <span className={styles.warning} title="This kind of file can run code.">
-                  <ShieldAlert className={styles.warningIcon} aria-hidden="true" strokeWidth={1.8} />
+                  <ShieldAlert
+                    className={styles.warningIcon}
+                    aria-hidden="true"
+                    strokeWidth={1.8}
+                  />
                   <span className="pf-visually-hidden">This kind of file can run code.</span>
                 </span>
               )}

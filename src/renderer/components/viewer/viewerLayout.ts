@@ -29,13 +29,17 @@ export function clampScale(scale: number): number {
   return Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
 }
 
-/** Page size after the page's own rotation and the view rotation, at scale 1. */
+/**
+ * Page size as displayed, at scale 1.
+ *
+ * `width` and `height` already carry the page's own rotation, so only the
+ * reader's view rotation can turn the page onto its side.
+ */
 export function rotatedSize(
-  page: Pick<PdfPageGeometry, 'width' | 'height' | 'rotation'>,
+  page: Pick<PdfPageGeometry, 'width' | 'height'>,
   viewRotation: number,
 ): { width: number; height: number } {
-  const turns = Math.round(((page.rotation + viewRotation) % 360) / 90);
-  const swapped = Math.abs(turns) % 2 === 1;
+  const swapped = Math.abs(Math.round(viewRotation / 90)) % 2 === 1;
   return swapped
     ? { width: page.height, height: page.width }
     : { width: page.width, height: page.height };
@@ -118,13 +122,13 @@ export function scrollTopForPage(layout: PageLayout, pageNumber: number): number
 
 export interface FitOptions {
   /** The page being read; fit page is about this one. */
-  page: Pick<PdfPageGeometry, 'width' | 'height' | 'rotation'>;
+  page: Pick<PdfPageGeometry, 'width' | 'height'>;
   /**
    * The widest page in the document. Fit width uses it so that no page in the
    * column overflows sideways, which is what makes the mode predictable in a
    * document that mixes portrait and landscape.
    */
-  widestPage?: Pick<PdfPageGeometry, 'width' | 'height' | 'rotation'> | undefined;
+  widestPage?: Pick<PdfPageGeometry, 'width' | 'height'> | undefined;
   viewportWidth: number;
   viewportHeight: number;
   viewRotation: number;

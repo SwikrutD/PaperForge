@@ -108,48 +108,48 @@ export function App(): ReactElement {
   return (
     <PdfDocumentProvider tab={activeTab}>
       <AppShell
-      settings={effectiveSettings}
-      version={appInfo?.version ?? null}
-      status={status}
-      statusText={STATUS_TEXT[status]}
-      themeText={describeTheme(preference, resolvedTheme)}
-      viewText={viewText}
-      documentText={
-        activeTab === null
-          ? 'No document open'
-          : `${activeTab.session.file.displayName}${tabs.length > 1 ? ` · ${tabs.length} open` : ''}`
-      }
-      overlays={
-        <>
-          {progressOpen && <ProgressCenter />}
-          {paletteOpen && <CommandPalette />}
-          {dialog === 'settings' && <SettingsDialog settings={effectiveSettings} />}
-          {dialog === 'about' && <AboutDialog appInfo={appInfo} />}
-          {recovery !== null && (
-            <RecoveryDialog
-              entries={recovery}
-              onDone={() => {
-                setRecovery(null);
-              }}
-            />
+        settings={effectiveSettings}
+        version={appInfo?.version ?? null}
+        status={status}
+        statusText={STATUS_TEXT[status]}
+        themeText={describeTheme(preference, resolvedTheme)}
+        viewText={viewText}
+        documentText={
+          activeTab === null
+            ? 'No document open'
+            : `${activeTab.session.file.displayName}${tabs.length > 1 ? ` · ${tabs.length} open` : ''}`
+        }
+        overlays={
+          <>
+            {progressOpen && <ProgressCenter />}
+            {paletteOpen && <CommandPalette />}
+            {dialog === 'settings' && <SettingsDialog settings={effectiveSettings} />}
+            {dialog === 'about' && <AboutDialog appInfo={appInfo} />}
+            {recovery !== null && (
+              <RecoveryDialog
+                entries={recovery}
+                onDone={() => {
+                  setRecovery(null);
+                }}
+              />
+            )}
+            {confirmation !== null && <ConfirmationDialog request={confirmation} />}
+            <ToastHost />
+          </>
+        }
+      >
+        <AppErrorBoundary region="workspace">
+          {error !== null && (
+            <div className={styles.startupError}>
+              <ErrorMessageBar error={error} />
+            </div>
           )}
-          {confirmation !== null && <ConfirmationDialog request={confirmation} />}
-          <ToastHost />
-        </>
-      }
-    >
-      <AppErrorBoundary region="workspace">
-        {error !== null && (
-          <div className={styles.startupError}>
-            <ErrorMessageBar error={error} />
-          </div>
-        )}
-        {activeTab === null ? (
-          <HomeScreen recentFiles={recentFiles} />
-        ) : (
-          <PdfViewer key={activeTab.session.id} tab={activeTab} />
-        )}
-      </AppErrorBoundary>
+          {activeTab === null ? (
+            <HomeScreen recentFiles={recentFiles} />
+          ) : (
+            <PdfViewer key={activeTab.session.id} tab={activeTab} />
+          )}
+        </AppErrorBoundary>
       </AppShell>
     </PdfDocumentProvider>
   );

@@ -141,9 +141,11 @@ class PdfjsDocument implements LoadedPdfDocument {
   pageSize(pageNumber: number, scale: number, rotation: number): RenderedPageSize {
     const geometry = this.pages[pageNumber - 1];
     if (geometry === undefined) return { width: 0, height: 0 };
-    const quarterTurns = (((geometry.rotation + rotation) / 90) | 0) % 2;
-    const width = quarterTurns === 0 ? geometry.width : geometry.height;
-    const height = quarterTurns === 0 ? geometry.height : geometry.width;
+    // `geometry` already carries the page's own rotation, so only the extra
+    // view rotation can turn the page onto its side.
+    const swapped = Math.abs(Math.round(rotation / 90)) % 2 === 1;
+    const width = swapped ? geometry.height : geometry.width;
+    const height = swapped ? geometry.width : geometry.height;
     return { width: width * scale, height: height * scale };
   }
 
@@ -152,7 +154,11 @@ class PdfjsDocument implements LoadedPdfDocument {
     const page = await this.getPage(pageNumber);
     if (isAborted(signal)) return;
 
-    const viewport = page.getViewport({ scale: scale * devicePixelRatio, rotation });
+    // PDF.js treats `rotation` as the total rotation, not an extra one.
+    const viewport = page.getViewport({
+      scale: scale * devicePixelRatio,
+      rotation: page.rotate + rotation,
+    });
     canvas.width = Math.max(1, Math.floor(viewport.width));
     canvas.height = Math.max(1, Math.floor(viewport.height));
     canvas.style.width = `${Math.floor(viewport.width / devicePixelRatio)}px`;
@@ -184,7 +190,7 @@ class PdfjsDocument implements LoadedPdfDocument {
     const page = await this.getPage(pageNumber);
     if (isAborted(signal)) return;
 
-    const viewport = page.getViewport({ scale, rotation });
+    const viewport = page.getViewport({ scale, rotation: page.rotate + rotation });
     container.replaceChildren();
     container.style.width = `${Math.floor(viewport.width)}px`;
     container.style.height = `${Math.floor(viewport.height)}px`;
@@ -376,12 +382,15 @@ async function readGeometry(document: PDFDocumentProxy): Promise<PdfPageGeometry
     const page = await document.getPage(pageNumber);
     const viewport = page.getViewport({ scale: 1 });
     const label = labels?.[pageNumber - 1] ?? null;
+    const [x1 = 0, y1 = 0, x2 = 0, y2 = 0] = page.view;
     geometry.push({
       pageNumber,
       width: viewport.width,
       height: viewport.height,
       rotation: page.rotate,
       label: label === String(pageNumber) ? null : label,
+      viewBox: [x1, y1, x2, y2],
+      userUnit: page.userUnit,
     });
     page.cleanup();
   }

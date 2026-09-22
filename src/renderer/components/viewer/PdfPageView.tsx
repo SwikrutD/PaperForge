@@ -1,7 +1,16 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import type { LoadedPdfDocument, PdfLink } from '@pdf/render/types';
+import { cssBoxStyle, pdfRectToCss, rectFromCorners, type PdfRect } from './pageGeometry';
 import type { PageBox } from './viewerLayout';
 import styles from './PdfPageView.module.css';
+
+/** A rectangle the viewer draws over the page, such as a search result. */
+export interface PageHighlight {
+  id: string;
+  rect: PdfRect;
+  /** The match the reader is currently on, drawn more strongly. */
+  active: boolean;
+}
 
 interface PdfPageViewProps {
   document: LoadedPdfDocument;
@@ -11,6 +20,7 @@ interface PdfPageViewProps {
   label: string | null;
   /** Bumped when layer visibility changes, which requires a repaint. */
   layersVersion: number;
+  highlights?: readonly PageHighlight[] | undefined;
   onFollowLink: (link: PdfLink) => void;
 }
 
@@ -26,6 +36,7 @@ export function PdfPageView({
   rotation,
   label,
   layersVersion,
+  highlights,
   onFollowLink,
 }: PdfPageViewProps): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -89,10 +100,24 @@ export function PdfPageView({
       aria-label={`Page ${label ?? String(box.pageNumber)}`}
     >
       <canvas className={styles.canvas} ref={canvasRef} />
+
+      {(highlights ?? []).map((highlight) => {
+        const position = place(highlight.rect, pdf, box.pageNumber, scale, rotation);
+        if (position === null) return null;
+        return (
+          <span
+            key={highlight.id}
+            className={highlight.active ? styles.highlightActive : styles.highlight}
+            style={position}
+            aria-hidden="true"
+          />
+        );
+      })}
+
       <div className={styles.textLayer} ref={textRef} />
 
       {links.map((link) => {
-        const position = linkPosition(link, scale, rotation, pdf, box.pageNumber);
+        const position = place(rectFromCorners(link.rect), pdf, box.pageNumber, scale, rotation);
         if (position === null) return null;
         return (
           <button
@@ -125,62 +150,16 @@ function linkTitle(link: PdfLink): string {
   return link.title ?? 'Link';
 }
 
-/**
- * PDF rectangles are in user space with the origin at the bottom left, so they
- * are converted to CSS pixels from the top left of the rendered page.
- */
-function linkPosition(
-  link: PdfLink,
-  scale: number,
-  rotation: number,
+/** Positions a PDF-space rectangle on this page, in CSS pixels. */
+function place(
+  rect: PdfRect,
   pdf: LoadedPdfDocument,
   pageNumber: number,
+  scale: number,
+  rotation: number,
 ): { left: string; top: string; width: string; height: string } | null {
   const geometry = pdf.pages[pageNumber - 1];
   if (geometry === undefined) return null;
-
-  const [x1, y1, x2, y2] = link.rect;
-  const left = Math.min(x1, x2);
-  const right = Math.max(x1, x2);
-  const bottom = Math.min(y1, y2);
-  const top = Math.max(y1, y2);
-
-  const turns = (((geometry.rotation + rotation) % 360) + 360) % 360;
-  const pageWidth = geometry.width;
-  const pageHeight = geometry.height;
-
-  let cssLeft: number;
-  let cssTop: number;
-  let cssWidth: number;
-  let cssHeight: number;
-
-  if (turns === 90) {
-    cssLeft = pageHeight - top;
-    cssTop = left;
-    cssWidth = top - bottom;
-    cssHeight = right - left;
-  } else if (turns === 180) {
-    cssLeft = pageWidth - right;
-    cssTop = bottom;
-    cssWidth = right - left;
-    cssHeight = top - bottom;
-  } else if (turns === 270) {
-    cssLeft = bottom;
-    cssTop = pageWidth - right;
-    cssWidth = top - bottom;
-    cssHeight = right - left;
-  } else {
-    cssLeft = left;
-    cssTop = pageHeight - top;
-    cssWidth = right - left;
-    cssHeight = top - bottom;
-  }
-
-  if (cssWidth <= 0 || cssHeight <= 0) return null;
-  return {
-    left: `${cssLeft * scale}px`,
-    top: `${cssTop * scale}px`,
-    width: `${cssWidth * scale}px`,
-    height: `${cssHeight * scale}px`,
-  };
+  const box = pdfRectToCss(rect, geometry, scale, rotation);
+  return box === null ? null : cssBoxStyle(box);
 }

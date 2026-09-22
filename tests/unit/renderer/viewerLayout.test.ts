@@ -14,7 +14,15 @@ import {
 } from '../../../src/renderer/components/viewer/viewerLayout';
 
 function page(pageNumber: number, width = 612, height = 792, rotation = 0): PdfPageGeometry {
-  return { pageNumber, width, height, rotation, label: null };
+  return {
+    pageNumber,
+    width,
+    height,
+    rotation,
+    label: null,
+    viewBox: [0, 0, width, height],
+    userUnit: 1,
+  };
 }
 
 const A4_PORTRAIT = page(1, 595, 842);
@@ -30,8 +38,10 @@ describe('rotatedSize', () => {
     expect(rotatedSize(A4_PORTRAIT, 270)).toEqual({ width: 842, height: 595 });
   });
 
-  it('counts the rotation baked into the page', () => {
-    const landscape = page(1, 595, 842, 90);
+  // Regression: the page's own rotation is already in `width`/`height`, so
+  // counting it again laid a quarter-turned page out on its side.
+  it('does not count the rotation baked into the page twice', () => {
+    const landscape = page(1, 842, 595, 90);
     expect(rotatedSize(landscape, 0)).toEqual({ width: 842, height: 595 });
     expect(rotatedSize(landscape, 90)).toEqual({ width: 595, height: 842 });
   });

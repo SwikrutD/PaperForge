@@ -1,11 +1,6 @@
 import { useEffect, useState, type ReactElement } from 'react';
 import { Bookmark, Layers, Paperclip, StickyNote, X } from 'lucide-react';
-import type {
-  LoadedPdfDocument,
-  PdfAttachment,
-  PdfLayer,
-  PdfOutlineItem,
-} from '@pdf/render/types';
+import type { LoadedPdfDocument, PdfAttachment, PdfLayer, PdfOutlineItem } from '@pdf/render/types';
 import type { LeftPanelId } from '@shared/schemas/settings';
 import { useCommands } from '../../commands/useCommands';
 import { IconButton } from '../controls/IconButton';

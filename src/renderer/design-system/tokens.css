@@ -85,6 +85,14 @@
   --pf-color-workspace: #f0eeec;
   --pf-color-page: #ffffff;
 
+  /*
+   * Search highlights sit on the page, which stays white in both themes, so
+   * these are deliberately not redefined for dark mode.
+   */
+  --pf-color-search-match: #ffe8a3;
+  --pf-color-search-match-active: #ffb21f;
+  --pf-color-search-match-outline: #8a5300;
+
   --pf-color-border: #e1dfdd;
   --pf-color-border-strong: #c8c6c4;
   --pf-color-divider: #edebe9;

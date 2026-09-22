@@ -14,6 +14,14 @@ export interface PdfPageGeometry {
   rotation: number;
   /** Page label from the document, when it differs from the number. */
   label: string | null;
+  /**
+   * The page's box in PDF user space, [x1, y1, x2, y2], before rotation. It is
+   * the space annotation and text coordinates are given in, and its origin is
+   * not always zero.
+   */
+  viewBox: readonly [number, number, number, number];
+  /** Default user space units per PDF unit; 1 for nearly every document. */
+  userUnit: number;
 }
 
 export interface PdfDocumentInfo {

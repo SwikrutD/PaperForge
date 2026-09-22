@@ -30,7 +30,6 @@ export const PdfDocumentReactContext = createContext<PdfDocumentContextValue>({
   setLayerVisible: () => undefined,
 });
 
-
 export function usePdfDocumentContext(): PdfDocumentContextValue {
   return useContext(PdfDocumentReactContext);
 }
