@@ -21,6 +21,7 @@ function renderShell(settings: Settings = DEFAULT_SETTINGS): void {
       statusText="Ready"
       themeText="Theme: light (system)"
       documentText="No document open"
+      viewText={null}
     >
       <p>workspace content</p>
     </AppShell>,

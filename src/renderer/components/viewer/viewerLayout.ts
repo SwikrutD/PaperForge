@@ -117,7 +117,14 @@ export function scrollTopForPage(layout: PageLayout, pageNumber: number): number
 }
 
 export interface FitOptions {
+  /** The page being read; fit page is about this one. */
   page: Pick<PdfPageGeometry, 'width' | 'height' | 'rotation'>;
+  /**
+   * The widest page in the document. Fit width uses it so that no page in the
+   * column overflows sideways, which is what makes the mode predictable in a
+   * document that mixes portrait and landscape.
+   */
+  widestPage?: Pick<PdfPageGeometry, 'width' | 'height' | 'rotation'> | undefined;
   viewportWidth: number;
   viewportHeight: number;
   viewRotation: number;
@@ -133,7 +140,8 @@ export function scaleForMode(mode: ZoomMode, options: FitOptions, currentScale =
   const size = rotatedSize(options.page, options.viewRotation);
   const availableWidth = options.viewportWidth - PAGE_MARGIN * 2 - (options.scrollbarWidth ?? 0);
   if (mode === 'fitWidth') {
-    return clampScale(availableWidth / size.width);
+    const widest = rotatedSize(options.widestPage ?? options.page, options.viewRotation);
+    return clampScale(availableWidth / widest.width);
   }
 
   const availableHeight = options.viewportHeight - PAGE_MARGIN * 2;

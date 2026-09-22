@@ -6,7 +6,7 @@ import { appInfoSchema, type AppInfo } from '@shared/schemas/appInfo';
 export function buildAppInfo(): AppInfo {
   return appInfoSchema.parse({
     name: APP_NAME,
-    version: app.getVersion(),
+    version: typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : app.getVersion(),
     isPackaged: app.isPackaged,
     platform: process.platform,
     arch: process.arch,

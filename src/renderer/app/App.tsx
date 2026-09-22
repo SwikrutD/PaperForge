@@ -18,7 +18,7 @@ import { PdfViewer } from '../components/viewer/PdfViewer';
 import { ErrorMessageBar } from '../components/surfaces/MessageBar';
 import { invoke } from '../services/ipcClient';
 import { useAppStore } from '../stores/appStore';
-import { useDocumentStore } from '../stores/documentStore';
+import { useDocumentStore, type DocumentViewState } from '../stores/documentStore';
 import { useUiStore } from '../stores/uiStore';
 import { AppErrorBoundary } from './AppErrorBoundary';
 import styles from './App.module.css';
@@ -29,6 +29,20 @@ const STATUS_TEXT = {
   ready: 'Ready',
   error: 'Startup problem',
 } as const;
+
+const ZOOM_LABEL = {
+  fitPage: 'Fit page',
+  fitWidth: 'Fit width',
+  actual: 'Actual size',
+  custom: 'Custom zoom',
+} as const;
+
+/** "Page 2 of 3 · Fit width · 90°" for the status bar. */
+function describeView(view: DocumentViewState): string {
+  const parts = [`Page ${view.pageNumber}`, ZOOM_LABEL[view.zoomMode]];
+  if (view.rotation !== 0) parts.push(`${view.rotation}°`);
+  return parts.join(' · ');
+}
 
 function describeTheme(preference: ThemePreference, resolved: ResolvedTheme | null): string {
   const resolvedLabel = resolved ?? 'unknown';
@@ -88,6 +102,7 @@ export function App(): ReactElement {
   const effectiveSettings = settings ?? DEFAULT_SETTINGS;
   const preference = effectiveSettings.appearance.theme;
   const activeTab = tabs.find((tab) => tab.session.id === activeId) ?? null;
+  const viewText = activeTab === null ? null : describeView(activeTab.view);
 
   return (
     <AppShell
@@ -96,6 +111,7 @@ export function App(): ReactElement {
       status={status}
       statusText={STATUS_TEXT[status]}
       themeText={describeTheme(preference, resolvedTheme)}
+      viewText={viewText}
       documentText={
         activeTab === null
           ? 'No document open'

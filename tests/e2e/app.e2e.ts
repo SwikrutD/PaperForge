@@ -9,6 +9,7 @@ import electronBinary from 'electron';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { buildPdf } from '../fixtures/pdf';
 
 /**
  * The built application is driven unpackaged: the packaged build has the Node
@@ -19,11 +20,6 @@ import path from 'node:path';
  * Playwright runs from the repository root.
  */
 const mainBundle = path.resolve('.vite', 'build', 'main.js');
-
-const PDF = Buffer.from(
-  '%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF\n',
-  'latin1',
-);
 
 interface OpenEnvelope {
   ok: boolean;
@@ -39,7 +35,10 @@ let documentPath = '';
 test.beforeAll(async () => {
   sandbox = await fs.mkdtemp(path.join(os.tmpdir(), 'paperforge-e2e-'));
   documentPath = path.join(sandbox, 'Rapport final é.pdf');
-  await fs.writeFile(documentPath, PDF);
+  await fs.writeFile(
+    documentPath,
+    buildPdf({ pages: [{ text: 'Opened by the end-to-end test' }] }),
+  );
 
   app = await electron.launch({
     executablePath: electronBinary as unknown as string,
@@ -87,9 +86,16 @@ test('opening from the recent list shows the document as a tab', async () => {
   await page.getByRole('button', { name: 'Open Rapport final é.pdf' }).click();
 
   await expect(page.getByRole('tab', { name: 'Rapport final é.pdf' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Rapport final é.pdf' })).toBeVisible();
+  await expect(page.getByText('Opened by the end-to-end test')).toBeVisible();
+  await expect(page.getByText('of 1')).toBeVisible();
+});
+
+test('the properties panel reports the file it came from', async () => {
+  await page.keyboard.press('F4');
+  await expect(page.getByRole('region', { name: 'Properties and tools' })).toBeVisible();
   await expect(page.getByText(documentPath)).toBeVisible();
   await expect(page.getByText('1.7')).toBeVisible();
+  await page.keyboard.press('F4');
 });
 
 test('closing the tab returns to the home screen', async () => {
@@ -102,6 +108,11 @@ test('closing the tab returns to the home screen', async () => {
 test('a file that has gone missing is reported, not silently ignored', async () => {
   await fs.rm(documentPath);
 
+  // The recent list lives on the home screen, so nothing may be open.
+  for (let guard = 0; guard < 10 && (await page.getByRole('tab').count()) > 0; guard += 1) {
+    await page.keyboard.press('Control+w');
+    await page.waitForTimeout(150);
+  }
   await page.getByRole('button', { name: 'Open Rapport final é.pdf' }).click();
 
   await expect(page.getByText('The file could not be found.')).toBeVisible();

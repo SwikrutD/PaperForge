@@ -13,6 +13,7 @@ import { usePdfDocument } from './usePdfDocument';
 import {
   currentPage as currentPageOf,
   layoutPages,
+  rotatedSize,
   scaleForMode,
   scrollTopForPage,
   visiblePages,
@@ -40,21 +41,40 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const { view } = tab;
   const pages = useMemo(() => state.document?.pages ?? [], [state.document]);
 
-  // Fit modes depend on the page currently being read.
+  // Fit modes depend on the page currently being read, and on the widest page
+  // so that fit width never leaves part of a page off screen.
   const referencePage = pages[Math.min(view.pageNumber, pages.length) - 1] ?? pages[0] ?? null;
+  const widestPage = useMemo(() => {
+    let widest = pages[0] ?? null;
+    for (const page of pages) {
+      const size = rotatedSize(page, view.rotation);
+      const best = widest === null ? 0 : rotatedSize(widest, view.rotation).width;
+      if (size.width > best) widest = page;
+    }
+    return widest;
+  }, [pages, view.rotation]);
   const scale = useMemo(() => {
     if (referencePage === null || viewport.width === 0) return view.scale;
     return scaleForMode(
       view.zoomMode,
       {
         page: referencePage,
+        widestPage: widestPage ?? referencePage,
         viewportWidth: viewport.width,
         viewportHeight: viewport.height,
         viewRotation: view.rotation,
       },
       view.scale,
     );
-  }, [referencePage, viewport.width, viewport.height, view.zoomMode, view.rotation, view.scale]);
+  }, [
+    referencePage,
+    widestPage,
+    viewport.width,
+    viewport.height,
+    view.zoomMode,
+    view.rotation,
+    view.scale,
+  ]);
 
   const layout = useMemo(
     () => layoutPages(pages, scale, view.rotation),

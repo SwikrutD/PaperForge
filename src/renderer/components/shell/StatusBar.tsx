@@ -9,6 +9,8 @@ interface StatusBarProps {
   status: AppStatus;
   statusText: string;
   documentText: string;
+  /** Page, zoom and rotation of the open document, when there is one. */
+  viewText: string | null;
   themeText: string;
 }
 
@@ -22,6 +24,7 @@ export function StatusBar({
   status,
   statusText,
   documentText,
+  viewText,
   themeText,
 }: StatusBarProps): ReactElement {
   const activeJobs = useJobStore((state) => state.jobs.filter(isJobActive).length);
@@ -40,6 +43,7 @@ export function StatusBar({
       </div>
       <div className={styles.group}>
         <span className={styles.item}>{documentText}</span>
+        {viewText !== null && <span className={styles.item}>{viewText}</span>}
         <span className={styles.item}>{themeText}</span>
       </div>
     </footer>

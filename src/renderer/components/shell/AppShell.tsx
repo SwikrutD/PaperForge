@@ -21,6 +21,8 @@ interface AppShellProps {
   themeText: string;
   /** What the status bar says about the active document. */
   documentText: string;
+  /** Page, zoom and rotation of the active document, when there is one. */
+  viewText?: string | null;
   /** Overlays (palette, dialogs, toasts) render above the whole frame. */
   overlays?: ReactNode;
 }
@@ -38,6 +40,7 @@ export function AppShell({
   statusText,
   themeText,
   documentText,
+  viewText = null,
   overlays,
 }: AppShellProps): ReactElement {
   const patchSettings = useAppStore((state) => state.patchSettings);
@@ -105,6 +108,7 @@ export function AppShell({
         status={status}
         statusText={statusText}
         documentText={documentText}
+        viewText={viewText}
         themeText={themeText}
       />
       {overlays}

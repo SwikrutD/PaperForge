@@ -14,8 +14,8 @@ const PANELS: Record<
     title: 'Page Thumbnails',
     icon: StickyNote,
     empty: {
-      title: 'No pages to show',
-      description: 'Page thumbnails appear here once a document is open.',
+      title: 'No thumbnails yet',
+      description: 'Page thumbnails are part of the navigation panels, which are not built yet.',
     },
   },
   bookmarks: {
