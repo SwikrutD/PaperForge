@@ -10,6 +10,7 @@ import {
   rejectInsecureCertificates,
 } from './security/hardening';
 import { createLogger, parseLogLevel, type Logger } from './services/logging/logger';
+import { RecentFilesStore } from './services/recentFiles/recentFilesStore';
 import { SettingsStore } from './services/settings/settingsStore';
 import { ThemeController } from './theme/themeController';
 import { createMainWindow } from './windows/mainWindow';
@@ -50,6 +51,8 @@ async function bootstrap(): Promise<void> {
   const settings = new SettingsStore(app.getPath('userData'), logger);
   await settings.load();
   const theme = new ThemeController(settings.get().appearance.theme);
+  const recentFiles = new RecentFilesStore(app.getPath('userData'), logger);
+  await recentFiles.load();
 
   const contentSecurityPolicy = buildContentSecurityPolicy(devServerUrl ?? undefined);
   const trustedOrigins =
@@ -69,6 +72,7 @@ async function bootstrap(): Promise<void> {
 
   registerIpcHandlers({
     settings,
+    recentFiles,
     theme,
     logger,
     trustedOrigins,

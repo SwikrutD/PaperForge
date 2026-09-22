@@ -8,11 +8,17 @@ export const INVOKE_CHANNEL_NAMES = [
   'settings:get',
   'settings:patch',
   'theme:getState',
+  'recentFiles:list',
+  'recentFiles:clear',
 ] as const;
 
 export type InvokeChannel = (typeof INVOKE_CHANNEL_NAMES)[number];
 
-export const EVENT_CHANNEL_NAMES = ['theme:changed', 'settings:changed'] as const;
+export const EVENT_CHANNEL_NAMES = [
+  'theme:changed',
+  'settings:changed',
+  'recentFiles:changed',
+] as const;
 
 export type EventChannel = (typeof EVENT_CHANNEL_NAMES)[number];
 

@@ -1,6 +1,7 @@
 import type { BrowserWindow } from 'electron';
 import { eventContracts, type EventChannel, type EventPayload } from '@shared/ipc/contracts';
 import { buildAppInfo } from '../services/appInfo';
+import type { RecentFilesStore } from '../services/recentFiles/recentFilesStore';
 import type { SettingsStore } from '../services/settings/settingsStore';
 import type { Logger } from '../services/logging/logger';
 import type { ThemeController } from '../theme/themeController';
@@ -8,6 +9,7 @@ import { createIpcRegistrar } from './registry';
 
 export interface IpcDependencies {
   settings: SettingsStore;
+  recentFiles: RecentFilesStore;
   theme: ThemeController;
   logger: Logger;
   trustedOrigins: readonly string[];
@@ -46,11 +48,16 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
     return next;
   });
   registerInvoke('theme:getState', () => deps.theme.getState());
+  registerInvoke('recentFiles:list', () => deps.recentFiles.list());
+  registerInvoke('recentFiles:clear', () => deps.recentFiles.clear());
 
   deps.theme.onChange((state) => {
     broadcast('theme:changed', state);
   });
   deps.settings.onChange((settings) => {
     broadcast('settings:changed', settings);
+  });
+  deps.recentFiles.onChange((entries) => {
+    broadcast('recentFiles:changed', entries);
   });
 }

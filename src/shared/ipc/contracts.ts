@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { appInfoSchema } from '../schemas/appInfo';
+import { recentFilesListSchema } from '../schemas/recentFiles';
 import { settingsPatchSchema, settingsSchema } from '../schemas/settings';
 import { themeStateSchema } from '../schemas/theme';
 import {
@@ -34,6 +35,8 @@ export const invokeContracts = {
   'settings:get': { request: z.void(), response: settingsSchema },
   'settings:patch': { request: settingsPatchSchema, response: settingsSchema },
   'theme:getState': { request: z.void(), response: themeStateSchema },
+  'recentFiles:list': { request: z.void(), response: recentFilesListSchema },
+  'recentFiles:clear': { request: z.void(), response: recentFilesListSchema },
 } as const satisfies Record<InvokeChannel, InvokeContract>;
 
 /** Request payload as callers pass it. */
@@ -53,6 +56,7 @@ export type InvokeResponse<C extends InvokeChannel> = z.output<
 export const eventContracts = {
   'theme:changed': themeStateSchema,
   'settings:changed': settingsSchema,
+  'recentFiles:changed': recentFilesListSchema,
 } as const satisfies Record<EventChannel, z.ZodType>;
 
 export type EventPayload<C extends EventChannel> = z.output<(typeof eventContracts)[C]>;

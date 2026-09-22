@@ -54,3 +54,42 @@ describe('settings schema', () => {
     expect(parseStoredSettings(undefined).settings).toEqual(DEFAULT_SETTINGS);
   });
 });
+
+describe('layout settings', () => {
+  it('merges nested panel fields without dropping siblings', () => {
+    const next = applySettingsPatch(DEFAULT_SETTINGS, { layout: { leftPanel: { width: 320 } } });
+    expect(next.layout.leftPanel).toEqual({ visible: true, width: 320 });
+    expect(next.layout.rightPanel).toEqual(DEFAULT_SETTINGS.layout.rightPanel);
+    expect(next.layout.activeLeftPanel).toBe(DEFAULT_SETTINGS.layout.activeLeftPanel);
+  });
+
+  it('rejects panel widths outside the resizable range', () => {
+    expect(settingsPatchSchema.safeParse({ layout: { leftPanel: { width: 40 } } }).success).toBe(
+      false,
+    );
+    expect(settingsPatchSchema.safeParse({ layout: { rightPanel: { width: 5000 } } }).success).toBe(
+      false,
+    );
+  });
+
+  it('rejects unknown panel identifiers', () => {
+    expect(settingsPatchSchema.safeParse({ layout: { activeLeftPanel: 'comments' } }).success).toBe(
+      false,
+    );
+  });
+
+  it('salvages valid sections when another section is corrupt', () => {
+    const { settings, repaired } = parseStoredSettings({
+      version: 1,
+      appearance: { theme: 'dark' },
+      window: 'nonsense',
+      layout: { leftPanel: { visible: false, width: 240 }, activeLeftPanel: 'bookmarks' },
+    });
+
+    expect(repaired).toBe(true);
+    expect(settings.appearance.theme).toBe('dark');
+    expect(settings.window).toEqual(DEFAULT_SETTINGS.window);
+    expect(settings.layout.leftPanel).toEqual({ visible: false, width: 240 });
+    expect(settings.layout.activeLeftPanel).toBe('bookmarks');
+  });
+});

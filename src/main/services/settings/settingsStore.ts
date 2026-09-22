@@ -1,4 +1,3 @@
-import fs from 'node:fs/promises';
 import path from 'node:path';
 import {
   applySettingsPatch,
@@ -8,6 +7,7 @@ import {
 } from '@shared/schemas/settings';
 import { SETTINGS_FILE_NAME } from '@shared/constants/app';
 import { writeFileAtomic } from '../filesystem/atomicWrite';
+import { readJsonFile } from '../filesystem/readJsonFile';
 import type { Logger } from '../logging/logger';
 
 export type SettingsListener = (settings: Settings) => void;
@@ -35,15 +35,9 @@ export class SettingsStore {
   async load(): Promise<Settings> {
     let raw: unknown;
     try {
-      // Editors and PowerShell happily write a UTF-8 BOM; JSON.parse does not
-      // accept one.
-      const text = (await fs.readFile(this.filePath, 'utf8')).replace(/^\uFEFF/, '');
-      raw = JSON.parse(text);
+      raw = await readJsonFile(this.filePath);
     } catch (error) {
-      const code = (error as { code?: string }).code;
-      if (code !== 'ENOENT') {
-        this.logger.warn('Settings file unreadable; restoring defaults.', error);
-      }
+      this.logger.warn('Settings file unreadable; restoring defaults.', error);
       raw = undefined;
     }
 
