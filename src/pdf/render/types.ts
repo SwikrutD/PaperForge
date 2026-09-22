@@ -63,6 +63,52 @@ export interface PdfLink {
   title: string | null;
 }
 
+/** One entry of the document outline, as authored. */
+export interface PdfOutlineItem {
+  id: string;
+  title: string;
+  bold: boolean;
+  italic: boolean;
+  /** Colour the author gave the entry, as a CSS value. */
+  color: string | null;
+  children: PdfOutlineItem[];
+  /** Page the entry points at, resolved when the outline is read. */
+  pageNumber: number | null;
+}
+
+/** A file embedded in the document. PaperForge never opens one on its own. */
+export interface PdfAttachment {
+  id: string;
+  fileName: string;
+  sizeBytes: number;
+  description: string | null;
+}
+
+/** An optional content group — what other tools call a layer. */
+export interface PdfLayer {
+  id: string;
+  name: string;
+  visible: boolean;
+}
+
+/** One run of text as the document lays it out, in PDF user space. */
+export interface PdfTextItem {
+  str: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface PdfPageText {
+  pageNumber: number;
+  /** Every item joined, which is what a search runs over. */
+  text: string;
+  items: PdfTextItem[];
+  /** Offset of each item within `text`, same order as `items`. */
+  offsets: number[];
+}
+
 export interface LoadedPdfDocument {
   readonly info: PdfDocumentInfo;
   readonly pages: readonly PdfPageGeometry[];
@@ -71,6 +117,14 @@ export interface LoadedPdfDocument {
   renderPage(options: RenderPageOptions): Promise<void>;
   renderTextLayer(options: TextLayerOptions): Promise<void>;
   getLinks(pageNumber: number): Promise<PdfLink[]>;
+  /** The document outline, empty when the document has none. */
+  getOutline(): Promise<PdfOutlineItem[]>;
+  getAttachments(): Promise<PdfAttachment[]>;
+  /** Optional content groups; empty when the document defines none. */
+  getLayers(): Promise<PdfLayer[]>;
+  setLayerVisible(id: string, visible: boolean): void;
+  /** Text of one page, used by search and by the no-text-layer check. */
+  getPageText(pageNumber: number): Promise<PdfPageText>;
   destroy(): Promise<void>;
 }
 

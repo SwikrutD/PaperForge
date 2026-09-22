@@ -7,15 +7,21 @@ import {
   type PDFDocumentProxy,
   type PDFPageProxy,
 } from 'pdfjs-dist';
+import type { OptionalContentConfig } from 'pdfjs-dist/types/src/display/optional_content_config';
 import { AppError } from '@shared/errors/appError';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import type {
   LoadDocumentOptions,
   LoadedPdfDocument,
+  PdfAttachment,
+  PdfLayer,
   PdfLink,
   PdfLinkTarget,
+  PdfOutlineItem,
   PdfPageGeometry,
+  PdfPageText,
   PdfRenderEngine,
+  PdfTextItem,
   RenderPageOptions,
   RenderedPageSize,
   TextLayerOptions,
@@ -32,6 +38,51 @@ const ICC_URL = 'pdfjs/iccs/';
 /** Re-checked after every await: an abort can happen at any point. */
 function isAborted(signal: AbortSignal | undefined): boolean {
   return signal !== undefined && signal.aborted;
+}
+
+interface RawOutlineItem {
+  title?: string;
+  bold?: boolean;
+  italic?: boolean;
+  color?: Uint8ClampedArray | number[] | null | undefined;
+  dest?: unknown;
+  url?: string | null;
+  items?: RawOutlineItem[];
+}
+
+interface RawAttachment {
+  filename?: string;
+  content?: { length?: number };
+  description?: string;
+}
+
+interface RawTextItem {
+  str: string;
+  transform: number[];
+  width: number;
+  height: number;
+  hasEOL?: boolean;
+}
+
+/** The order array may nest groups under headings; only ids matter here. */
+function flattenOrder(order: readonly unknown[]): string[] {
+  const ids: string[] = [];
+  for (const entry of order) {
+    if (typeof entry === 'string') ids.push(entry);
+    else if (Array.isArray(entry)) ids.push(...flattenOrder(entry));
+    else if (entry !== null && typeof entry === 'object' && 'order' in entry) {
+      ids.push(...flattenOrder((entry as { order: unknown[] }).order));
+    }
+  }
+  return ids;
+}
+
+/** Outline colours arrive as three components in 0–255. */
+function colorOf(color: Uint8ClampedArray | number[] | null | undefined): string | null {
+  if (color === null || color === undefined || color.length < 3) return null;
+  const [r = 0, g = 0, b = 0] = Array.from(color);
+  if (r === 0 && g === 0 && b === 0) return null;
+  return `rgb(${r}, ${g}, ${b})`;
 }
 
 interface PdfJsError {
@@ -68,12 +119,15 @@ export function toAppError(error: unknown): AppError {
 
 class PdfjsDocument implements LoadedPdfDocument {
   private readonly pageCache = new Map<number, Promise<PDFPageProxy>>();
+  private readonly textCache = new Map<number, Promise<PdfPageText>>();
 
   constructor(
     private readonly document: PDFDocumentProxy,
     private readonly task: PDFDocumentLoadingTask,
     readonly info: LoadedPdfDocument['info'],
     readonly pages: readonly PdfPageGeometry[],
+    /** Held so layer visibility survives between renders. */
+    private readonly optionalContent: OptionalContentConfig | null,
   ) {}
 
   private getPage(pageNumber: number): Promise<PDFPageProxy> {
@@ -104,7 +158,13 @@ class PdfjsDocument implements LoadedPdfDocument {
     canvas.style.width = `${Math.floor(viewport.width / devicePixelRatio)}px`;
     canvas.style.height = `${Math.floor(viewport.height / devicePixelRatio)}px`;
 
-    const task = page.render({ canvas, viewport });
+    const task = page.render({
+      canvas,
+      viewport,
+      ...(this.optionalContent === null
+        ? {}
+        : { optionalContentConfigPromise: Promise.resolve(this.optionalContent) }),
+    });
     const abort = (): void => task.cancel();
     signal?.addEventListener('abort', abort, { once: true });
 
@@ -193,8 +253,114 @@ class PdfjsDocument implements LoadedPdfDocument {
     }
   }
 
+  async getOutline(): Promise<PdfOutlineItem[]> {
+    const raw = await this.document.getOutline().catch(() => null);
+    if (raw === null) return [];
+    return this.convertOutline(raw, 'outline');
+  }
+
+  private async convertOutline(
+    items: readonly RawOutlineItem[],
+    prefix: string,
+  ): Promise<PdfOutlineItem[]> {
+    const converted: PdfOutlineItem[] = [];
+    for (const [index, item] of items.entries()) {
+      const id = `${prefix}-${index}`;
+      const target = await this.resolveTarget({
+        ...(typeof item.url === 'string' ? { url: item.url } : {}),
+        dest: item.dest,
+      });
+      converted.push({
+        id,
+        title: item.title ?? '',
+        bold: item.bold === true,
+        italic: item.italic === true,
+        color: colorOf(item.color ?? null),
+        children: await this.convertOutline(item.items ?? [], id),
+        pageNumber: target.kind === 'page' ? target.pageNumber : null,
+      });
+    }
+    return converted;
+  }
+
+  async getAttachments(): Promise<PdfAttachment[]> {
+    const raw = await this.document.getAttachments().catch(() => null);
+    if (raw === null) return [];
+
+    const entries = raw instanceof Map ? [...raw.entries()] : Object.entries(raw);
+
+    return entries.map(([key, value]) => {
+      const attachment = value as RawAttachment;
+      return {
+        id: key,
+        fileName: attachment.filename ?? key,
+        sizeBytes: attachment.content?.length ?? 0,
+        description: attachment.description ?? null,
+      };
+    });
+  }
+
+  getLayers(): Promise<PdfLayer[]> {
+    const config = this.optionalContent;
+    if (config === null) return Promise.resolve([]);
+
+    // getOrder returns the authored display order, flattened here because the
+    // panel lists groups rather than their nesting.
+    const order = (config.getOrder() as unknown[] | null) ?? [];
+    const ids = flattenOrder(order);
+
+    const layers: PdfLayer[] = [];
+    for (const id of ids) {
+      const group = config.getGroup(id) as { name?: string | null; visible?: boolean } | null;
+      if (group === null) continue;
+      layers.push({ id, name: group.name ?? id, visible: group.visible !== false });
+    }
+    return Promise.resolve(layers);
+  }
+
+  setLayerVisible(id: string, visible: boolean): void {
+    this.optionalContent?.setVisibility(id, visible);
+  }
+
+  async getPageText(pageNumber: number): Promise<PdfPageText> {
+    const cached = this.textCache.get(pageNumber);
+    if (cached !== undefined) return cached;
+
+    const promise = this.readPageText(pageNumber);
+    this.textCache.set(pageNumber, promise);
+    return promise;
+  }
+
+  private async readPageText(pageNumber: number): Promise<PdfPageText> {
+    const page = await this.getPage(pageNumber);
+    const content = await page.getTextContent();
+
+    const items: PdfTextItem[] = [];
+    const offsets: number[] = [];
+    let text = '';
+
+    for (const entry of content.items) {
+      if (!('str' in entry)) continue;
+      const item = entry as RawTextItem;
+      offsets.push(text.length);
+      items.push({
+        str: item.str,
+        // transform is [a, b, c, d, e, f]; e and f are the baseline origin.
+        x: item.transform[4] ?? 0,
+        y: item.transform[5] ?? 0,
+        width: item.width,
+        height: item.height,
+      });
+      text += item.str;
+      if (item.hasEOL === true) text += '\n';
+    }
+
+    return { pageNumber, text, items, offsets };
+  }
+
   async destroy(): Promise<void> {
     this.pageCache.clear();
+    this.textCache.clear();
     // The loading task owns the worker connection; destroying it tears down
     // the document too.
     await this.task.destroy();
@@ -271,6 +437,8 @@ export class PdfjsRenderEngine implements PdfRenderEngine {
     const metadata = await document.getMetadata().catch(() => null);
     const title = (metadata?.info as { Title?: string } | undefined)?.Title ?? null;
 
+    const optionalContent = await document.getOptionalContentConfig().catch(() => null);
+
     return new PdfjsDocument(
       document,
       task,
@@ -281,6 +449,7 @@ export class PdfjsRenderEngine implements PdfRenderEngine {
         encrypted,
       },
       await readGeometry(document),
+      optionalContent,
     );
   }
 }
