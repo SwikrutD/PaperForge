@@ -1,0 +1,80 @@
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-200);
+  max-width: 980px;
+  margin: 0 auto;
+  padding: var(--pf-space-400) var(--pf-space-300) var(--pf-space-500);
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-100);
+}
+
+.title {
+  font-family: var(--pf-font-family-display);
+  font-size: var(--pf-font-size-700);
+  font-weight: var(--pf-font-weight-medium);
+  line-height: var(--pf-line-height-700);
+}
+
+.lead {
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-400);
+  line-height: var(--pf-line-height-500);
+  max-width: 68ch;
+}
+
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--pf-space-100);
+  padding: var(--pf-space-150);
+  border: 1px solid var(--pf-color-border);
+  border-radius: var(--pf-radius-lg);
+  background-color: var(--pf-color-bg-subtle);
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-300);
+  line-height: var(--pf-line-height-400);
+}
+
+.noteIcon {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  flex: 0 0 auto;
+  color: var(--pf-color-accent-text);
+}
+
+.tools {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-150);
+}
+
+.toolsHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--pf-space-200);
+  flex-wrap: wrap;
+}
+
+.toolsTitle {
+  font-family: var(--pf-font-family-display);
+  font-size: var(--pf-font-size-500);
+  font-weight: var(--pf-font-weight-medium);
+}
+
+.toolsSubtitle {
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+}
+
+.toolGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--pf-space-150);
+}

@@ -1,0 +1,52 @@
+.identity {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-space-150);
+  margin-bottom: var(--pf-space-200);
+}
+
+.name {
+  font-family: var(--pf-font-family-display);
+  font-size: var(--pf-font-size-500);
+  font-weight: var(--pf-font-weight-medium);
+}
+
+.tagline {
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-300);
+}
+
+.list {
+  display: grid;
+  grid-template-columns: minmax(120px, auto) 1fr;
+  gap: var(--pf-space-050) var(--pf-space-200);
+  margin: 0;
+  font-size: var(--pf-font-size-300);
+}
+
+.entry {
+  display: contents;
+}
+
+.term {
+  color: var(--pf-color-text-secondary);
+}
+
+.value {
+  margin: 0;
+  font-family: var(--pf-font-family-mono);
+  font-size: var(--pf-font-size-200);
+  overflow-wrap: anywhere;
+}
+
+.loading {
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-300);
+}
+
+.legal {
+  margin-top: var(--pf-space-250);
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+  line-height: var(--pf-line-height-300);
+}

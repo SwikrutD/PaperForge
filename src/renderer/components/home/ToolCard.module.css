@@ -1,0 +1,110 @@
+.card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--pf-space-150);
+  width: 100%;
+  padding: var(--pf-space-150);
+  border: 1px solid var(--pf-color-border);
+  border-radius: var(--pf-radius-xl);
+  background-color: var(--pf-color-bg-surface);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--pf-duration-fast) var(--pf-ease-standard),
+    border-color var(--pf-duration-fast) var(--pf-ease-standard);
+}
+
+.card:hover:not(:disabled) {
+  background-color: var(--pf-color-bg-hover);
+  border-color: var(--pf-color-border-strong);
+}
+
+.card:active:not(:disabled) {
+  background-color: var(--pf-color-bg-pressed);
+}
+
+.unavailable {
+  cursor: default;
+  background-color: transparent;
+  border-style: dashed;
+}
+
+.iconTile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border-radius: var(--pf-radius-lg);
+  background-color: var(--pf-color-accent-subtle);
+  color: var(--pf-color-accent-text);
+}
+
+.unavailable .iconTile {
+  background-color: var(--pf-color-bg-subtle);
+  color: var(--pf-color-text-disabled);
+}
+
+.icon {
+  width: 17px;
+  height: 17px;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.title {
+  color: var(--pf-color-text-primary);
+  font-size: var(--pf-font-size-300);
+  font-weight: var(--pf-font-weight-medium);
+}
+
+.unavailable .title {
+  color: var(--pf-color-text-secondary);
+}
+
+.description {
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+  line-height: var(--pf-line-height-300);
+}
+
+.unavailable .description {
+  color: var(--pf-color-text-disabled);
+}
+
+.badge {
+  margin-left: auto;
+  align-self: center;
+  padding: 1px var(--pf-space-100);
+  border: 1px solid var(--pf-color-border);
+  border-radius: var(--pf-radius-round);
+  color: var(--pf-color-text-disabled);
+  font-size: var(--pf-font-size-100);
+  white-space: nowrap;
+}
+
+.compact {
+  padding: var(--pf-space-100);
+  border-radius: var(--pf-radius-lg);
+  gap: var(--pf-space-100);
+}
+
+.compact .iconTile {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--pf-radius-md);
+}
+
+.compact .description {
+  display: none;
+}
+
+.compact .badge {
+  display: none;
+}

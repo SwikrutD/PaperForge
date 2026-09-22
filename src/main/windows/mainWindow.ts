@@ -1,4 +1,6 @@
 import { BrowserWindow, screen } from 'electron';
+import { windowRuntimeStateSchema } from '@shared/schemas/windowState';
+import { readWindowState } from '../ipc/registerHandlers';
 import { APP_NAME, RENDERER_ORIGIN } from '@shared/constants/app';
 import type { WindowState } from '@shared/schemas/settings';
 import type { Logger } from '../services/logging/logger';
@@ -70,6 +72,7 @@ export function createMainWindow(options: CreateMainWindowOptions): BrowserWindo
   });
 
   attachDiagnostics(window, logger);
+  attachWindowStateEvents(window);
   attachBoundsPersistence(window, settings, logger);
 
   if (devServerUrl !== null) {
@@ -79,6 +82,25 @@ export function createMainWindow(options: CreateMainWindowOptions): BrowserWindo
   }
 
   return window;
+}
+
+/**
+ * Keeps the renderer's copy of the live window state in step. Sent only to the
+ * window it describes, never broadcast.
+ */
+function attachWindowStateEvents(window: BrowserWindow): void {
+  const send = (): void => {
+    if (window.isDestroyed()) return;
+    const state = windowRuntimeStateSchema.safeParse(readWindowState(window));
+    if (state.success) window.webContents.send('window:stateChanged', state.data);
+  };
+
+  window.on('enter-full-screen', send);
+  window.on('leave-full-screen', send);
+  window.on('maximize', send);
+  window.on('unmaximize', send);
+  window.on('focus', send);
+  window.on('blur', send);
 }
 
 /**

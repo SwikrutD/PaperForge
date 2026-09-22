@@ -3,6 +3,7 @@ import { appInfoSchema } from '../schemas/appInfo';
 import { recentFilesListSchema } from '../schemas/recentFiles';
 import { settingsPatchSchema, settingsSchema } from '../schemas/settings';
 import { themeStateSchema } from '../schemas/theme';
+import { windowRuntimeStateSchema } from '../schemas/windowState';
 import {
   EVENT_CHANNEL_NAMES,
   INVOKE_CHANNEL_NAMES,
@@ -37,6 +38,8 @@ export const invokeContracts = {
   'theme:getState': { request: z.void(), response: themeStateSchema },
   'recentFiles:list': { request: z.void(), response: recentFilesListSchema },
   'recentFiles:clear': { request: z.void(), response: recentFilesListSchema },
+  'window:getState': { request: z.void(), response: windowRuntimeStateSchema },
+  'window:toggleFullScreen': { request: z.void(), response: windowRuntimeStateSchema },
 } as const satisfies Record<InvokeChannel, InvokeContract>;
 
 /** Request payload as callers pass it. */
@@ -57,6 +60,7 @@ export const eventContracts = {
   'theme:changed': themeStateSchema,
   'settings:changed': settingsSchema,
   'recentFiles:changed': recentFilesListSchema,
+  'window:stateChanged': windowRuntimeStateSchema,
 } as const satisfies Record<EventChannel, z.ZodType>;
 
 export type EventPayload<C extends EventChannel> = z.output<(typeof eventContracts)[C]>;

@@ -5,10 +5,10 @@ export type ToastIntent = 'info' | 'success' | 'warning' | 'error';
 
 export interface ToastInput {
   title: string;
-  description?: string;
-  intent?: ToastIntent;
+  description?: string | undefined;
+  intent?: ToastIntent | undefined;
   /** Milliseconds before auto-dismiss. Errors stay until dismissed. */
-  durationMs?: number;
+  durationMs?: number | undefined;
 }
 
 export interface Toast {

@@ -1,4 +1,6 @@
-import type { BrowserWindow } from 'electron';
+import { BrowserWindow } from 'electron';
+import { AppError } from '@shared/errors/appError';
+import type { WindowRuntimeState } from '@shared/schemas/windowState';
 import { eventContracts, type EventChannel, type EventPayload } from '@shared/ipc/contracts';
 import { buildAppInfo } from '../services/appInfo';
 import type { RecentFilesStore } from '../services/recentFiles/recentFilesStore';
@@ -51,6 +53,13 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
   registerInvoke('recentFiles:list', () => deps.recentFiles.list());
   registerInvoke('recentFiles:clear', () => deps.recentFiles.clear());
 
+  registerInvoke('window:getState', (_input, event) => readWindowState(senderWindow(event)));
+  registerInvoke('window:toggleFullScreen', (_input, event) => {
+    const window = senderWindow(event);
+    window.setFullScreen(!window.isFullScreen());
+    return readWindowState(window);
+  });
+
   deps.theme.onChange((state) => {
     broadcast('theme:changed', state);
   });
@@ -60,4 +69,24 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
   deps.recentFiles.onChange((entries) => {
     broadcast('recentFiles:changed', entries);
   });
+}
+
+/** The window that sent a request; every window IPC acts on its own window. */
+function senderWindow(event: Electron.IpcMainInvokeEvent): BrowserWindow {
+  const window = BrowserWindow.fromWebContents(event.sender);
+  if (window === null) {
+    throw new AppError('internal/unexpected', {
+      message: 'That window is no longer available.',
+      details: 'No BrowserWindow for the requesting web contents.',
+    });
+  }
+  return window;
+}
+
+export function readWindowState(window: BrowserWindow): WindowRuntimeState {
+  return {
+    fullScreen: window.isFullScreen(),
+    maximized: window.isMaximized(),
+    focused: window.isFocused(),
+  };
 }

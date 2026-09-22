@@ -1,0 +1,25 @@
+.resizer {
+  position: relative;
+  width: 5px;
+  flex: 0 0 auto;
+  cursor: col-resize;
+  background-color: transparent;
+  transition: background-color var(--pf-duration-fast) var(--pf-ease-standard);
+}
+
+.resizer::before {
+  content: '';
+  position: absolute;
+  inset: 0 2px;
+  background-color: var(--pf-color-border);
+}
+
+.resizer:hover,
+.resizer:focus-visible {
+  background-color: var(--pf-color-accent-subtle);
+}
+
+.resizer:focus-visible {
+  outline: 2px solid var(--pf-color-focus-ring);
+  outline-offset: -2px;
+}

@@ -1,0 +1,68 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-space-100);
+  padding: var(--pf-space-100);
+  border-radius: var(--pf-radius-md);
+}
+
+.row:nth-child(odd) {
+  background-color: var(--pf-color-bg-subtle);
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  color: var(--pf-color-text-secondary);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-space-050);
+  font-size: var(--pf-font-size-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pin {
+  width: 12px;
+  height: 12px;
+  color: var(--pf-color-accent-text);
+  flex: 0 0 auto;
+}
+
+.path {
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
+}
+
+.time {
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+  white-space: nowrap;
+  flex: 0 0 auto;
+}

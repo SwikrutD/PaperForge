@@ -10,6 +10,8 @@ export const INVOKE_CHANNEL_NAMES = [
   'theme:getState',
   'recentFiles:list',
   'recentFiles:clear',
+  'window:getState',
+  'window:toggleFullScreen',
 ] as const;
 
 export type InvokeChannel = (typeof INVOKE_CHANNEL_NAMES)[number];
@@ -18,6 +20,7 @@ export const EVENT_CHANNEL_NAMES = [
   'theme:changed',
   'settings:changed',
   'recentFiles:changed',
+  'window:stateChanged',
 ] as const;
 
 export type EventChannel = (typeof EVENT_CHANNEL_NAMES)[number];

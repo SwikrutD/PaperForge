@@ -1,0 +1,5 @@
+.startupError {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: var(--pf-space-200) var(--pf-space-300) 0;
+}

@@ -1,0 +1,70 @@
+.host {
+  position: fixed;
+  right: var(--pf-space-200);
+  bottom: calc(var(--pf-statusbar-height) + var(--pf-space-200));
+  z-index: var(--pf-layer-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-100);
+  width: min(380px, calc(100vw - var(--pf-space-400)));
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--pf-space-100);
+  padding: var(--pf-space-150);
+  background-color: var(--pf-color-bg-surface-raised);
+  border: 1px solid var(--pf-color-border);
+  border-left: 3px solid var(--pf-color-border-strong);
+  border-radius: var(--pf-radius-lg);
+  box-shadow: var(--pf-shadow-8);
+}
+
+.info {
+  border-left-color: var(--pf-color-accent-text);
+}
+
+.success {
+  border-left-color: var(--pf-color-success);
+}
+
+.warning {
+  border-left-color: var(--pf-color-warning);
+}
+
+.error {
+  border-left-color: var(--pf-color-danger);
+}
+
+.icon {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  flex: 0 0 auto;
+  color: var(--pf-color-text-secondary);
+}
+
+.error .icon {
+  color: var(--pf-color-danger);
+}
+
+.success .icon {
+  color: var(--pf-color-success);
+}
+
+.text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.title {
+  font-size: var(--pf-font-size-300);
+}
+
+.description {
+  margin-top: var(--pf-space-025);
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+  overflow-wrap: anywhere;
+}

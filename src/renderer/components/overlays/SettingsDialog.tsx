@@ -1,0 +1,88 @@
+import type { ReactElement } from 'react';
+import type { Settings } from '@shared/schemas/settings';
+import { useCommands } from '../../commands/useCommands';
+import { useAppStore } from '../../stores/appStore';
+import { useUiStore } from '../../stores/uiStore';
+import { Button } from '../controls/Button';
+import { ThemeSwitcher } from '../controls/ThemeSwitcher';
+import { Dialog } from './Dialog';
+import styles from './SettingsDialog.module.css';
+
+interface SettingRowProps {
+  label: string;
+  description: string;
+  children: ReactElement;
+}
+
+function SettingRow({ label, description, children }: SettingRowProps): ReactElement {
+  return (
+    <div className={styles.row}>
+      <div className={styles.rowText}>
+        <p className={styles.rowLabel}>{label}</p>
+        <p className={styles.rowDescription}>{description}</p>
+      </div>
+      <div className={styles.rowControl}>{children}</div>
+    </div>
+  );
+}
+
+/**
+ * Settings that exist today: appearance and the privacy controls for local
+ * history. Further sections (viewing, editing, OCR, conversions, advanced)
+ * appear as the features they configure are built.
+ */
+export function SettingsDialog({ settings }: { settings: Settings }): ReactElement {
+  const closeDialog = useUiStore((state) => state.closeDialog);
+  const setThemePreference = useAppStore((state) => state.setThemePreference);
+  const recentFiles = useAppStore((state) => state.recentFiles);
+  const { execute, resolve } = useCommands();
+
+  const clearCommand = resolve('privacy.clearRecentFiles');
+
+  return (
+    <Dialog
+      title="Settings"
+      description="Stored on this computer only."
+      onClose={closeDialog}
+      footer={
+        <Button appearance="primary" onClick={closeDialog}>
+          Close
+        </Button>
+      }
+    >
+      <section className={styles.section} aria-label="Appearance">
+        <h3 className={styles.sectionTitle}>Appearance</h3>
+        <SettingRow label="Theme" description="Follow the Windows setting, or pick light or dark.">
+          <ThemeSwitcher
+            value={settings.appearance.theme}
+            onChange={(preference) => void setThemePreference(preference)}
+          />
+        </SettingRow>
+      </section>
+
+      <section className={styles.section} aria-label="Privacy">
+        <h3 className={styles.sectionTitle}>Privacy</h3>
+        <SettingRow
+          label="Recent files"
+          description={
+            recentFiles.length === 0
+              ? 'No files have been opened yet.'
+              : `${recentFiles.length} file${recentFiles.length === 1 ? '' : 's'} remembered on this computer.`
+          }
+        >
+          <Button
+            disabled={clearCommand?.enabled === false}
+            title={clearCommand?.enabled === false ? clearCommand.reason : undefined}
+            onClick={() => execute('privacy.clearRecentFiles')}
+          >
+            Clear
+          </Button>
+        </SettingRow>
+        <p className={styles.note}>
+          PaperForge collects no telemetry and sends nothing anywhere. Logs stay in the local log
+          folder and passwords are never written to them.
+        </p>
+      </section>
+    </Dialog>
+  );
+}

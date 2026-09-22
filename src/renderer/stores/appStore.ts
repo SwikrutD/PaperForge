@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 import { AppError, type SerializedAppError } from '@shared/errors/appError';
 import type { AppInfo } from '@shared/schemas/appInfo';
-import type { Settings, ThemePreference } from '@shared/schemas/settings';
+import type { RecentFileEntry } from '@shared/schemas/recentFiles';
+import type { Settings, SettingsPatch, ThemePreference } from '@shared/schemas/settings';
 import type { ThemeState } from '@shared/schemas/theme';
+import type { WindowRuntimeState } from '@shared/schemas/windowState';
 import { invoke, subscribe } from '../services/ipcClient';
 
 export type AppStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -12,10 +14,15 @@ export interface AppStore {
   settings: Settings | null;
   theme: ThemeState | null;
   appInfo: AppInfo | null;
+  recentFiles: RecentFileEntry[];
+  windowState: WindowRuntimeState | null;
   error: SerializedAppError | null;
-  /** Loads settings, theme and environment info, then watches for changes. */
+  /** Loads everything the shell needs, then watches for changes. */
   initialize: () => Promise<void>;
   setThemePreference: (preference: ThemePreference) => Promise<void>;
+  patchSettings: (patch: SettingsPatch) => Promise<void>;
+  clearRecentFiles: () => Promise<void>;
+  toggleFullScreen: () => Promise<void>;
 }
 
 let unsubscribers: Array<() => void> = [];
@@ -25,6 +32,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
   settings: null,
   theme: null,
   appInfo: null,
+  recentFiles: [],
+  windowState: null,
   error: null,
 
   initialize: async () => {
@@ -32,19 +41,23 @@ export const useAppStore = create<AppStore>((set, get) => ({
     set({ status: 'loading', error: null });
 
     try {
-      const [settings, theme, appInfo] = await Promise.all([
+      const [settings, theme, appInfo, recentFiles, windowState] = await Promise.all([
         invoke('settings:get'),
         invoke('theme:getState'),
         invoke('app:getInfo'),
+        invoke('recentFiles:list'),
+        invoke('window:getState'),
       ]);
 
       for (const dispose of unsubscribers) dispose();
       unsubscribers = [
         subscribe('theme:changed', (next) => set({ theme: next })),
         subscribe('settings:changed', (next) => set({ settings: next })),
+        subscribe('recentFiles:changed', (next) => set({ recentFiles: next })),
+        subscribe('window:stateChanged', (next) => set({ windowState: next })),
       ];
 
-      set({ status: 'ready', settings, theme, appInfo, error: null });
+      set({ status: 'ready', settings, theme, appInfo, recentFiles, windowState, error: null });
     } catch (error) {
       set({ status: 'error', error: AppError.serialize(error) });
     }
@@ -65,6 +78,31 @@ export const useAppStore = create<AppStore>((set, get) => ({
         error: AppError.serialize(error),
         ...(previous === null ? {} : { settings: previous }),
       });
+      throw error;
     }
+  },
+
+  patchSettings: async (patch) => {
+    const previous = get().settings;
+    try {
+      const settings = await invoke('settings:patch', patch);
+      set({ settings, error: null });
+    } catch (error) {
+      set({
+        error: AppError.serialize(error),
+        ...(previous === null ? {} : { settings: previous }),
+      });
+      throw error;
+    }
+  },
+
+  clearRecentFiles: async () => {
+    const entries = await invoke('recentFiles:clear');
+    set({ recentFiles: entries });
+  },
+
+  toggleFullScreen: async () => {
+    const windowState = await invoke('window:toggleFullScreen');
+    set({ windowState });
   },
 }));

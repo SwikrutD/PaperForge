@@ -4,6 +4,7 @@ import './design-system/tokens.css';
 import './design-system/base.css';
 import { App } from './app/App';
 import { AppErrorBoundary } from './app/AppErrorBoundary';
+import { CommandProvider } from './commands/CommandProvider';
 
 const container = document.getElementById('root');
 if (container === null) {
@@ -13,7 +14,9 @@ if (container === null) {
 createRoot(container).render(
   <StrictMode>
     <AppErrorBoundary region="application">
-      <App />
+      <CommandProvider>
+        <App />
+      </CommandProvider>
     </AppErrorBoundary>
   </StrictMode>,
 );

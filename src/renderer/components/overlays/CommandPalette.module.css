@@ -1,0 +1,122 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--pf-layer-dialog);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12vh var(--pf-space-300) var(--pf-space-300);
+  background-color: rgba(0, 0, 0, 0.35);
+}
+
+.surface {
+  display: flex;
+  flex-direction: column;
+  width: min(620px, 100%);
+  max-height: 60vh;
+  background-color: var(--pf-color-bg-surface-raised);
+  border: 1px solid var(--pf-color-border);
+  border-radius: var(--pf-radius-xl);
+  box-shadow: var(--pf-shadow-16);
+  overflow: hidden;
+}
+
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-space-100);
+  padding: var(--pf-space-150);
+  border-bottom: 1px solid var(--pf-color-divider);
+}
+
+.searchIcon {
+  width: 16px;
+  height: 16px;
+  color: var(--pf-color-text-secondary);
+  flex: 0 0 auto;
+}
+
+.input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--pf-color-text-primary);
+  font-family: inherit;
+  font-size: var(--pf-font-size-400);
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--pf-color-text-disabled);
+}
+
+.results {
+  margin: 0;
+  padding: var(--pf-space-050);
+  list-style: none;
+  overflow: auto;
+}
+
+.result {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-space-100);
+  padding: var(--pf-space-100);
+  border-radius: var(--pf-radius-md);
+  cursor: pointer;
+}
+
+.active {
+  background-color: var(--pf-color-bg-selected);
+}
+
+.disabled {
+  cursor: default;
+}
+
+.disabled .resultTitle {
+  color: var(--pf-color-text-disabled);
+}
+
+.resultText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.resultTitle {
+  font-size: var(--pf-font-size-300);
+}
+
+.resultDescription {
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.badge,
+.chord {
+  padding: 0 var(--pf-space-050);
+  border: 1px solid var(--pf-color-border);
+  border-radius: var(--pf-radius-sm);
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-100);
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.badge {
+  color: var(--pf-color-accent-text);
+  border-color: var(--pf-color-accent-text);
+}
+
+.empty {
+  padding: var(--pf-space-200);
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-300);
+  text-align: center;
+}

@@ -1,0 +1,60 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  background-color: var(--pf-color-bg-surface);
+  border-left: 1px solid var(--pf-color-border);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pf-space-100);
+  height: 34px;
+  padding: 0 var(--pf-space-050) 0 var(--pf-space-100);
+  border-bottom: 1px solid var(--pf-color-divider);
+  flex: 0 0 auto;
+}
+
+.tabs {
+  display: flex;
+  gap: var(--pf-space-025);
+  min-width: 0;
+}
+
+.tab {
+  height: var(--pf-control-height-sm);
+  padding: 0 var(--pf-space-100);
+  border: 0;
+  border-radius: var(--pf-radius-sm);
+  background-color: transparent;
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-300);
+  cursor: pointer;
+}
+
+.tab:hover {
+  background-color: var(--pf-color-bg-hover);
+  color: var(--pf-color-text-primary);
+}
+
+.tabActive {
+  background-color: var(--pf-color-bg-selected);
+  color: var(--pf-color-accent-text);
+  font-weight: var(--pf-font-weight-medium);
+}
+
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.tools {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-050);
+  padding: var(--pf-space-100);
+}

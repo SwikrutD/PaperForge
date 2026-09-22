@@ -1,0 +1,58 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--pf-layer-dialog);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--pf-space-300);
+  background-color: rgba(0, 0, 0, 0.35);
+}
+
+.surface {
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100%);
+  max-height: min(680px, 100%);
+  background-color: var(--pf-color-bg-surface-raised);
+  border: 1px solid var(--pf-color-border);
+  border-radius: var(--pf-radius-xl);
+  box-shadow: var(--pf-shadow-16);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--pf-space-200);
+  padding: var(--pf-space-200) var(--pf-space-150) var(--pf-space-150) var(--pf-space-250);
+  border-bottom: 1px solid var(--pf-color-divider);
+}
+
+.title {
+  font-family: var(--pf-font-family-display);
+  font-size: var(--pf-font-size-500);
+  font-weight: var(--pf-font-weight-medium);
+}
+
+.description {
+  margin-top: var(--pf-space-025);
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-300);
+}
+
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--pf-space-250);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--pf-space-100);
+  padding: var(--pf-space-150) var(--pf-space-250);
+  border-top: 1px solid var(--pf-color-divider);
+}

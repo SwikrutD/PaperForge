@@ -1,0 +1,30 @@
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pf-space-050);
+  height: 100%;
+  padding: var(--pf-space-300) var(--pf-space-200);
+  text-align: center;
+}
+
+.icon {
+  width: 28px;
+  height: 28px;
+  color: var(--pf-color-text-disabled);
+  margin-bottom: var(--pf-space-050);
+}
+
+.title {
+  color: var(--pf-color-text-primary);
+  font-size: var(--pf-font-size-300);
+  font-weight: var(--pf-font-weight-medium);
+}
+
+.description {
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+  line-height: var(--pf-line-height-300);
+  max-width: 34ch;
+}

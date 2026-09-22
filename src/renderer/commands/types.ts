@@ -36,6 +36,7 @@ export interface CommandActions {
   openDialog(dialog: DialogId): void;
   closeDialog(): void;
   setCommandPaletteOpen(open: boolean): void;
+  toggleProgressCenter(): void;
   showToast(toast: ToastInput): void;
   focusNextRegion(): void;
   copyDiagnostics(): Promise<void>;
@@ -52,6 +53,8 @@ export interface CommandDefinition {
   title: string;
   description?: string;
   category: CommandCategory;
+  /** Groups items within a menu, rendered with separators between groups. */
+  group?: string;
   icon?: LucideIcon;
   /** Human-readable chord, e.g. "Ctrl+K". Parsed by the shortcut service. */
   shortcut?: string;

@@ -1,7 +1,9 @@
 import type { ReactElement } from 'react';
 import type { AppStatus } from '../../stores/appStore';
-import styles from './StatusBar.module.css';
+import { useJobStore } from '../../stores/jobStore';
+import { isJobActive } from '../../types/jobs';
 import { cx } from '../../utils/classNames';
+import styles from './StatusBar.module.css';
 
 interface StatusBarProps {
   status: AppStatus;
@@ -22,12 +24,19 @@ export function StatusBar({
   documentText,
   themeText,
 }: StatusBarProps): ReactElement {
+  const activeJobs = useJobStore((state) => state.jobs.filter(isJobActive).length);
+
   return (
-    <footer className={styles.bar}>
+    <footer className={styles.bar} data-focus-region="statusBar" tabIndex={-1}>
       <div className={styles.group}>
         {/* Status is never signalled by colour alone. */}
         <span className={dotClassFor(status)} aria-hidden="true" />
         <span className={styles.item}>{statusText}</span>
+        {activeJobs > 0 && (
+          <span
+            className={styles.item}
+          >{`${activeJobs} background task${activeJobs === 1 ? '' : 's'}`}</span>
+        )}
       </div>
       <div className={styles.group}>
         <span className={styles.item}>{documentText}</span>
