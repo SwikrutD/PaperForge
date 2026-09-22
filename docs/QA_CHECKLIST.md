@@ -124,3 +124,43 @@ Run in both light and dark themes:
       rotation.
 - [ ] In dark mode the page itself stays white; only the surroundings are dark.
 - [ ] Pages stay sharp on a high-DPI display and after changing Windows scaling.
+
+## Segment 4 — navigation panels and search
+
+- [ ] Thumbnails: every page has one, the current page is marked and stays in view while scrolling,
+      and clicking a thumbnail goes to that page. In a long document, scrolling the panel fast does
+      not leave blank frames behind, and memory settles rather than climbing.
+- [ ] Bookmarks: the outline matches the one the document declares, including nesting, bold, italic
+      and colour. Twisties expand and collapse. Clicking an entry goes to its page; an entry that
+      points nowhere is visibly disabled with an explanation, not silently dead.
+- [ ] A document with no outline says "No bookmarks" rather than showing an empty box.
+- [ ] Attachments: embedded files are listed with their description, an executable or script
+      extension carries the warning icon, and nothing in the panel opens a file. The note about
+      saving arriving later is present.
+- [ ] Layers: a document with optional content lists its groups; toggling one changes what is drawn
+      on the page immediately. The note says visibility is view-only, and the file on disk is
+      untouched (its modified time does not change).
+- [ ] A document without layers says so instead of inventing one.
+- [ ] `Ctrl+F` opens the find bar and selects what is already in the field. `Escape` closes it.
+- [ ] Typing shows a match count that settles, highlights every match on the visible pages, and
+      moves to the first match at or after the page being read — not back to page one.
+- [ ] `F3`, `Shift+F3`, `Enter` and `Shift+Enter` step through the matches and wrap around, and
+      they keep working while the find field has the focus. The current match is drawn differently
+      from the rest and is scrolled into view only when it is off screen.
+- [ ] Match case, whole words and highlight all each change the result as described.
+- [ ] The results list shows the page and enough text to recognise each match; clicking one goes
+      there.
+- [ ] Page range: `2-4, 7` searches only those pages; an impossible range explains itself next to
+      the field and searches nothing.
+- [ ] With two documents open, "All open documents" finds matches in both, names the document in
+      the results, and clicking a match in the other document switches to it.
+- [ ] Searching a scanned (image-only) document says the pages carry no text rather than "no
+      matches", and offers no OCR, because there is none yet.
+- [ ] Searching a long document stays responsive while the scan runs, and changing the query
+      abandons the previous scan rather than queueing another.
+- [ ] Page labels: a document with roman front matter shows `ii (2 of 20)` in the page field;
+      typing a label goes to that page, and so does typing a plain page number.
+- [ ] Reading mode (`Ctrl+Shift+R`) leaves only the title bar and the document; `Escape` restores
+      the shell with the panels as they were.
+- [ ] Highlights stay on the words when the page is zoomed and when the view is rotated, on a page
+      that carries its own `/Rotate` as well as on an upright one.

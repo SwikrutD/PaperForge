@@ -40,7 +40,8 @@ src/
       controls/    button, icon button, menu bar, theme switcher
       home/        home screen, tool catalogue, recent files
       overlays/    dialog shell, settings, about, command palette, toasts
-      panels/      left panel, right panel, shared empty state
+      panels/      left panel, thumbnails, bookmarks, attachments, layers, right panel
+      search/      find bar, results list, the scan that feeds them
       progress/    progress centre
       shell/       title bar, tabs, command bar, rail, resizer, status bar, drop zone
       viewer/      page column, page rendering, toolbar, password prompt
@@ -48,7 +49,7 @@ src/
       surfaces/    card, message bar
     design-system/ tokens.css and base.css
     services/      typed IPC client
-    stores/        Zustand state (app, ui, jobs)
+    stores/        Zustand state (app, documents, search, ui, jobs)
     types/         UI and job models
     utils/         small renderer helpers
   shared/          used by all three contexts
@@ -59,6 +60,7 @@ src/
     types/         the preload bridge interface
   pdf/             PDF engine layer, free of UI
     render/        engine contract and its PDF.js implementation
+    search/        matching and match geometry, pure and unit-tested
 scripts/           build-time tooling (icon generation)
 tests/unit/        Vitest suites mirroring src/
 tests/e2e/         Playwright tests that drive the built application
@@ -198,6 +200,46 @@ pfdoc://document/<session id>   →   PDF.js worker   →   page canvas
   never to disk, never to the log.
 - **View state** (zoom mode, scale, rotation, page, scroll offset) lives with
   the tab, so switching documents returns the reader exactly where they were.
+- **Page coordinates.** `pageGeometry.ts` converts a rectangle in PDF user
+  space — where the origin is the bottom left of the unrotated page — into a
+  box on the page as displayed. It mirrors the transform PDF.js builds for a
+  viewport, including the page's own rotation, the reader's rotation, a view
+  box that does not start at zero and the document's user unit. Link hotspots
+  and search highlights both use it, and it is unit-tested for all four
+  rotations rather than re-derived per feature.
+
+## Navigation and search
+
+The document is loaded once per window by `PdfDocumentProvider` and shared, so
+the page column, the thumbnails, the outline, the layers and the search all
+work from one PDF.js document rather than opening the file several times.
+
+- **Panels.** Thumbnails render only while near the viewport and are released
+  when they leave, for the same reason the page column is virtualized. The
+  outline is shown as authored, including bold, italic and colour, and an entry
+  that points nowhere PaperForge can follow is disabled rather than silently
+  doing nothing. Attachments are a listing only: nothing in the panel opens an
+  embedded file, and an executable extension is called out. Layer visibility is
+  a view-only change; the panel says so, because the write engine that could
+  save a default state does not exist yet.
+- **Search state** lives in `stores/searchStore.ts`, not in a React context, so
+  a command, a shortcut, the find bar and the page highlights all act on the
+  same search and the query survives switching tabs.
+- **The scan** (`components/search/useSearchScan.ts`) walks pages one at a
+  time, pulling text from the worker that already has the file open. It
+  publishes progress as it goes, so the first matches appear immediately in a
+  long document, and it is abandoned the moment the query changes. Documents
+  other than the one on screen are opened for the search and released again; a
+  document that cannot be read is reported as skipped rather than dropped.
+  Matching itself is `src/pdf/search/textSearch.ts`: literal scanning, so a
+  query full of regex punctuation searches for those characters.
+- **Match rectangles** are derived from text-run geometry by assuming even
+  character widths within a run. That is exact for monospaced text and close
+  enough elsewhere for a highlight; the rectangles are never used for anything
+  but drawing.
+- **Honesty about scans.** The find bar counts pages that carry no text and
+  says so instead of reporting no matches. It does not offer OCR, because OCR
+  does not exist yet.
 
 ## Error model
 

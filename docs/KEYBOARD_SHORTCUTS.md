@@ -19,6 +19,11 @@ refuses to start if two commands claim the same one.
 | `Ctrl+0`       | Fit Page        | Fits the page being read                                                     |
 | `Ctrl+1`       | Actual Size     | 100%                                                                         |
 | `Ctrl+2`       | Fit Width       | Fits the widest page, so nothing scrolls sideways                            |
+| `Ctrl+F`       | Find            | Opens the find bar over the document and selects what is in it               |
+| `Ctrl+H`       | Find Options    | Find, with the scope and page-range row expanded                             |
+| `F3`           | Find Next       | Wraps around; works while the find field has focus                           |
+| `Shift+F3`     | Find Previous   |                                                                              |
+| `Ctrl+Shift+R` | Reading Mode    | Only the title bar and the document; `Esc` leaves it                         |
 | `F4`           | Tools Panel     | Show or hide the right panel                                                 |
 | `F6`           | Next Region     | Cycle command bar → rail → left panel → workspace → tools panel → status bar |
 | `F11`          | Full Screen     | Uses the real window, not HTML fullscreen                                    |
@@ -26,20 +31,22 @@ refuses to start if two commands claim the same one.
 
 Shell behaviour that needs no chord:
 
-| Keys                    | Behaviour                                                                |
-| ----------------------- | ------------------------------------------------------------------------ |
-| `Tab` / `Shift+Tab`     | Move between controls, with a visible focus ring                         |
-| Middle-click a tab      | Close that document                                                      |
-| `Arrow keys`            | Move within a menu, the palette results, the theme options, or a divider |
-| `Ctrl+wheel`            | Zoom the document                                                        |
-| `Page Up` / `Page Down` | Scroll the page column by a screen                                       |
-| `Home` / `End`          | Jump to the start or the end of the document                             |
-| `Home` / `End`          | On a panel divider: minimum and maximum width                            |
-| `Enter` / `Space`       | Activate the focused control                                             |
-| `Escape`                | Close the palette, a menu or a dialog                                    |
+| Keys                      | Behaviour                                                                |
+| ------------------------- | ------------------------------------------------------------------------ |
+| `Tab` / `Shift+Tab`       | Move between controls, with a visible focus ring                         |
+| Middle-click a tab        | Close that document                                                      |
+| `Arrow keys`              | Move within a menu, the palette results, the theme options, or a divider |
+| `Ctrl+wheel`              | Zoom the document                                                        |
+| `Page Up` / `Page Down`   | Scroll the page column by a screen                                       |
+| `Home` / `End`            | Jump to the start or the end of the document                             |
+| `Home` / `End`            | On a panel divider: minimum and maximum width                            |
+| `Enter` / `Space`         | Activate the focused control                                             |
+| `Escape`                  | Close the palette, a menu, a dialog, the find bar or reading mode        |
+| `Enter` in the find field | Next match; `Shift+Enter` for the previous one                           |
 
-Bare-key shortcuts (`F4`, `F6`, `F11`) are suppressed while the focus is in a text field; chords
-with `Ctrl` or `Alt` still work, which is what Windows applications do.
+Bare printable keys are suppressed while the focus is in a text field. Function keys are not:
+`F3` has to keep stepping through matches while the find field has focus, and `F4`, `F6` and `F11`
+type nothing either. Chords with `Ctrl` or `Alt` always work, which is what Windows applications do.
 
 ## Planned
 
@@ -47,15 +54,13 @@ Taken from `CLAUDE.md` section 7; each lands with the segment that implements th
 
 | Keys                           | Command                           | Segment  |
 | ------------------------------ | --------------------------------- | -------- |
-| `Ctrl+Shift+O`                 | Open recent / open options        | 4        |
+| `Ctrl+Shift+O`                 | Open recent / open options        | later    |
 | `Ctrl+S`                       | Save                              | 5        |
 | `Ctrl+Shift+S`                 | Save As                           | 5        |
 | `Ctrl+P`                       | Print                             | 18       |
-| `Ctrl+F`                       | Find                              | 4        |
-| `Ctrl+H`                       | Advanced search                   | 4        |
 | `Ctrl+Z` / `Ctrl+Y`            | Undo / Redo                       | 5        |
-| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / Cut / Paste in context     | 4 onward |
-| `Ctrl+A`                       | Select all in the current context | 4 onward |
+| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / Cut / Paste in context     | 6 onward |
+| `Ctrl+A`                       | Select all in the current context | 6 onward |
 
 In a continuously scrolling column, `Page Up`, `Page Down`, `Home` and `End` scroll the document,
 which is what those keys do in every Windows reader. Explicit page navigation — next page, previous

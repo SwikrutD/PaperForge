@@ -2,10 +2,10 @@
 
 ## Current status
 
-- Last completed segment: **3 — PDF.js viewer foundation**
-- Next segment: **4 — Navigation panels and search**
+- Last completed segment: **4 — Navigation panels and search**
+- Next segment: **5 — Mutation engine, save pipeline, undo/redo**
 - Build status: `npm run package` succeeds; packaged app launches and closes cleanly on Windows 11 x64
-- Test status: 181 unit tests (21 files) and 13 Playwright end-to-end tests passing; typecheck and lint clean
+- Test status: 259 unit tests (26 files) and 23 Playwright end-to-end tests passing; typecheck, lint and format clean
 
 ## Completed segments
 
@@ -13,7 +13,7 @@
 - [x] 1 Fluent Workspace shell and command system
 - [x] 2 File service, tabs, recovery architecture
 - [x] 3 PDF.js viewer foundation
-- [ ] 4 Navigation panels and search
+- [x] 4 Navigation panels and search
 - [ ] 5 Mutation engine, save pipeline, undo/redo
 - [ ] 6 Comments and annotations
 - [ ] 7 Organize Pages
@@ -123,6 +123,52 @@ unusual page sizes and the password path; the end-to-end suite drives the real a
 | Viewer | `renderer/components/viewer/{PdfViewer,PdfPageView,ViewerToolbar,PasswordPrompt,usePdfDocument,viewerLayout}`                           |
 | Tests  | `tests/fixtures/pdf.ts`, `tests/unit/shared/pdfFixtures.test.ts`, `tests/unit/renderer/viewerLayout.test.ts`, `tests/e2e/viewer.e2e.ts` |
 
+## Segment 4 — what landed
+
+**One document, many readers.** `PdfDocumentProvider` loads the active document once per window and
+shares it, so the page column, the thumbnails, the outline, the layers and the search all work from
+the same PDF.js document rather than opening the file several times.
+
+**Panels.** Thumbnails render only while near the viewport and are released when they leave, for the
+same reason the page column is virtualized. Bookmarks are shown as authored — nesting, bold, italic
+and colour — and an entry that points nowhere is disabled with an explanation rather than silently
+doing nothing. Attachments are a listing only, with a warning on executable and script extensions
+and a note that PaperForge never opens one. Layers toggle optional content groups for the view, and
+the panel says plainly that the change is not saved.
+
+**Search.** `Ctrl+F` opens a find bar over the page column: match count, next and previous, match
+case, whole words, highlight all, a results list with an excerpt per match, and behind the options
+row a scope of this document or every open one, plus a page range. `F3` and `Shift+F3` step through
+matches even while the find field has focus. The scan walks pages one at a time out of the worker
+that already has the file open, publishes progress as it goes, and is abandoned the moment the query
+changes; other documents are opened for the search and released again, and one that cannot be read
+is named as skipped. Matches are drawn between the canvas and the text layer with multiply blending,
+so the words stay readable and selectable underneath.
+
+**Honesty about scans.** When the searched pages carry no text the bar says so instead of reporting
+no matches, and it does not offer OCR, because OCR does not exist yet.
+
+**Page labels and reading mode.** The page field shows the label the document prints on the page —
+roman numerals for a preface — with the real position beside it, and accepts either a label or a
+number. Reading mode (`Ctrl+Shift+R`) leaves only the title bar and the document; `Escape` returns.
+
+**Three viewer bugs fixed on the way.** Writing the shared PDF-space-to-CSS conversion for highlights
+exposed that link hotspots placed 90° and 270° pages wrongly, that a page carrying its own `/Rotate`
+was laid out on its side because the rotation was counted twice, and that such a page was rendered
+unrotated because PDF.js treats a viewport's rotation as the total, not an extra one. All three are
+covered by tests.
+
+**Fixtures.** The generated PDFs can now carry an outline, page labels, embedded files and an
+optional content group, so the panels are tested against documents PaperForge owns end to end. The
+end-to-end suite checks layer visibility by counting ink on the canvas.
+
+| Area   | Key files                                                                                                                 |
+| ------ | ------------------------------------------------------------------------------------------------------------------------- |
+| Panels | `renderer/components/panels/{PagesPanel,BookmarksPanel,AttachmentsPanel,LayersPanel,LeftPanel}.tsx`                       |
+| Search | `pdf/search/textSearch.ts`, `shared/utils/pageRange.ts`, `renderer/stores/searchStore.ts`, `renderer/components/search/*` |
+| Viewer | `renderer/components/viewer/{pageGeometry,pageEntry,PdfDocumentContext,renderEngine}.ts(x)`                               |
+| Tests  | `tests/unit/renderer/{pageGeometry,searchNavigation,findBar,pageEntry}.test.*`, `tests/e2e/navigation.e2e.ts`             |
+
 ## Architecture decisions
 
 1. **Channel allowlist separate from schemas**, so the preload carries no validation library and
@@ -183,13 +229,41 @@ unusual page sizes and the password path; the end-to-end suite drives the real a
     application also blocks a test runner, so Playwright launches the same bundle with the Electron
     binary and the packaged build is smoke-tested separately.
 
+30. **One PDF.js document per window, shared by everything.** The panels live outside the workspace
+    in the shell, so the provider sits above both rather than the viewer owning the document.
+31. **Search state is a store, not a context.** A command, a shortcut, the find bar and the page
+    highlights all act on the same search, and the query survives switching tabs.
+32. **The scan is incremental and abandonable.** Text is pulled a page at a time from the worker
+    that already has the file open, results are published as they are found, and a changed query
+    cancels the run instead of queueing another.
+33. **One tested conversion for PDF-space rectangles.** `pageGeometry.ts` mirrors the transform
+    PDF.js builds for a viewport, so link hotspots, search highlights and everything that follows
+    place rectangles the same way — including the page's own rotation, a view box that does not
+    start at zero, and the user unit.
+34. **A function key is an application shortcut even while typing.** `F3` has to keep stepping
+    through matches when the find field has focus; bare printable keys are still suppressed.
+35. **Reading mode is not persisted.** It is a way to read, not a preference, so it lives in the UI
+    store and `Escape` leaves it.
+36. **Match rectangles assume even character widths within a text run.** That is exact for
+    monospaced text and close enough elsewhere for a highlight; the rectangles are never used for
+    anything but drawing.
+
 ## Known limitations
 
 - The viewer is continuous scrolling only. Single page, two-page spread, cover page, the hand and
   marquee-zoom tools and presentation mode are part of the fuller viewer in `CLAUDE.md` section 10
   and are not built yet.
-- Page thumbnails, bookmarks, attachments, layers and search are Segment 4; those panels say so
-  rather than pretending to be empty.
+- Layer visibility applies to the view only. Saving a default layer state needs the write engine,
+  which is Segment 5.
+- Attachments are listed but cannot be saved, added or removed; that is Segment 14. No size is
+  shown, because the listing PDF.js returns does not carry one.
+- Bookmarks can be read and followed but not added, renamed, reordered or restyled (Segment 17).
+- Search covers text. Searching bookmarks and annotations, and regular expressions, are not
+  implemented; a query is matched literally, so punctuation searches for itself.
+- A search stops collecting at 5,000 matches and says so rather than growing without bound.
+- Search highlights are placed from text-run geometry, so on a run with unusual per-glyph spacing a
+  highlight can be a fraction of a character out. It never affects what is found, only what is
+  drawn.
 - Form fields are drawn from their appearance streams but are not interactive; that is Segment 11.
 - The encryption marker shown in the properties panel is still a trailer scan. The viewer knows the
   truth once a document is open, and the two are not yet reconciled.
@@ -221,18 +295,19 @@ Nothing is downloaded at runtime, then or now.
 
 Run on Windows 11 x64, Node 24.19.0, npm 11.17.0:
 
-| Command                     | Result                                                                                               |
-| --------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                       |
-| `npm run typecheck`         | Pass — four projects, no errors                                                                      |
-| `npm run lint`              | Pass — no errors, no warnings                                                                        |
-| `npm test`                  | Pass — 149 tests in 19 files                                                                         |
-| `npm run test:e2e`          | Pass — 5 Playwright tests against the built application                                              |
-| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                            |
-| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                     |
-| Packaged launch/close smoke | Pass — window ready in ~400 ms, closes cleanly, and `%TEMP%/PaperForge/sessions` is empty afterwards |
-| Settings upgrade            | Pass — a settings file without the new `session` section is repaired in place                        |
-| Appearance                  | Checked in light and dark by driving the real application and screenshotting a rendered document     |
+| Command                     | Result                                                                                                                |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                                        |
+| `npm run typecheck`         | Pass — four projects, no errors                                                                                       |
+| `npm run lint`              | Pass — no errors, no warnings                                                                                         |
+| `npm test`                  | Pass — 259 tests in 26 files                                                                                          |
+| `npm run test:e2e`          | Pass — 23 Playwright tests against the built application                                                              |
+| `npm run format:check`      | Pass — Prettier clean                                                                                                 |
+| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                                             |
+| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                                      |
+| Packaged launch/close smoke | Pass — window ready in ~400 ms, closes cleanly, and `%TEMP%/PaperForge/sessions` is empty afterwards                  |
+| Settings upgrade            | Pass — a settings file without the new `session` section is repaired in place                                         |
+| Appearance                  | Checked in light and dark by screenshotting the real application: find bar with results, each panel, and reading mode |
 
 ## Manual setup required
 
