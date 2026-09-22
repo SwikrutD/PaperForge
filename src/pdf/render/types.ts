@@ -88,7 +88,11 @@ export interface PdfOutlineItem {
 export interface PdfAttachment {
   id: string;
   fileName: string;
-  sizeBytes: number;
+  /**
+   * Size in bytes, or null when reading the listing does not reveal one —
+   * which is the usual case, since the bytes are only fetched on demand.
+   */
+  sizeBytes: number | null;
   description: string | null;
 }
 

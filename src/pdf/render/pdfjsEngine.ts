@@ -300,7 +300,9 @@ class PdfjsDocument implements LoadedPdfDocument {
       return {
         id: key,
         fileName: attachment.filename ?? key,
-        sizeBytes: attachment.content?.length ?? 0,
+        // The listing carries no bytes, so a size is only known when one of
+        // the engines that does provide it has filled this in.
+        sizeBytes: attachment.content?.length ?? null,
         description: attachment.description ?? null,
       };
     });

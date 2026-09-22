@@ -21,6 +21,17 @@ const RISKY_EXTENSIONS = new Set([
   'jar',
 ]);
 
+/**
+ * What is known about the file besides its name. The size is only stated when
+ * the document reveals one, rather than guessed at.
+ */
+function meta(attachment: PdfAttachment): string {
+  const parts: string[] = [];
+  if (attachment.sizeBytes !== null) parts.push(formatBytes(attachment.sizeBytes));
+  if (attachment.description !== null) parts.push(attachment.description);
+  return parts.join(' · ');
+}
+
 function extensionOf(fileName: string): string {
   const index = fileName.lastIndexOf('.');
   return index < 0 ? '' : fileName.slice(index + 1).toLowerCase();
@@ -45,10 +56,7 @@ export function AttachmentsPanel({
               <Paperclip className={styles.icon} aria-hidden="true" strokeWidth={1.6} />
               <span className={styles.text}>
                 <span className={styles.name}>{attachment.fileName}</span>
-                <span className={styles.meta}>
-                  {attachment.sizeBytes > 0 ? formatBytes(attachment.sizeBytes) : 'size unknown'}
-                  {attachment.description === null ? '' : ` · ${attachment.description}`}
-                </span>
+                {meta(attachment) !== '' && <span className={styles.meta}>{meta(attachment)}</span>}
               </span>
               {risky && (
                 <span className={styles.warning} title="This kind of file can run code.">
