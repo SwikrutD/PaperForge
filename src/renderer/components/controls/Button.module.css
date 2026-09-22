@@ -49,3 +49,14 @@
   height: 15px;
   flex: 0 0 auto;
 }
+
+.danger {
+  background-color: var(--pf-color-danger);
+  border-color: transparent;
+  color: var(--pf-color-bg-surface);
+}
+
+.danger:hover:not(:disabled),
+.danger:active:not(:disabled) {
+  filter: brightness(0.92);
+}

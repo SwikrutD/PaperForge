@@ -1,6 +1,17 @@
 /** Modal dialogs the shell can show. Each one has a real implementation. */
 export type DialogId = 'settings' | 'about';
 
+/** A question the user must answer before something irreversible happens. */
+export interface ConfirmationRequest {
+  title: string;
+  message: string;
+  confirmLabel?: string | undefined;
+  cancelLabel?: string | undefined;
+  /** Styles the confirm button as destructive. */
+  danger?: boolean | undefined;
+  onConfirm: () => void;
+}
+
 export type ToastIntent = 'info' | 'success' | 'warning' | 'error';
 
 export interface ToastInput {

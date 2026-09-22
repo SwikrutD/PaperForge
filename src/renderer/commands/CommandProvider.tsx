@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, type ReactElement, type ReactNode } from 'react';
 import { AppError } from '@shared/errors/appError';
+import { invoke } from '../services/ipcClient';
 import type { LeftPanelId, RightPanelId } from '@shared/schemas/settings';
 import { focusNextRegion } from '../keyboard/focusRegions';
 import { buildShortcutTable, findShortcutCommand } from '../keyboard/shortcuts';
 import { useAppStore } from '../stores/appStore';
+import { useDocumentStore } from '../stores/documentStore';
 import { useUiStore } from '../stores/uiStore';
 import { buildDiagnosticsText } from '../utils/diagnostics';
 import { CommandApiContext, type CommandApi } from './commandApiContext';
@@ -18,14 +20,33 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
   const appInfo = useAppStore((state) => state.appInfo);
   const recentFiles = useAppStore((state) => state.recentFiles);
   const windowState = useAppStore((state) => state.windowState);
+  const tabs = useDocumentStore((state) => state.tabs);
+  const activeTabId = useDocumentStore((state) => state.activeId);
 
   const showToast = useUiStore((state) => state.showToast);
 
   const actions = useMemo<CommandActions>(() => {
     const app = useAppStore.getState;
     const ui = useUiStore.getState;
+    const documents = useDocumentStore.getState;
+
+    const activeSessionId = (): string | null => documents().activeId;
 
     return {
+      openDocuments: () => documents().openWithDialog(),
+      openInNewWindow: () => void invoke('window:openNew'),
+      closeActiveDocument: async () => {
+        const id = activeSessionId();
+        if (id !== null) await documents().close(id);
+      },
+      closeAllDocuments: () => documents().closeAll(),
+      revealActiveDocument: async () => {
+        const id = activeSessionId();
+        const tab = documents().tabs.find((candidate) => candidate.session.id === id);
+        if (tab === undefined) return;
+        await invoke('files:revealInExplorer', { path: tab.session.file.path });
+      },
+      closeWindow: () => invoke('window:close'),
       setThemePreference: (preference) => app().setThemePreference(preference),
       patchSettings: (patch) => app().patchSettings(patch),
       setLeftPanel: (panel: LeftPanelId) =>
@@ -56,11 +77,12 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
       theme,
       appInfo,
       recentFiles,
-      documentOpen: false,
+      activeDocument: tabs.find((tab) => tab.session.id === activeTabId)?.session ?? null,
+      openDocumentCount: tabs.length,
       fullScreen: windowState?.fullScreen ?? false,
       actions,
     };
-  }, [settings, theme, appInfo, recentFiles, windowState, actions]);
+  }, [settings, theme, appInfo, recentFiles, windowState, tabs, activeTabId, actions]);
 
   const execute = useCallback(
     (id: string) => {

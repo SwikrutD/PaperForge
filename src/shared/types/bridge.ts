@@ -15,4 +15,10 @@ export interface PaperForgeBridge {
   invoke(channel: InvokeChannel, payload?: unknown): Promise<unknown>;
   /** Subscribes to a main-process event. Returns an unsubscribe function. */
   subscribe(channel: EventChannel, listener: (payload: unknown) => void): () => void;
+  /**
+   * Resolves the path of a file the user dropped on the window. Chromium no
+   * longer exposes File.path, and this is the only way the renderer can learn
+   * one — it reveals nothing the user did not just hand over.
+   */
+  getPathForFile(file: File): string;
 }

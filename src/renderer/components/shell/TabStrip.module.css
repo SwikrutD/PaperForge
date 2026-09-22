@@ -1,0 +1,116 @@
+.strip {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  height: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.strip::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  min-width: 128px;
+  max-width: 240px;
+  padding-right: 2px;
+  border: 1px solid transparent;
+  border-radius: var(--pf-radius-md);
+  background-color: var(--pf-color-bg-subtle);
+  flex: 0 1 auto;
+  align-self: center;
+  height: calc(var(--pf-titlebar-height) - 10px);
+}
+
+.tab:hover {
+  background-color: var(--pf-color-bg-hover);
+}
+
+.active {
+  background-color: var(--pf-color-bg-selected);
+  border-color: var(--pf-color-border);
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-space-050);
+  min-width: 0;
+  flex: 1 1 auto;
+  height: 100%;
+  padding: 0 var(--pf-space-050) 0 var(--pf-space-100);
+  border: 0;
+  border-radius: var(--pf-radius-md);
+  background: transparent;
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-300);
+  cursor: pointer;
+}
+
+.active .label {
+  color: var(--pf-color-text-primary);
+}
+
+.icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dirty {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: var(--pf-radius-round);
+  background-color: var(--pf-color-accent-text);
+}
+
+.changed {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--pf-radius-round);
+  background-color: var(--pf-color-warning);
+  color: var(--pf-color-bg-surface);
+  font-size: var(--pf-font-size-100);
+  font-weight: var(--pf-font-weight-strong);
+}
+
+.close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: var(--pf-radius-sm);
+  background: transparent;
+  color: var(--pf-color-text-secondary);
+  cursor: pointer;
+}
+
+.close:hover {
+  background-color: var(--pf-color-bg-pressed);
+  color: var(--pf-color-text-primary);
+}
+
+.closeIcon {
+  width: 12px;
+  height: 12px;
+}

@@ -21,7 +21,7 @@ describe('command bar', () => {
       .getAllByRole('menuitem', { expanded: false })
       .map((item) => item.textContent);
 
-    expect(menuNames).toEqual(['View', 'Tools', 'Help']);
+    expect(menuNames).toEqual(['File', 'View', 'Tools', 'Help']);
   });
 
   it('opens a menu and marks the active theme', async () => {

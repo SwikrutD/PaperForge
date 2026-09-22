@@ -22,6 +22,9 @@ export interface AppStore {
   setThemePreference: (preference: ThemePreference) => Promise<void>;
   patchSettings: (patch: SettingsPatch) => Promise<void>;
   clearRecentFiles: () => Promise<void>;
+  setRecentFilePinned: (path: string, pinned: boolean) => Promise<void>;
+  removeRecentFile: (path: string) => Promise<void>;
+  revealInExplorer: (path: string) => Promise<void>;
   toggleFullScreen: () => Promise<void>;
 }
 
@@ -97,8 +100,19 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   clearRecentFiles: async () => {
-    const entries = await invoke('recentFiles:clear');
-    set({ recentFiles: entries });
+    set({ recentFiles: await invoke('recentFiles:clear') });
+  },
+
+  setRecentFilePinned: async (path, pinned) => {
+    set({ recentFiles: await invoke('recentFiles:setPinned', { path, pinned }) });
+  },
+
+  removeRecentFile: async (path) => {
+    set({ recentFiles: await invoke('recentFiles:remove', { path }) });
+  },
+
+  revealInExplorer: async (path) => {
+    await invoke('files:revealInExplorer', { path });
   },
 
   toggleFullScreen: async () => {

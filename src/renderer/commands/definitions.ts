@@ -1,5 +1,7 @@
 import {
   Activity,
+  AppWindow,
+  FolderOpen,
   Bookmark,
   ClipboardCopy,
   Eraser,
@@ -15,6 +17,7 @@ import {
   PanelTop,
   Search,
   Settings as SettingsIcon,
+  SquareX,
   StickyNote,
   Sun,
 } from 'lucide-react';
@@ -52,6 +55,72 @@ function leftPanelCommands(): CommandDefinition[] {
  */
 export function buildCommands(): CommandDefinition[] {
   return [
+    {
+      id: 'file.open',
+      title: 'Open…',
+      description: 'Open one or more PDF files from this computer.',
+      category: 'file',
+      group: 'open',
+      icon: FolderOpen,
+      shortcut: 'Ctrl+O',
+      keywords: ['file', 'browse', 'document'],
+      run: (context) => context.actions.openDocuments(),
+    },
+    {
+      id: 'file.openInNewWindow',
+      title: 'New Window',
+      description: 'Open another PaperForge window.',
+      category: 'file',
+      group: 'open',
+      icon: AppWindow,
+      keywords: ['window', 'second'],
+      run: (context) => context.actions.openInNewWindow(),
+    },
+    {
+      id: 'file.revealInExplorer',
+      title: 'Show in Explorer',
+      description: 'Open the folder containing the active document.',
+      category: 'file',
+      group: 'document',
+      icon: FolderOpen,
+      keywords: ['folder', 'location', 'reveal'],
+      isAvailable: (context) =>
+        context.activeDocument !== null ? true : { enabled: false, reason: 'No document is open.' },
+      run: (context) => context.actions.revealActiveDocument(),
+    },
+    {
+      id: 'file.closeDocument',
+      title: 'Close Document',
+      category: 'file',
+      group: 'document',
+      icon: SquareX,
+      shortcut: 'Ctrl+W',
+      keywords: ['tab', 'close'],
+      isAvailable: (context) =>
+        context.activeDocument !== null ? true : { enabled: false, reason: 'No document is open.' },
+      run: (context) => context.actions.closeActiveDocument(),
+    },
+    {
+      id: 'file.closeAllDocuments',
+      title: 'Close All Documents',
+      category: 'file',
+      group: 'document',
+      icon: SquareX,
+      keywords: ['tabs', 'close everything'],
+      isAvailable: (context) =>
+        context.openDocumentCount > 0 ? true : { enabled: false, reason: 'No document is open.' },
+      run: (context) => context.actions.closeAllDocuments(),
+    },
+    {
+      id: 'window.close',
+      title: 'Close Window',
+      category: 'file',
+      group: 'window',
+      icon: AppWindow,
+      shortcut: 'Ctrl+Shift+W',
+      keywords: ['quit', 'exit'],
+      run: (context) => context.actions.closeWindow(),
+    },
     {
       id: 'view.toggleLeftPanel',
       title: 'Left Panel',

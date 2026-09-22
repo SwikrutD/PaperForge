@@ -1,4 +1,4 @@
-import { ipcRenderer, type IpcRendererEvent } from 'electron';
+import { ipcRenderer, webUtils, type IpcRendererEvent } from 'electron';
 import { isEventChannel, isInvokeChannel } from '@shared/ipc/channelNames';
 import type { PaperForgeBridge } from '@shared/types/bridge';
 
@@ -28,6 +28,10 @@ export function createBridge(): PaperForgeBridge {
       return () => {
         ipcRenderer.removeListener(channel, handler);
       };
+    },
+
+    getPathForFile(file) {
+      return webUtils.getPathForFile(file);
     },
   };
 }

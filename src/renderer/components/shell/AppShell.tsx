@@ -5,6 +5,7 @@ import { useAppStore } from '../../stores/appStore';
 import { LeftPanel } from '../panels/LeftPanel';
 import { RightPanel } from '../panels/RightPanel';
 import { CommandBar } from './CommandBar';
+import { FileDropZone } from './FileDropZone';
 import { LeftRail } from './LeftRail';
 import { PanelResizer } from './PanelResizer';
 import { StatusBar } from './StatusBar';
@@ -18,6 +19,8 @@ interface AppShellProps {
   status: AppStatus;
   statusText: string;
   themeText: string;
+  /** What the status bar says about the active document. */
+  documentText: string;
   /** Overlays (palette, dialogs, toasts) render above the whole frame. */
   overlays?: ReactNode;
 }
@@ -34,6 +37,7 @@ export function AppShell({
   status,
   statusText,
   themeText,
+  documentText,
   overlays,
 }: AppShellProps): ReactElement {
   const patchSettings = useAppStore((state) => state.patchSettings);
@@ -55,7 +59,7 @@ export function AppShell({
   };
 
   return (
-    <div className={styles.shell}>
+    <FileDropZone>
       <TitleBar version={version} />
       {layout.commandBarVisible && <CommandBar />}
 
@@ -100,10 +104,10 @@ export function AppShell({
       <StatusBar
         status={status}
         statusText={statusText}
-        documentText="No document open"
+        documentText={documentText}
         themeText={themeText}
       />
       {overlays}
-    </div>
+    </FileDropZone>
   );
 }

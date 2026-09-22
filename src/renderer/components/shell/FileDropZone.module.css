@@ -1,0 +1,47 @@
+.zone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: var(--pf-layer-toast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--pf-space-300);
+  background-color: color-mix(in srgb, var(--pf-color-bg-app) 80%, transparent);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pf-space-100);
+  padding: var(--pf-space-400) var(--pf-space-500);
+  border: 2px dashed var(--pf-color-accent);
+  border-radius: var(--pf-radius-xl);
+  background-color: var(--pf-color-bg-surface);
+  box-shadow: var(--pf-shadow-16);
+}
+
+.icon {
+  width: 32px;
+  height: 32px;
+  color: var(--pf-color-accent-text);
+}
+
+.title {
+  font-family: var(--pf-font-family-display);
+  font-size: var(--pf-font-size-500);
+  font-weight: var(--pf-font-weight-medium);
+}
+
+.text {
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-300);
+}

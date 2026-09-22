@@ -1,12 +1,14 @@
 import type { ReactElement } from 'react';
-import { Activity, Settings as SettingsIcon } from 'lucide-react';
+import { Activity, FolderOpen, Settings as SettingsIcon } from 'lucide-react';
 import { APP_NAME } from '@shared/constants/app';
 import { useCommands } from '../../commands/useCommands';
 import { useUiStore } from '../../stores/uiStore';
 import { useJobStore } from '../../stores/jobStore';
 import { isJobActive } from '../../types/jobs';
+import { useDocumentStore } from '../../stores/documentStore';
 import { LogoMark } from '../brand/LogoMark';
 import { IconButton } from '../controls/IconButton';
+import { TabStrip } from './TabStrip';
 import styles from './TitleBar.module.css';
 
 /**
@@ -20,6 +22,8 @@ export function TitleBar({ version }: { version: string | null }): ReactElement 
 
   const settingsCommand = resolve('app.openSettings');
   const tasksCommand = resolve('app.toggleProgressCenter');
+  const openCommand = resolve('file.open');
+  const hasDocuments = useDocumentStore((state) => state.tabs.length > 0);
 
   return (
     <header className={styles.bar}>
@@ -29,11 +33,18 @@ export function TitleBar({ version }: { version: string | null }): ReactElement 
         {version !== null && <span className={styles.version}>{`v${version}`}</span>}
       </div>
 
-      <div className={styles.documents} aria-label="Open documents">
-        <span className={styles.noDocument}>No document open</span>
+      <div className={styles.documents}>
+        {hasDocuments ? <TabStrip /> : <span className={styles.noDocument}>No document open</span>}
       </div>
 
       <div className={styles.actions}>
+        <IconButton
+          icon={FolderOpen}
+          label="Open"
+          tooltip="Open a PDF (Ctrl+O)"
+          disabled={openCommand?.enabled === false}
+          onClick={() => execute('file.open')}
+        />
         <span className={styles.taskCount} aria-live="polite">
           {activeJobs > 0 ? `${activeJobs} running` : ''}
         </span>

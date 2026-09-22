@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { DialogId, Toast, ToastInput } from '../types/ui';
+import type { ConfirmationRequest, DialogId, Toast, ToastInput } from '../types/ui';
 import { createId } from '../utils/ids';
 
 const DEFAULT_TOAST_MS = 4000;
@@ -10,12 +10,16 @@ export interface UiStore {
   commandPaletteOpen: boolean;
   progressCenterOpen: boolean;
   toasts: Toast[];
+  /** Pending confirmation, shown over everything else. */
+  confirmation: ConfirmationRequest | null;
   openDialog: (dialog: DialogId) => void;
   closeDialog: () => void;
   setCommandPaletteOpen: (open: boolean) => void;
   setProgressCenterOpen: (open: boolean) => void;
   showToast: (toast: ToastInput) => string;
   dismissToast: (id: string) => void;
+  requestConfirmation: (request: ConfirmationRequest) => void;
+  resolveConfirmation: (confirmed: boolean) => void;
 }
 
 export const useUiStore = create<UiStore>((set) => ({
@@ -23,6 +27,7 @@ export const useUiStore = create<UiStore>((set) => ({
   commandPaletteOpen: false,
   progressCenterOpen: false,
   toasts: [],
+  confirmation: null,
 
   openDialog: (dialog) => set({ dialog, commandPaletteOpen: false }),
   closeDialog: () => set({ dialog: null }),
@@ -45,4 +50,12 @@ export const useUiStore = create<UiStore>((set) => ({
 
   dismissToast: (id) =>
     set((state) => ({ toasts: state.toasts.filter((toast) => toast.id !== id) })),
+
+  requestConfirmation: (request) => set({ confirmation: request }),
+
+  resolveConfirmation: (confirmed) => {
+    const pending = useUiStore.getState().confirmation;
+    set({ confirmation: null });
+    if (confirmed) pending?.onConfirm();
+  },
 }));

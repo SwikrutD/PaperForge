@@ -1,0 +1,9 @@
+/* Positioned at the pointer by the component; MenuBar.module.css supplies the
+   surface, item and separator styles so both menus look identical. */
+.menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: var(--pf-layer-dialog);
+  min-width: 200px;
+}

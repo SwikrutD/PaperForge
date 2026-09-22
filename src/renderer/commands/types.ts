@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import type { AppInfo } from '@shared/schemas/appInfo';
+import type { DocumentSession } from '@shared/schemas/document';
 import type { RecentFileEntry } from '@shared/schemas/recentFiles';
 import type {
   LeftPanelId,
@@ -19,14 +20,21 @@ export interface CommandContext {
   readonly theme: ThemeState | null;
   readonly appInfo: AppInfo | null;
   readonly recentFiles: readonly RecentFileEntry[];
-  /** False for the whole of this build; document sessions arrive in Segment 2. */
-  readonly documentOpen: boolean;
+  /** The document the workspace is showing, if any. */
+  readonly activeDocument: DocumentSession | null;
+  readonly openDocumentCount: number;
   readonly fullScreen: boolean;
   readonly actions: CommandActions;
 }
 
 /** The side effects commands are allowed to cause. */
 export interface CommandActions {
+  openDocuments(): Promise<void>;
+  openInNewWindow(): void;
+  closeActiveDocument(): Promise<void>;
+  closeAllDocuments(): Promise<void>;
+  revealActiveDocument(): Promise<void>;
+  closeWindow(): Promise<void>;
   setThemePreference(preference: ThemePreference): Promise<void>;
   patchSettings(patch: SettingsPatch): Promise<void>;
   setLeftPanel(panel: LeftPanelId): Promise<void>;
