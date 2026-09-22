@@ -42,6 +42,7 @@ export function seedStores(options: SeedOptions = {}): void {
     dialog: null,
     commandPaletteOpen: false,
     progressCenterOpen: false,
+    readingMode: false,
     toasts: [],
   });
   useJobStore.setState({ jobs: [], cancelHandlers: {} });

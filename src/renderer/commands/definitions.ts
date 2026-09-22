@@ -1,6 +1,7 @@
 import {
   Activity,
   AppWindow,
+  BookOpen,
   ChevronDown,
   ChevronUp,
   ChevronsDown,
@@ -373,6 +374,19 @@ export function buildCommands(): CommandDefinition[] {
       keywords: ['reading mode', 'presentation'],
       isChecked: (context) => context.fullScreen,
       run: (context) => context.actions.toggleFullScreen(),
+    },
+    {
+      id: 'view.readingMode',
+      title: 'Reading Mode',
+      description: 'Show only the document: no bars, rail or panels. Esc leaves it.',
+      category: 'view',
+      group: 'display',
+      icon: BookOpen,
+      shortcut: 'Ctrl+Shift+R',
+      keywords: ['distraction', 'focus', 'presentation', 'clean'],
+      isChecked: (context) => context.readingMode,
+      isAvailable: documentRequired,
+      run: (context) => context.actions.toggleReadingMode(),
     },
     {
       id: 'view.cycleRegions',

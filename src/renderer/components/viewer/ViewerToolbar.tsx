@@ -13,12 +13,18 @@ import {
 import { useDocumentStore, type DocumentTab } from '../../stores/documentStore';
 import { cx } from '../../utils/classNames';
 import { IconButton } from '../controls/IconButton';
+import { resolvePageEntry } from './pageEntry';
 import { nextZoomStep, type ZoomMode } from './viewerLayout';
 import styles from './ViewerToolbar.module.css';
 
 interface ViewerToolbarProps {
   tab: DocumentTab;
   pageCount: number;
+  /**
+   * The label each page carries, when the document numbers its pages its own
+   * way — roman numerals for a preface, say. Null where a page has none.
+   */
+  pageLabels: readonly (string | null)[];
   /** The scale actually in use, which a fit mode computes. */
   scale: number;
   disabled: boolean;
@@ -34,6 +40,7 @@ const ZOOM_MODES: Array<{ mode: ZoomMode; label: string; icon: typeof Scan }> = 
 export function ViewerToolbar({
   tab,
   pageCount,
+  pageLabels,
   scale,
   disabled,
   onGoToPage,
@@ -43,7 +50,8 @@ export function ViewerToolbar({
   // While the field is being edited it shows the draft; otherwise it follows
   // the scroll position.
   const [draft, setDraft] = useState<string | null>(null);
-  const pageInput = draft ?? String(view.pageNumber);
+  const currentLabel = pageLabels[view.pageNumber - 1] ?? null;
+  const pageInput = draft ?? currentLabel ?? String(view.pageNumber);
 
   const setZoom = (mode: ZoomMode, nextScale?: number): void => {
     updateView(tab.session.id, {
@@ -58,10 +66,9 @@ export function ViewerToolbar({
   };
 
   const commitPage = (): void => {
-    const parsed = Number.parseInt(pageInput, 10);
+    const pageNumber = resolvePageEntry(pageInput, pageLabels, pageCount);
     setDraft(null);
-    if (Number.isNaN(parsed)) return;
-    onGoToPage(parsed);
+    if (pageNumber !== null) onGoToPage(pageNumber);
   };
 
   return (
@@ -83,8 +90,9 @@ export function ViewerToolbar({
           <input
             className={styles.pageInput}
             type="text"
-            inputMode="numeric"
-            aria-label="Page number"
+            inputMode={currentLabel === null ? 'numeric' : 'text'}
+            aria-label={currentLabel === null ? 'Page number' : 'Page number or label'}
+            title={currentLabel === null ? undefined : `Page ${view.pageNumber} of ${pageCount}`}
             value={pageInput}
             disabled={disabled}
             onChange={(event) => setDraft(event.target.value)}
@@ -96,7 +104,11 @@ export function ViewerToolbar({
               }
             }}
           />
-          <span className={styles.pageCount}>{`of ${pageCount || 1}`}</span>
+          <span className={styles.pageCount}>
+            {currentLabel === null
+              ? `of ${pageCount || 1}`
+              : `(${view.pageNumber} of ${pageCount || 1})`}
+          </span>
         </span>
       </div>
 

@@ -24,6 +24,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
   const windowState = useAppStore((state) => state.windowState);
   const tabs = useDocumentStore((state) => state.tabs);
   const activeTabId = useDocumentStore((state) => state.activeId);
+  const readingMode = useUiStore((state) => state.readingMode);
   const findOpen = useSearchStore((state) => state.open);
   const matchCount = useSearchStore((state) => state.results.hits.length);
 
@@ -94,6 +95,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
       setRightPanel: (panel: RightPanelId) =>
         app().patchSettings({ layout: { activeRightPanel: panel, rightPanel: { visible: true } } }),
       toggleFullScreen: () => app().toggleFullScreen(),
+      toggleReadingMode: () => ui().setReadingMode(!ui().readingMode),
       clearRecentFiles: () => app().clearRecentFiles(),
       openDialog: (dialog) => ui().openDialog(dialog),
       closeDialog: () => ui().closeDialog(),
@@ -121,6 +123,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
       activeView: tabs.find((tab) => tab.session.id === activeTabId)?.view ?? null,
       openDocumentCount: tabs.length,
       fullScreen: windowState?.fullScreen ?? false,
+      readingMode,
       findOpen,
       matchCount,
       actions,
@@ -133,6 +136,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     windowState,
     tabs,
     activeTabId,
+    readingMode,
     findOpen,
     matchCount,
     actions,

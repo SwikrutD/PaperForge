@@ -9,6 +9,11 @@ export interface UiStore {
   dialog: DialogId | null;
   commandPaletteOpen: boolean;
   progressCenterOpen: boolean;
+  /**
+   * True while the window shows only the document: no bars, rail or panels.
+   * Deliberately not persisted — it is a way to read, not a preference.
+   */
+  readingMode: boolean;
   toasts: Toast[];
   /** Pending confirmation, shown over everything else. */
   confirmation: ConfirmationRequest | null;
@@ -16,6 +21,7 @@ export interface UiStore {
   closeDialog: () => void;
   setCommandPaletteOpen: (open: boolean) => void;
   setProgressCenterOpen: (open: boolean) => void;
+  setReadingMode: (readingMode: boolean) => void;
   showToast: (toast: ToastInput) => string;
   dismissToast: (id: string) => void;
   requestConfirmation: (request: ConfirmationRequest) => void;
@@ -26,6 +32,7 @@ export const useUiStore = create<UiStore>((set) => ({
   dialog: null,
   commandPaletteOpen: false,
   progressCenterOpen: false,
+  readingMode: false,
   toasts: [],
   confirmation: null,
 
@@ -33,6 +40,7 @@ export const useUiStore = create<UiStore>((set) => ({
   closeDialog: () => set({ dialog: null }),
   setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
   setProgressCenterOpen: (open) => set({ progressCenterOpen: open }),
+  setReadingMode: (readingMode) => set({ readingMode }),
 
   showToast: (input) => {
     const intent = input.intent ?? 'info';

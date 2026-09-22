@@ -1,7 +1,8 @@
-import { useState, type ReactElement, type ReactNode } from 'react';
+import { useEffect, useState, type ReactElement, type ReactNode } from 'react';
 import type { Settings } from '@shared/schemas/settings';
 import type { AppStatus } from '../../stores/appStore';
 import { useAppStore } from '../../stores/appStore';
+import { useUiStore } from '../../stores/uiStore';
 import { LeftPanel } from '../panels/LeftPanel';
 import { RightPanel } from '../panels/RightPanel';
 import { CommandBar } from './CommandBar';
@@ -44,7 +45,22 @@ export function AppShell({
   overlays,
 }: AppShellProps): ReactElement {
   const patchSettings = useAppStore((state) => state.patchSettings);
+  const readingMode = useUiStore((state) => state.readingMode);
+  const setReadingMode = useUiStore((state) => state.setReadingMode);
   const { layout } = settings;
+
+  // Escape is the way out of reading mode, since the bars that would offer one
+  // are exactly what it hides.
+  useEffect(() => {
+    if (!readingMode) return;
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      event.preventDefault();
+      setReadingMode(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [readingMode, setReadingMode]);
 
   // While a divider is being dragged the width comes from the gesture; the rest
   // of the time settings are the single source of truth.
@@ -64,12 +80,12 @@ export function AppShell({
   return (
     <FileDropZone>
       <TitleBar version={version} />
-      {layout.commandBarVisible && <CommandBar />}
+      {layout.commandBarVisible && !readingMode && <CommandBar />}
 
       <div className={styles.body}>
-        <LeftRail />
+        {!readingMode && <LeftRail />}
 
-        {layout.leftPanel.visible && (
+        {layout.leftPanel.visible && !readingMode && (
           <>
             <div className={styles.leftPanel} style={{ width: `${leftWidth}px` }}>
               <LeftPanel panel={layout.activeLeftPanel} />
@@ -88,7 +104,7 @@ export function AppShell({
           {children}
         </main>
 
-        {layout.rightPanel.visible && (
+        {layout.rightPanel.visible && !readingMode && (
           <>
             <PanelResizer
               side="right"
@@ -104,13 +120,15 @@ export function AppShell({
         )}
       </div>
 
-      <StatusBar
-        status={status}
-        statusText={statusText}
-        documentText={documentText}
-        viewText={viewText}
-        themeText={themeText}
-      />
+      {!readingMode && (
+        <StatusBar
+          status={status}
+          statusText={statusText}
+          documentText={documentText}
+          viewText={viewText}
+          themeText={themeText}
+        />
+      )}
       {overlays}
     </FileDropZone>
   );

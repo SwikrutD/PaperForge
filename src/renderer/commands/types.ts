@@ -27,6 +27,8 @@ export interface CommandContext {
   readonly activeView: DocumentViewState | null;
   readonly openDocumentCount: number;
   readonly fullScreen: boolean;
+  /** True while the window shows only the document. */
+  readonly readingMode: boolean;
   /** True while the find bar is on screen. */
   readonly findOpen: boolean;
   /** How many matches the current search found. */
@@ -56,6 +58,7 @@ export interface CommandActions {
   setLeftPanel(panel: LeftPanelId): Promise<void>;
   setRightPanel(panel: RightPanelId): Promise<void>;
   toggleFullScreen(): Promise<void>;
+  toggleReadingMode(): void;
   clearRecentFiles(): Promise<void>;
   openDialog(dialog: DialogId): void;
   closeDialog(): void;

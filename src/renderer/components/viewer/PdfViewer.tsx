@@ -85,6 +85,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
     view.scale,
   ]);
 
+  const pageLabels = useMemo(() => pages.map((page) => page.label), [pages]);
   const layout = useMemo(
     () => layoutPages(pages, scale, view.rotation),
     [pages, scale, view.rotation],
@@ -243,6 +244,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
       <ViewerToolbar
         tab={tab}
         pageCount={pages.length}
+        pageLabels={pageLabels}
         scale={scale}
         disabled={state.status !== 'ready'}
         onGoToPage={goToPage}

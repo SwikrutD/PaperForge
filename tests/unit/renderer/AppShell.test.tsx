@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { screen, within } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS, type Settings } from '../../../src/shared/schemas/settings';
 import { AppShell } from '../../../src/renderer/components/shell/AppShell';
 import { FOCUS_REGIONS } from '../../../src/renderer/types/ui';
+import { useUiStore } from '../../../src/renderer/stores/uiStore';
 import { installBridgeStub, renderWithCommands } from './testUtils';
 
 function settingsWith(layout: Partial<Settings['layout']>): Settings {
@@ -65,6 +66,26 @@ describe('AppShell layout', () => {
     expect(
       within(panel).getByText('Open a PDF to see its pages, bookmarks, attachments and layers.'),
     ).toBeVisible();
+  });
+
+  it('reading mode leaves only the document and the title bar', async () => {
+    renderShell();
+    act(() => {
+      useUiStore.getState().setReadingMode(true);
+    });
+
+    expect(screen.queryByRole('menubar', { name: 'Main menu' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Page Thumbnails' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Properties and tools' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.getByRole('main')).toBeInTheDocument();
+
+    // Escape is the way back, since reading mode hides every control.
+    await act(async () => {
+      await userEvent.keyboard('{Escape}');
+    });
+    expect(useUiStore.getState().readingMode).toBe(false);
+    expect(screen.getByRole('menubar', { name: 'Main menu' })).toBeInTheDocument();
   });
 
   it('can hide the command bar', () => {
