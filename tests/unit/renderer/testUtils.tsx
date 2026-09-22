@@ -8,6 +8,7 @@ import { CommandProvider } from '../../../src/renderer/commands/CommandProvider'
 import { useAppStore } from '../../../src/renderer/stores/appStore';
 import { useUiStore } from '../../../src/renderer/stores/uiStore';
 import { useJobStore } from '../../../src/renderer/stores/jobStore';
+import { EMPTY_RESULTS, useSearchStore } from '../../../src/renderer/stores/searchStore';
 
 export const TEST_APP_INFO: AppInfo = {
   name: 'PaperForge',
@@ -44,6 +45,18 @@ export function seedStores(options: SeedOptions = {}): void {
     toasts: [],
   });
   useJobStore.setState({ jobs: [], cancelHandlers: {} });
+  useSearchStore.setState({
+    open: false,
+    focusRequest: 0,
+    query: '',
+    options: { caseSensitive: false, wholeWord: false },
+    highlightAll: true,
+    scope: 'document',
+    pageRangeText: '',
+    optionsExpanded: false,
+    resultsExpanded: false,
+    results: EMPTY_RESULTS,
+  });
 }
 
 /** Renders inside the command provider, the way the real app does. */

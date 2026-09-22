@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppError, type SerializedAppError } from '@shared/errors/appError';
 import { documentUrlForSession } from '@shared/constants/app';
-import { PdfjsRenderEngine } from '@pdf/render/pdfjsEngine';
 import type { LoadedPdfDocument } from '@pdf/render/types';
+import { renderEngine } from './renderEngine';
 
 export type PdfLoadStatus = 'loading' | 'password' | 'ready' | 'error';
 
@@ -19,8 +19,6 @@ export interface PdfDocumentState extends LoadState {
   cancelPassword: () => void;
   reload: () => void;
 }
-
-const engine = new PdfjsRenderEngine();
 
 const INITIAL: LoadState = {
   status: 'loading',
@@ -71,7 +69,7 @@ export function usePdfDocument(sessionId: string | null): PdfDocumentState {
     let loaded: LoadedPdfDocument | null = null;
     let disposed = false;
 
-    void engine
+    void renderEngine
       .load({
         url: documentUrlForSession(sessionId),
         signal: controller.signal,

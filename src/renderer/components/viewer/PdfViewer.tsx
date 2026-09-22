@@ -2,10 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } 
 import { Loader2 } from 'lucide-react';
 import type { PdfLink } from '@pdf/render/types';
 import { useDocumentStore, type DocumentTab } from '../../stores/documentStore';
+import { currentMatch, useSearchStore } from '../../stores/searchStore';
 import { useUiStore } from '../../stores/uiStore';
 import { invoke } from '../../services/ipcClient';
 import { ErrorMessageBar } from '../surfaces/MessageBar';
 import { Button } from '../controls/Button';
+import { FindBar } from '../search/FindBar';
+import { highlightsByPage } from '../search/searchNavigation';
+import { pdfRectToCss } from './pageGeometry';
 import { usePdfDocumentContext } from './pdfDocumentContextValue';
 import { PasswordPrompt } from './PasswordPrompt';
 import { PdfPageView } from './PdfPageView';
@@ -31,12 +35,17 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const sessionId = tab.session.id;
   const state = usePdfDocumentContext();
   const updateView = useDocumentStore((store) => store.updateView);
+  const findOpen = useSearchStore((store) => store.open);
+  const highlightAll = useSearchStore((store) => store.highlightAll);
+  const results = useSearchStore((store) => store.results);
   const showToast = useUiStore((store) => store.showToast);
   const requestConfirmation = useUiStore((store) => store.requestConfirmation);
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
   const restoredFor = useRef<string | null>(null);
+  /** The match already brought into view, so zooming does not re-scroll. */
+  const shownHit = useRef<string | null>(null);
 
   const { view } = tab;
   const pages = useMemo(() => state.document?.pages ?? [], [state.document]);
@@ -132,6 +141,44 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
     updateView(sessionId, { pendingPage: null });
   }, [view.pendingPage, state.status, goToPage, sessionId, updateView]);
 
+  const highlights = useMemo(
+    () => highlightsByPage(results.hits, sessionId, results.currentIndex, highlightAll),
+    [results.hits, sessionId, results.currentIndex, highlightAll],
+  );
+
+  // Bring the match the reader is on into view, if it is not already.
+  const currentHit = currentMatch(results);
+  const hitForThisTab =
+    currentHit !== null && currentHit.sessionId === sessionId ? currentHit : null;
+  useEffect(() => {
+    const element = scrollerRef.current;
+    if (hitForThisTab === null || state.status !== 'ready' || element === null) return;
+    if (shownHit.current === hitForThisTab.id) return;
+    shownHit.current = hitForThisTab.id;
+
+    const box = layout.boxes[hitForThisTab.pageNumber - 1];
+    const geometry = pages[hitForThisTab.pageNumber - 1];
+    if (box === undefined) return;
+
+    const rect = hitForThisTab.rects[0];
+    const onPage =
+      rect === undefined || geometry === undefined
+        ? null
+        : pdfRectToCss(rect, geometry, scale, view.rotation);
+    const top = box.top + (onPage?.top ?? 0);
+    const bottom = top + (onPage?.height ?? box.height);
+
+    const visibleFrom = element.scrollTop;
+    const visibleTo = visibleFrom + element.clientHeight;
+    if (top >= visibleFrom && bottom <= visibleTo) return;
+
+    // A third of the way down reads better than flush against the top edge.
+    element.scrollTo({
+      top: Math.max(0, top - element.clientHeight / 3),
+      behavior: 'smooth',
+    });
+  }, [hitForThisTab, state.status, layout, pages, scale, view.rotation]);
+
   // Ctrl+wheel zooms, like every Windows document viewer.
   useEffect(() => {
     const element = scrollerRef.current;
@@ -201,6 +248,8 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
         onGoToPage={goToPage}
       />
 
+      {findOpen && <FindBar />}
+
       <div className={styles.scroller} ref={scrollerRef} onScroll={onScroll} tabIndex={0}>
         {state.status === 'ready' && state.document !== null ? (
           <div
@@ -219,6 +268,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                   rotation={view.rotation}
                   label={pages[pageNumber - 1]?.label ?? null}
                   layersVersion={state.layersVersion}
+                  highlights={highlights.get(pageNumber)}
                   onFollowLink={followLink}
                 />
               );

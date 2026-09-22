@@ -27,6 +27,10 @@ export interface CommandContext {
   readonly activeView: DocumentViewState | null;
   readonly openDocumentCount: number;
   readonly fullScreen: boolean;
+  /** True while the find bar is on screen. */
+  readonly findOpen: boolean;
+  /** How many matches the current search found. */
+  readonly matchCount: number;
   readonly actions: CommandActions;
 }
 
@@ -41,6 +45,10 @@ export interface CommandActions {
   zoomBy(direction: 1 | -1): void;
   rotateView(direction: 1 | -1): void;
   goToPage(pageNumber: number): void;
+  openFind(options?: { expandOptions?: boolean }): void;
+  closeFind(): void;
+  findNext(): void;
+  findPrevious(): void;
   goToRelativePage(offset: number): void;
   closeWindow(): Promise<void>;
   setThemePreference(preference: ThemePreference): Promise<void>;

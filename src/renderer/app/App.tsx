@@ -14,6 +14,7 @@ import { ToastHost } from '../components/overlays/ToastHost';
 import { ProgressCenter } from '../components/progress/ProgressCenter';
 import { HomeScreen } from '../components/home/HomeScreen';
 import { AppShell } from '../components/shell/AppShell';
+import { SearchRunner } from '../components/search/SearchRunner';
 import { PdfDocumentProvider } from '../components/viewer/PdfDocumentContext';
 import { PdfViewer } from '../components/viewer/PdfViewer';
 import { ErrorMessageBar } from '../components/surfaces/MessageBar';
@@ -107,6 +108,7 @@ export function App(): ReactElement {
 
   return (
     <PdfDocumentProvider tab={activeTab}>
+      <SearchRunner />
       <AppShell
         settings={effectiveSettings}
         version={appInfo?.version ?? null}

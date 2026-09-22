@@ -87,9 +87,12 @@ describe('shortcut dispatch', () => {
     expect(findShortcutCommand(keyEvent({ key: 'q' }), table)).toBeUndefined();
   });
 
-  it('lets modifier chords through while typing but not bare keys', () => {
+  it('lets modifier chords and function keys through while typing', () => {
     const input = document.createElement('input');
-    expect(findShortcutCommand(keyEvent({ key: 'F4', target: input }), table)).toBeUndefined();
+    // A function key types nothing, so it still reaches the application.
+    expect(findShortcutCommand(keyEvent({ key: 'F4', target: input }), table)).toBe(
+      'view.toggleRightPanel',
+    );
     expect(findShortcutCommand(keyEvent({ key: 'k', ctrlKey: true, target: input }), table)).toBe(
       'app.commandPalette',
     );

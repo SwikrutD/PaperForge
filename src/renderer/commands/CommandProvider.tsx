@@ -7,6 +7,7 @@ import { focusNextRegion } from '../keyboard/focusRegions';
 import { buildShortcutTable, findShortcutCommand } from '../keyboard/shortcuts';
 import { useAppStore } from '../stores/appStore';
 import { useDocumentStore } from '../stores/documentStore';
+import { useSearchStore } from '../stores/searchStore';
 import { useUiStore } from '../stores/uiStore';
 import { buildDiagnosticsText } from '../utils/diagnostics';
 import { CommandApiContext, type CommandApi } from './commandApiContext';
@@ -23,6 +24,8 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
   const windowState = useAppStore((state) => state.windowState);
   const tabs = useDocumentStore((state) => state.tabs);
   const activeTabId = useDocumentStore((state) => state.activeId);
+  const findOpen = useSearchStore((state) => state.open);
+  const matchCount = useSearchStore((state) => state.results.hits.length);
 
   const showToast = useUiStore((state) => state.showToast);
 
@@ -30,6 +33,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     const app = useAppStore.getState;
     const ui = useUiStore.getState;
     const documents = useDocumentStore.getState;
+    const search = useSearchStore.getState;
 
     const activeSessionId = (): string | null => documents().activeId;
 
@@ -79,6 +83,10 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         if (id === null || current === undefined) return;
         documents().updateView(id, { pendingPage: current.view.pageNumber + offset });
       },
+      openFind: (options) => search().openFind(options),
+      closeFind: () => search().closeFind(),
+      findNext: () => search().nextMatch(),
+      findPrevious: () => search().previousMatch(),
       setThemePreference: (preference) => app().setThemePreference(preference),
       patchSettings: (patch) => app().patchSettings(patch),
       setLeftPanel: (panel: LeftPanelId) =>
@@ -113,9 +121,22 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
       activeView: tabs.find((tab) => tab.session.id === activeTabId)?.view ?? null,
       openDocumentCount: tabs.length,
       fullScreen: windowState?.fullScreen ?? false,
+      findOpen,
+      matchCount,
       actions,
     };
-  }, [settings, theme, appInfo, recentFiles, windowState, tabs, activeTabId, actions]);
+  }, [
+    settings,
+    theme,
+    appInfo,
+    recentFiles,
+    windowState,
+    tabs,
+    activeTabId,
+    findOpen,
+    matchCount,
+    actions,
+  ]);
 
   const execute = useCallback(
     (id: string) => {

@@ -14,6 +14,8 @@ function makeContext(overrides: Partial<CommandContext> = {}): CommandContext {
     activeView: null,
     openDocumentCount: 0,
     fullScreen: false,
+    findOpen: false,
+    matchCount: 0,
     actions: {} as CommandContext['actions'],
     ...overrides,
   };

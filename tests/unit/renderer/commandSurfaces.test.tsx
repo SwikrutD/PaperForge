@@ -21,7 +21,8 @@ describe('command bar', () => {
       .getAllByRole('menuitem', { expanded: false })
       .map((item) => item.textContent);
 
-    expect(menuNames).toEqual(['File', 'View', 'Tools', 'Help']);
+    // Window has no commands of its own yet, so it is not shown.
+    expect(menuNames).toEqual(['File', 'Edit', 'View', 'Tools', 'Help']);
   });
 
   it('opens a menu and marks the active theme', async () => {

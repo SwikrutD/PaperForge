@@ -165,6 +165,11 @@ export function buildShortcutTable(
   return entries;
 }
 
+/** A function key never types anything, so it belongs to the application. */
+function isFunctionKey(key: string): boolean {
+  return /^F\d{1,2}$/.test(key);
+}
+
 /** Finds the command a key press should run, if any. */
 export function findShortcutCommand(
   event: KeyboardEvent,
@@ -174,8 +179,14 @@ export function findShortcutCommand(
   const typing = isTypingTarget(event.target);
   for (const entry of entries) {
     if (!bindingsMatch(entry.binding, pressed)) continue;
-    // While typing, only modifier chords are treated as application shortcuts.
-    if (typing && !entry.binding.ctrl && !entry.binding.alt && !entry.binding.meta) continue;
+    // While typing, only modifier chords and function keys are treated as
+    // application shortcuts — F3 has to keep working inside the find field.
+    const application =
+      entry.binding.ctrl ||
+      entry.binding.alt ||
+      entry.binding.meta ||
+      isFunctionKey(entry.binding.key);
+    if (typing && !application) continue;
     return entry.commandId;
   }
   return undefined;
