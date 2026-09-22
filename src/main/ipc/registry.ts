@@ -14,6 +14,12 @@ export type InvokeHandler<C extends InvokeChannel> = (
   event: IpcMainInvokeEvent,
 ) => Promise<InvokeResponse<C>> | InvokeResponse<C>;
 
+/** The narrow registration function handler modules receive. */
+export type RegisterInvoke = <C extends InvokeChannel>(
+  channel: C,
+  handler: InvokeHandler<C>,
+) => void;
+
 export interface IpcRegistrarOptions {
   /** Origins allowed to talk to the main process. */
   trustedOrigins: readonly string[];
@@ -37,7 +43,10 @@ export function isTrustedSender(
  * surfaces as a typed error instead of corrupt renderer state. Handlers never
  * throw across the boundary: failures arrive as an IpcResult envelope.
  */
-export function createIpcRegistrar({ trustedOrigins, logger }: IpcRegistrarOptions) {
+export function createIpcRegistrar({
+  trustedOrigins,
+  logger,
+}: IpcRegistrarOptions): RegisterInvoke {
   return function registerInvoke<C extends InvokeChannel>(
     channel: C,
     handler: InvokeHandler<C>,

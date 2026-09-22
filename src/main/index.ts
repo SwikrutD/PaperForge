@@ -1,7 +1,7 @@
 import { app, BrowserWindow, session } from 'electron';
 import path from 'node:path';
 import { APP_NAME, RENDERER_ORIGIN } from '@shared/constants/app';
-import { registerIpcHandlers } from './ipc/registerHandlers';
+import { createEventBroadcaster, registerIpcHandlers } from './ipc/registerHandlers';
 import { buildContentSecurityPolicy } from './security/csp';
 import {
   applyDevSecurityHeaders,
@@ -9,8 +9,10 @@ import {
   hardenWebContents,
   rejectInsecureCertificates,
 } from './security/hardening';
+import { DocumentService } from './services/documents/documentService';
 import { createLogger, parseLogLevel, type Logger } from './services/logging/logger';
 import { RecentFilesStore } from './services/recentFiles/recentFilesStore';
+import { SessionWorkspaces } from './services/recovery/recoveryJournal';
 import { SettingsStore } from './services/settings/settingsStore';
 import { ThemeController } from './theme/themeController';
 import { createMainWindow } from './windows/mainWindow';
@@ -54,6 +56,22 @@ async function bootstrap(): Promise<void> {
   const recentFiles = new RecentFilesStore(app.getPath('userData'), logger);
   await recentFiles.load();
 
+  const getWindows = (): BrowserWindow[] => BrowserWindow.getAllWindows();
+  const broadcast = createEventBroadcaster({ getWindows, logger });
+
+  const workspaces = new SessionWorkspaces(path.join(app.getPath('temp'), APP_NAME), logger);
+  const documents = new DocumentService({
+    workspaces,
+    recentFiles,
+    logger,
+    onFileChange: (event) => broadcast('files:changed', event),
+    onOpenPathsChanged: (paths) => {
+      void settings
+        .patch({ session: { openDocuments: paths } })
+        .catch((error: unknown) => logger.warn('Could not persist the open documents.', error));
+    },
+  });
+
   const contentSecurityPolicy = buildContentSecurityPolicy(devServerUrl ?? undefined);
   const trustedOrigins =
     devServerUrl === null ? [RENDERER_ORIGIN] : [RENDERER_ORIGIN, devServerUrl];
@@ -70,21 +88,47 @@ async function bootstrap(): Promise<void> {
     applyDevSecurityHeaders(session.defaultSession, contentSecurityPolicy, devServerUrl);
   }
 
+  const openWindow = (): BrowserWindow =>
+    createMainWindow({ settings, theme, logger, preloadPath, devServerUrl });
+
   registerIpcHandlers({
     settings,
     recentFiles,
+    documents,
+    workspaces,
     theme,
     logger,
     trustedOrigins,
-    getWindows: () => BrowserWindow.getAllWindows(),
+    getWindows,
+    openNewWindow: () => {
+      openWindow();
+    },
   });
 
-  createMainWindow({ settings, theme, logger, preloadPath, devServerUrl });
+  installShutdownHandler(documents, logger);
+  openWindow();
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createMainWindow({ settings, theme, logger, preloadPath, devServerUrl });
-    }
+    if (BrowserWindow.getAllWindows().length === 0) openWindow();
+  });
+}
+
+/**
+ * Session directories are how a crash is detected, so a normal exit must clear
+ * them. Quitting is deferred once while that happens.
+ */
+function installShutdownHandler(documents: DocumentService, logger: Logger): void {
+  let cleanedUp = false;
+  app.on('before-quit', (event) => {
+    if (cleanedUp) return;
+    event.preventDefault();
+    void documents
+      .closeAll()
+      .catch((error: unknown) => logger.warn('Could not clean up document sessions.', error))
+      .finally(() => {
+        cleanedUp = true;
+        app.quit();
+      });
   });
 }
 

@@ -3,20 +3,27 @@ import { AppError } from '@shared/errors/appError';
 import type { WindowRuntimeState } from '@shared/schemas/windowState';
 import { eventContracts, type EventChannel, type EventPayload } from '@shared/ipc/contracts';
 import { buildAppInfo } from '../services/appInfo';
+import type { DocumentService } from '../services/documents/documentService';
 import type { RecentFilesStore } from '../services/recentFiles/recentFilesStore';
+import type { SessionWorkspaces } from '../services/recovery/recoveryJournal';
 import type { SettingsStore } from '../services/settings/settingsStore';
 import type { Logger } from '../services/logging/logger';
 import type { ThemeController } from '../theme/themeController';
+import { registerFileHandlers } from './handlers/fileHandlers';
 import { createIpcRegistrar } from './registry';
 
 export interface IpcDependencies {
   settings: SettingsStore;
   recentFiles: RecentFilesStore;
+  documents: DocumentService;
+  workspaces: SessionWorkspaces;
   theme: ThemeController;
   logger: Logger;
   trustedOrigins: readonly string[];
   /** Windows that should receive pushed events. */
   getWindows: () => BrowserWindow[];
+  /** Opens an additional main window. */
+  openNewWindow: () => void;
 }
 
 /** Sends a contract-validated event to every live renderer. */
@@ -50,14 +57,26 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
     return next;
   });
   registerInvoke('theme:getState', () => deps.theme.getState());
-  registerInvoke('recentFiles:list', () => deps.recentFiles.list());
-  registerInvoke('recentFiles:clear', () => deps.recentFiles.clear());
 
   registerInvoke('window:getState', (_input, event) => readWindowState(senderWindow(event)));
   registerInvoke('window:toggleFullScreen', (_input, event) => {
     const window = senderWindow(event);
     window.setFullScreen(!window.isFullScreen());
     return readWindowState(window);
+  });
+  registerInvoke('window:openNew', () => {
+    deps.openNewWindow();
+  });
+  registerInvoke('window:close', (_input, event) => {
+    senderWindow(event).close();
+  });
+
+  registerFileHandlers(registerInvoke, {
+    documents: deps.documents,
+    recentFiles: deps.recentFiles,
+    settings: deps.settings,
+    workspaces: deps.workspaces,
+    senderWindow,
   });
 
   deps.theme.onChange((state) => {

@@ -1,5 +1,11 @@
 import { z } from 'zod';
 import { appInfoSchema } from '../schemas/appInfo';
+import {
+  fileChangeEventSchema,
+  documentSessionSchema,
+  openResultSchema,
+  recoveryEntrySchema,
+} from '../schemas/document';
 import { recentFilesListSchema } from '../schemas/recentFiles';
 import { settingsPatchSchema, settingsSchema } from '../schemas/settings';
 import { themeStateSchema } from '../schemas/theme';
@@ -40,6 +46,43 @@ export const invokeContracts = {
   'recentFiles:clear': { request: z.void(), response: recentFilesListSchema },
   'window:getState': { request: z.void(), response: windowRuntimeStateSchema },
   'window:toggleFullScreen': { request: z.void(), response: windowRuntimeStateSchema },
+  'window:openNew': { request: z.void(), response: z.void() },
+  'window:close': { request: z.void(), response: z.void() },
+
+  'recentFiles:setPinned': {
+    request: z.strictObject({ path: z.string().min(1), pinned: z.boolean() }),
+    response: recentFilesListSchema,
+  },
+  'recentFiles:remove': {
+    request: z.strictObject({ path: z.string().min(1) }),
+    response: recentFilesListSchema,
+  },
+
+  'files:openDialog': { request: z.void(), response: openResultSchema },
+  'files:openPaths': {
+    request: z.strictObject({ paths: z.array(z.string().min(1)).min(1).max(50) }),
+    response: openResultSchema,
+  },
+  'files:list': { request: z.void(), response: z.array(documentSessionSchema) },
+  'files:close': {
+    request: z.strictObject({ sessionId: z.string().min(1) }),
+    response: z.void(),
+  },
+  'files:restoreSession': { request: z.void(), response: openResultSchema },
+  'files:revealInExplorer': {
+    request: z.strictObject({ path: z.string().min(1) }),
+    response: z.void(),
+  },
+
+  'recovery:list': { request: z.void(), response: z.array(recoveryEntrySchema) },
+  'recovery:restore': {
+    request: z.strictObject({ sessionIds: z.array(z.string().min(1)).min(1).max(50) }),
+    response: openResultSchema,
+  },
+  'recovery:discard': {
+    request: z.strictObject({ sessionIds: z.array(z.string().min(1)).min(1).max(50) }),
+    response: z.array(recoveryEntrySchema),
+  },
 } as const satisfies Record<InvokeChannel, InvokeContract>;
 
 /** Request payload as callers pass it. */
@@ -61,6 +104,7 @@ export const eventContracts = {
   'settings:changed': settingsSchema,
   'recentFiles:changed': recentFilesListSchema,
   'window:stateChanged': windowRuntimeStateSchema,
+  'files:changed': fileChangeEventSchema,
 } as const satisfies Record<EventChannel, z.ZodType>;
 
 export type EventPayload<C extends EventChannel> = z.output<(typeof eventContracts)[C]>;

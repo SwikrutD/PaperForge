@@ -12,6 +12,19 @@ export const INVOKE_CHANNEL_NAMES = [
   'recentFiles:clear',
   'window:getState',
   'window:toggleFullScreen',
+  'window:openNew',
+  'window:close',
+  'recentFiles:setPinned',
+  'recentFiles:remove',
+  'files:openDialog',
+  'files:openPaths',
+  'files:list',
+  'files:close',
+  'files:restoreSession',
+  'files:revealInExplorer',
+  'recovery:list',
+  'recovery:restore',
+  'recovery:discard',
 ] as const;
 
 export type InvokeChannel = (typeof INVOKE_CHANNEL_NAMES)[number];
@@ -21,6 +34,7 @@ export const EVENT_CHANNEL_NAMES = [
   'settings:changed',
   'recentFiles:changed',
   'window:stateChanged',
+  'files:changed',
 ] as const;
 
 export type EventChannel = (typeof EVENT_CHANNEL_NAMES)[number];

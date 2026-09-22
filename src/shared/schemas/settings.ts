@@ -45,11 +45,20 @@ export const layoutSettingsSchema = z.object({
 });
 export type LayoutSettings = z.infer<typeof layoutSettingsSchema>;
 
+export const sessionSettingsSchema = z.object({
+  /** Reopen the documents that were open when PaperForge last closed. */
+  restoreOnStartup: z.boolean(),
+  /** Paths of the documents open right now, maintained by the main process. */
+  openDocuments: z.array(z.string().min(1)).max(50),
+});
+export type SessionSettings = z.infer<typeof sessionSettingsSchema>;
+
 export const settingsSchema = z.object({
   version: z.literal(SETTINGS_VERSION),
   appearance: appearanceSettingsSchema,
   window: windowStateSchema,
   layout: layoutSettingsSchema,
+  session: sessionSettingsSchema,
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
@@ -66,11 +75,12 @@ export const settingsPatchSchema = z.strictObject({
       commandBarVisible: z.boolean().optional(),
     })
     .optional(),
+  session: sessionSettingsSchema.partial().optional(),
 });
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
 
 /** Top-level sections, used when repairing a partially valid settings file. */
-const SETTINGS_SECTIONS = ['appearance', 'window', 'layout'] as const;
+const SETTINGS_SECTIONS = ['appearance', 'window', 'layout', 'session'] as const;
 
 export const DEFAULT_SETTINGS: Settings = {
   version: SETTINGS_VERSION,
@@ -83,6 +93,7 @@ export const DEFAULT_SETTINGS: Settings = {
     activeRightPanel: 'properties',
     commandBarVisible: true,
   },
+  session: { restoreOnStartup: true, openDocuments: [] },
 };
 
 /**
@@ -109,6 +120,7 @@ export function applySettingsPatch(current: Settings, patch: SettingsPatch): Set
       leftPanel: mergeDefined(current.layout.leftPanel, patch.layout?.leftPanel),
       rightPanel: mergeDefined(current.layout.rightPanel, patch.layout?.rightPanel),
     },
+    session: mergeDefined(current.session, patch.session),
   });
 }
 
