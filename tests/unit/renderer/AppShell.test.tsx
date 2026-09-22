@@ -95,6 +95,19 @@ describe('AppShell layout', () => {
     });
   });
 
+  it('shows an honest empty state in the tools panel while no tool is available', async () => {
+    renderShell(
+      settingsWith({
+        rightPanel: { visible: true, width: 300 },
+        activeRightPanel: 'tools',
+      }),
+    );
+
+    expect(screen.getByText('No tools available yet')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Edit PDF/ })).not.toBeInTheDocument();
+    await Promise.resolve();
+  });
+
   it('reports status and theme in the status bar', () => {
     renderShell();
     const statusBar = within(screen.getByRole('contentinfo'));

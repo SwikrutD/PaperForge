@@ -176,13 +176,12 @@ describe('command palette filtering', () => {
     id: string,
     title: string,
     extra: Partial<ResolvedCommand['definition']> = {},
-  ): ResolvedCommand =>
-    ({
-      definition: { id, title, category: 'view', run: () => undefined, ...extra },
-      enabled: true,
-      reason: undefined,
-      checked: false,
-    });
+  ): ResolvedCommand => ({
+    definition: { id, title, category: 'view', run: () => undefined, ...extra },
+    enabled: true,
+    reason: undefined,
+    checked: false,
+  });
 
   const commands = [
     entry('a', 'Left Panel'),

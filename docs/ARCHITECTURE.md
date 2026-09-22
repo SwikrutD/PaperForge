@@ -25,24 +25,35 @@ schema-validated contract between them.
 ```
 src/
   main/            Electron main process
-    windows/       window creation, app:// renderer protocol
+    windows/       window creation, app:// renderer protocol, window state events
     security/      CSP construction, web contents and session hardening
     ipc/           validated IPC registrar and handler registration
     theme/         nativeTheme ownership and broadcast
-    services/      settings, logging, filesystem helpers, app info
+    services/      settings, recent files, logging, filesystem helpers, app info
   preload/         contextBridge surface (no dependencies, no Node APIs re-exported)
   renderer/
     app/           App root and error boundaries
-    components/    brand, controls, shell, surfaces, diagnostics, workspace
+    commands/      command registry, definitions, React provider, palette filter
+    keyboard/      shortcut parsing and dispatch, F6 focus regions
+    components/
+      brand/       the PaperForge mark
+      controls/    button, icon button, menu bar, theme switcher
+      home/        home screen, tool catalogue, recent files
+      overlays/    dialog shell, settings, about, command palette, toasts
+      panels/      left panel, right panel, shared empty state
+      progress/    progress centre
+      shell/       title bar, command bar, rail, resizer, status bar, frame
+      surfaces/    card, message bar
     design-system/ tokens.css and base.css
     services/      typed IPC client
-    stores/        Zustand state
+    stores/        Zustand state (app, ui, jobs)
+    types/         UI and job models
     utils/         small renderer helpers
   shared/          used by all three contexts
     constants/     names, scheme, file names
     errors/        AppError and its serializable form
     ipc/           channel allowlist, Zod contracts, result envelope
-    schemas/       settings, app info, theme
+    schemas/       settings, app info, theme, window state, recent files
     types/         the preload bridge interface
 scripts/           build-time tooling (icon generation)
 tests/unit/        Vitest suites mirroring src/
@@ -75,6 +86,49 @@ Validation happens on both sides of every hop:
 
 Adding a channel means: add the name, add the schemas, register a handler, call it through
 `renderer/services/ipcClient.ts`. No component ever touches `ipcRenderer`.
+
+## Command system
+
+Every action a user can take is a command. `src/renderer/commands/definitions.ts` is the complete
+list; `registry.ts` holds them and answers three questions about each one: does it exist, can it run
+right now, and is it currently on.
+
+```
+CommandDefinition { id, title, category, group, icon, shortcut, keywords,
+                    isAvailable(context), isChecked(context), run(context) }
+```
+
+- The **menu bar**, **left rail**, **command palette**, **keyboard dispatcher** and shell buttons all
+  resolve through the registry, so a command has exactly one implementation and one enablement rule.
+- `CommandContext` carries the current settings, theme, environment, recent files and window state
+  plus a narrow `CommandActions` seam (patch settings, toggle full screen, open a dialog, show a
+  toast, …). Components never reach into stores to perform an action a command already owns.
+- The registry refuses duplicate ids and duplicate chords at construction, and refuses to execute an
+  unknown or disabled command — a dead control cannot be shipped by accident.
+- **Only commands that work are registered.** A capability that does not exist yet has no command,
+  so it cannot appear in a menu or the palette. The home screen's tool catalogue is the one place
+  that shows planned tools, and those cards are genuinely disabled.
+
+Shortcuts are declared on the command as a Windows-style chord and parsed once
+(`keyboard/shortcuts.ts`). One global `keydown` listener resolves a chord to a command id. Bare-key
+chords are ignored while the user is typing in a field.
+
+F6 cycles the major regions. Each region root carries `data-focus-region` and `tabIndex={-1}`;
+`keyboard/focusRegions.ts` finds the region holding focus and moves to the next one.
+
+## Shell layout
+
+`components/shell/AppShell.tsx` is the frame: title bar, optional command bar, then a row of rail,
+left panel, workspace and right panel, then the status bar. Panel visibility, widths and the active
+panel live in settings, so the layout survives a restart. While a divider is dragged the width comes
+from the gesture and is written to settings once, on release.
+
+## Background jobs
+
+`stores/jobStore.ts` implements the job model from `CLAUDE.md` section 36 (state, current item,
+counts, cancellable, result path) and the progress centre renders from it. Long operations register
+here as they are built; the heavy work itself belongs in workers, utility processes or native
+sidecars, never on the renderer's event loop.
 
 ## Error model
 

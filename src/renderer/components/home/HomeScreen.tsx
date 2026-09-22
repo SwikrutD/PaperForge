@@ -51,7 +51,7 @@ export function HomeScreen({
             Tools
           </h2>
           <p className={styles.toolsSubtitle}>
-            Disabled tools cannot be started and do nothing if clicked.
+            Greyed-out tools are not part of this build and cannot be started.
           </p>
         </div>
         <div className={styles.toolGrid}>

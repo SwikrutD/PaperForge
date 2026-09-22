@@ -1,20 +1,33 @@
 # Keyboard shortcuts
 
-PaperForge follows standard Windows accelerators. Every shortcut will be bound to a command in the
-central command registry (Segment 1), so menus, toolbars, context menus and the command palette all
-invoke the same implementation.
+PaperForge follows standard Windows accelerators. Every shortcut is bound to a command in the
+central registry (`src/renderer/commands`), so menus, the rail, the command palette and the
+keyboard all invoke the same implementation. A chord is declared once, on the command; the registry
+refuses to start if two commands claim the same one.
 
 ## Implemented
 
-Segment 0 ships the application shell only. Its interactive controls are reachable with the
-standard platform behaviour, and nothing is mouse-only:
+| Keys     | Command         | Notes                                                                        |
+| -------- | --------------- | ---------------------------------------------------------------------------- |
+| `Ctrl+K` | Command Palette | Search every command; unavailable ones show their reason                     |
+| `Ctrl+,` | Settings        | Appearance and privacy                                                       |
+| `F4`     | Tools Panel     | Show or hide the right panel                                                 |
+| `F6`     | Next Region     | Cycle command bar → rail → left panel → workspace → tools panel → status bar |
+| `F11`    | Full Screen     | Uses the real window, not HTML fullscreen                                    |
+| `Alt+F4` | Close window    | Native; window position and size are saved                                   |
 
-| Keys                | Behaviour                                                |
-| ------------------- | -------------------------------------------------------- |
-| `Tab` / `Shift+Tab` | Move between controls, with a visible focus ring         |
-| `Arrow keys`        | Move between the Appearance options (native radio group) |
-| `Space` / `Enter`   | Activate the focused control                             |
-| `Alt+F4`            | Close the window (window position and size are saved)    |
+Shell behaviour that needs no chord:
+
+| Keys                | Behaviour                                                                |
+| ------------------- | ------------------------------------------------------------------------ |
+| `Tab` / `Shift+Tab` | Move between controls, with a visible focus ring                         |
+| `Arrow keys`        | Move within a menu, the palette results, the theme options, or a divider |
+| `Home` / `End`      | On a panel divider: minimum and maximum width                            |
+| `Enter` / `Space`   | Activate the focused control                                             |
+| `Escape`            | Close the palette, a menu or a dialog                                    |
+
+Bare-key shortcuts (`F4`, `F6`, `F11`) are suppressed while the focus is in a text field; chords
+with `Ctrl` or `Alt` still work, which is what Windows applications do.
 
 ## Planned
 
@@ -38,12 +51,11 @@ Taken from `CLAUDE.md` section 7; each lands with the segment that implements th
 | `Ctrl+0`                       | Fit page                           | 3        |
 | `Ctrl+1`                       | Actual size                        | 3        |
 | `Ctrl+2`                       | Fit width                          | 3        |
-| `Ctrl+K`                       | Command palette                    | 1        |
-| `F4`                           | Toggle the tools pane              | 1        |
-| `F6`                           | Cycle major regions                | 1        |
-| `F11`                          | Full screen / reading mode         | 4        |
 | `Page Up` / `Page Down`        | Previous / next page               | 3        |
 | `Home` / `End`                 | First / last page (viewer focused) | 3        |
+
+The left panel deliberately has no chord yet: `Ctrl+B` is reserved until the text editor
+(Segment 9) decides whether it needs it for bold. The rail button and the View menu cover it.
 
 This table is the source of truth for shortcut assignment; update it in the same commit as the
 command it describes.

@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { MousePointerSquareDashed, X } from 'lucide-react';
+import { MousePointerSquareDashed, Wrench, X } from 'lucide-react';
 import type { RightPanelId } from '@shared/schemas/settings';
 import { useCommands } from '../../commands/useCommands';
 import { cx } from '../../utils/classNames';
@@ -16,11 +16,17 @@ const TABS: Array<{ id: RightPanelId; label: string }> = [
 
 /** Properties and tools for whatever is selected in the workspace. */
 export function RightPanel({ panel }: { panel: RightPanelId }): ReactElement {
-  const { execute, context } = useCommands();
+  const { execute, context, resolve } = useCommands();
 
   const select = (id: RightPanelId): void => {
     void context?.actions.setRightPanel(id);
   };
+
+  // The panel lists tools that can be used right now; the home screen shows the
+  // whole catalogue including what is not built yet.
+  const availableTools = TOOL_CATALOG.filter(
+    (tool) => tool.commandId !== undefined && resolve(tool.commandId)?.enabled === true,
+  );
 
   return (
     <section
@@ -59,9 +65,15 @@ export function RightPanel({ panel }: { panel: RightPanelId }): ReactElement {
             title="Nothing selected"
             description="Select text, an image, an annotation or a form field to see its properties."
           />
+        ) : availableTools.length === 0 ? (
+          <EmptyPanelState
+            icon={Wrench}
+            title="No tools available yet"
+            description="Tools appear here as each capability is built. The full list is on the home screen."
+          />
         ) : (
           <div className={styles.tools}>
-            {TOOL_CATALOG.map((tool) => (
+            {availableTools.map((tool) => (
               <ToolCard key={tool.id} tool={tool} compact />
             ))}
           </div>

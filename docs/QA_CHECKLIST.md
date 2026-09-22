@@ -45,3 +45,30 @@ Run in both `npm run dev` and the packaged build:
 - [ ] Windows display scaling at 125%, 150% and 200%: the layout stays legible and uncropped.
 - [ ] Shrink the window to its minimum: nothing overlaps or disappears.
 - [ ] Nothing in the app reaches the network, and the log contains no request-like activity.
+
+## Segment 1 — shell and command system
+
+Run in both light and dark themes:
+
+- [ ] Menus open by click and by keyboard (`Enter`/`Down` on a menu, arrows to move, `Escape` to
+      close, `Left`/`Right` between menus). Only View, Tools and Help appear, because only those
+      have commands.
+- [ ] `Ctrl+K` opens the command palette; typing filters; `Up`/`Down` moves; `Enter` runs;
+      `Escape` closes. Unavailable commands stay listed with the reason why.
+- [ ] Theme commands in the View menu show a tick next to the active one, and switching from the
+      menu, the palette or Settings all have the same effect.
+- [ ] `F4` toggles the tools panel, `F11` enters and leaves real full screen, `F6` walks the
+      command bar, rail, left panel, workspace, tools panel and status bar in order with a visible
+      focus ring on each.
+- [ ] Rail buttons switch the left panel; clicking the active one collapses the panel.
+- [ ] Drag each divider: the panel resizes smoothly, and the width survives a restart. With the
+      divider focused, arrows resize in steps and `Home`/`End` jump to the limits.
+- [ ] Hide the command bar from the View menu, restart, and confirm it stays hidden.
+- [ ] Settings (`Ctrl+,`) opens, traps Tab, closes on `Escape`, and returns focus to whatever
+      opened it. The same for About.
+- [ ] "Clear Recent Files" is disabled with an explanatory tooltip while the list is empty.
+- [ ] "Copy Diagnostics" copies the environment block and shows a toast; the toast dismisses itself.
+- [ ] Background tasks opens the progress centre and shows the "Nothing running" state.
+- [ ] Every tool card on the home screen is disabled, says "Not yet available", and does nothing
+      when clicked. The tools panel shows its empty state rather than a list of dead entries.
+- [ ] Narrow the window to its minimum: the shell stays usable and nothing overlaps.

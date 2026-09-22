@@ -4,9 +4,10 @@ PaperForge is an offline-first PDF workspace for Windows. It is being built to c
 work people do with a PDF tool — read, annotate, organize, edit, recognize text, convert, protect
 and redact — on a local machine, with no account, no telemetry and no cloud services.
 
-**Status: early development.** This repository currently contains Segment 0 of the build plan in
-[`CLAUDE.md`](./CLAUDE.md): the secure Electron application shell, typed IPC, validated settings
-storage, the Fluent Workspace design tokens and the build/test toolchain. Opening and viewing PDFs
+**Status: early development.** This repository currently contains Segments 0 and 1 of the build plan
+in [`CLAUDE.md`](./CLAUDE.md): the secure Electron foundation with typed IPC and validated settings,
+and the Fluent Workspace shell — menu bar, command registry, command palette, keyboard shortcuts,
+resizable panels, home screen, dialogs, toasts and the progress centre. Opening and viewing PDFs
 lands in later segments. [`PROGRESS.md`](./PROGRESS.md) is the authoritative status file.
 
 ## Principles
