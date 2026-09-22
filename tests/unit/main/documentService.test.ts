@@ -23,7 +23,7 @@ let recentFiles: RecentFilesStore;
 let changes: FileChangeEvent[] = [];
 let openPaths: string[][] = [];
 
-async function makeService(): Promise<DocumentService> {
+function makeService(): DocumentService {
   return new DocumentService({
     workspaces,
     recentFiles,
@@ -57,7 +57,7 @@ afterEach(async () => {
 
 describe('DocumentService', () => {
   it('opens a document, creates its working directory and records it as recent', async () => {
-    const service = await makeService();
+    const service = makeService();
     const filePath = await writePdf('report.pdf');
 
     const result = await service.openPaths([filePath]);
@@ -77,7 +77,7 @@ describe('DocumentService', () => {
   });
 
   it('keeps a failure per file instead of failing the batch', async () => {
-    const service = await makeService();
+    const service = makeService();
     const good = await writePdf('good.pdf');
     const bad = path.join(documentsDir, 'notes.txt');
     await fs.writeFile(bad, 'not a pdf');
@@ -93,7 +93,7 @@ describe('DocumentService', () => {
   });
 
   it('returns the existing session when the same file is opened twice', async () => {
-    const service = await makeService();
+    const service = makeService();
     const filePath = await writePdf('once.pdf');
 
     const first = await service.openPaths([filePath]);
@@ -106,7 +106,7 @@ describe('DocumentService', () => {
   });
 
   it('removes the working directory on close, which is what recovery relies on', async () => {
-    const service = await makeService();
+    const service = makeService();
     const filePath = await writePdf('report.pdf');
     const { sessions } = await service.openPaths([filePath]);
     const sessionId = sessions[0]!.id;
@@ -121,7 +121,7 @@ describe('DocumentService', () => {
   });
 
   it('records unsaved changes in the journal', async () => {
-    const service = await makeService();
+    const service = makeService();
     const filePath = await writePdf('report.pdf');
     const { sessions } = await service.openPaths([filePath]);
     const sessionId = sessions[0]!.id;
@@ -135,7 +135,7 @@ describe('DocumentService', () => {
   });
 
   it('does not touch the recent files list when restoring a session', async () => {
-    const service = await makeService();
+    const service = makeService();
     const filePath = await writePdf('restored.pdf');
 
     await service.openPaths([filePath], { recordAsRecent: false });
@@ -145,7 +145,7 @@ describe('DocumentService', () => {
   });
 
   it('reports a file that changed outside PaperForge', async () => {
-    const service = await makeService();
+    const service = makeService();
     const filePath = await writePdf('watched.pdf');
     const { sessions } = await service.openPaths([filePath]);
     const sessionId = sessions[0]!.id;
@@ -167,7 +167,7 @@ describe('DocumentService', () => {
   });
 
   it('reports a file that disappeared', async () => {
-    const service = await makeService();
+    const service = makeService();
     const filePath = await writePdf('doomed.pdf');
     const { sessions } = await service.openPaths([filePath]);
     const sessionId = sessions[0]!.id;
