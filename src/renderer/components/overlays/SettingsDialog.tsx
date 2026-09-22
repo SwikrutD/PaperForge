@@ -7,6 +7,7 @@ import { Button } from '../controls/Button';
 import { ThemeSwitcher } from '../controls/ThemeSwitcher';
 import { Toggle } from '../controls/Toggle';
 import { Dialog } from './Dialog';
+import { QpdfSetting } from './QpdfSetting';
 import styles from './SettingsDialog.module.css';
 
 interface SettingRowProps {
@@ -28,9 +29,9 @@ function SettingRow({ label, description, children }: SettingRowProps): ReactEle
 }
 
 /**
- * Settings that exist today: appearance and the privacy controls for local
- * history. Further sections (viewing, editing, OCR, conversions, advanced)
- * appear as the features they configure are built.
+ * Settings that exist today: appearance, the privacy controls for local
+ * history, and the local tools PaperForge can make use of. Further sections
+ * (viewing, editing, OCR, conversions) appear as those features are built.
  */
 export function SettingsDialog({ settings }: { settings: Settings }): ReactElement {
   const closeDialog = useUiStore((state) => state.closeDialog);
@@ -97,6 +98,15 @@ export function SettingsDialog({ settings }: { settings: Settings }): ReactEleme
         <p className={styles.note}>
           PaperForge collects no telemetry and sends nothing anywhere. Logs stay in the local log
           folder and passwords are never written to them.
+        </p>
+      </section>
+
+      <section className={styles.section} aria-label="Local tools">
+        <h3 className={styles.sectionTitle}>Local tools</h3>
+        <QpdfSetting />
+        <p className={styles.note}>
+          Optional. PaperForge reopens everything it saves to check it; with qpdf installed it is
+          inspected a second time before it replaces your file. Nothing is ever downloaded.
         </p>
       </section>
     </Dialog>

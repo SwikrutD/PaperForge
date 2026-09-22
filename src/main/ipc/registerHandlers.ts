@@ -80,6 +80,7 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
     documents: deps.documents,
     editor: deps.editor,
     qpdf: deps.qpdf,
+    settings: deps.settings,
     senderWindow,
   });
 

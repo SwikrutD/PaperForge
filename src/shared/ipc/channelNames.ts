@@ -29,6 +29,7 @@ export const INVOKE_CHANNEL_NAMES = [
   'edit:revert',
   'files:save',
   'tools:qpdfStatus',
+  'tools:locateQpdf',
   'recovery:list',
   'recovery:restore',
   'recovery:discard',

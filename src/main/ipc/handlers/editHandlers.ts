@@ -4,12 +4,14 @@ import type { SaveMode, SaveOutcome } from '@shared/schemas/edit';
 import type { DocumentEditor } from '../../services/documents/documentEditor';
 import type { DocumentService } from '../../services/documents/documentService';
 import type { QpdfService } from '../../services/qpdf/qpdfService';
+import type { SettingsStore } from '../../services/settings/settingsStore';
 import type { RegisterInvoke } from '../registry';
 
 export interface EditHandlerDeps {
   documents: DocumentService;
   editor: DocumentEditor;
   qpdf: QpdfService;
+  settings: SettingsStore;
   senderWindow: (event: Electron.IpcMainInvokeEvent) => BrowserWindow;
 }
 
@@ -47,6 +49,34 @@ export function registerEditHandlers(registerInvoke: RegisterInvoke, deps: EditH
   });
 
   registerInvoke('tools:qpdfStatus', () => deps.qpdf.status());
+
+  /**
+   * Points PaperForge at a qpdf executable, or forgets the one it was given
+   * and looks in the usual places again. The picker is native, so the renderer
+   * never handles a path.
+   */
+  registerInvoke('tools:locateQpdf', async ({ clear }, event) => {
+    if (clear === true) {
+      await deps.settings.patch({ tools: { qpdfPath: null } });
+      return deps.qpdf.status();
+    }
+
+    const result = await dialog.showOpenDialog(deps.senderWindow(event), {
+      title: 'Locate qpdf',
+      buttonLabel: 'Use this',
+      properties: ['openFile'],
+      filters:
+        process.platform === 'win32'
+          ? [{ name: 'Programs', extensions: ['exe'] }]
+          : [{ name: 'All files', extensions: ['*'] }],
+    });
+
+    const chosen = result.canceled ? undefined : result.filePaths[0];
+    if (chosen === undefined) return deps.qpdf.status();
+
+    await deps.settings.patch({ tools: { qpdfPath: chosen } });
+    return deps.qpdf.status();
+  });
 }
 
 async function askWhereToWrite(

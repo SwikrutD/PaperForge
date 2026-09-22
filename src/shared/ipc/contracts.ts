@@ -114,6 +114,11 @@ export const invokeContracts = {
     response: saveOutcomeSchema,
   },
   'tools:qpdfStatus': { request: z.void(), response: qpdfStatusSchema },
+  /** Opens a picker for the qpdf executable, or clears the configured one. */
+  'tools:locateQpdf': {
+    request: z.strictObject({ clear: z.boolean().optional() }),
+    response: qpdfStatusSchema,
+  },
 
   'recovery:list': { request: z.void(), response: z.array(recoveryEntrySchema) },
   'recovery:restore': {
