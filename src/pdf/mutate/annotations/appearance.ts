@@ -35,8 +35,8 @@ export interface AppearanceContext {
   imageName?: string | undefined;
   /** Width and height the image should be drawn at. */
   imageSize?: { width: number; height: number } | undefined;
-  /** Text a built-in stamp shows. */
-  stampLabel?: string | undefined;
+  /** A built-in stamp's label, already measured and placed. */
+  stampText?: { text: string; size: number; x: number; y: number } | undefined;
 }
 
 function number(value: number): string {
@@ -366,20 +366,24 @@ export function buildAppearance(geometry: AnnotationGeometry, context: Appearanc
     case 'stamp': {
       const rect = geometry.rect;
       const radius = Math.min(rect.height / 4, 8);
+      const label = context.stampText;
       operators.push(
         strokeColor(style.color),
         fillColor({ r: 1, g: 1, b: 1 }),
         `${number(Math.max(1.5, style.borderWidth))} w`,
         ...roundedRect(rect, radius),
         'B',
-        ...textBlock(
-          [context.stampLabel ?? ''],
-          { ...rect, y: rect.y + (rect.height - style.fontSize) / 2 - rect.height / 2 },
-          { ...style, textColor: style.color },
-          context.fontName,
-          rect.height * 0.3,
-        ),
       );
+      if (label !== undefined) {
+        operators.push(
+          'BT',
+          `/${context.fontName} ${number(label.size)} Tf`,
+          fillColor(style.color),
+          `1 0 0 1 ${number(label.x)} ${number(label.y)} Tm`,
+          `(${escapePdfText(label.text)}) Tj`,
+          'ET',
+        );
+      }
       break;
     }
 

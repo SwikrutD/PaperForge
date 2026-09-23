@@ -96,12 +96,17 @@ function appearanceStream(
       ? wrapText(input.contents, font, input.style.fontSize, input.geometry.rect.width)
       : [];
 
+  const stampText =
+    input.stampLabel === undefined || input.geometry.kind !== 'stamp'
+      ? undefined
+      : placeStampLabel(toSingleLine(input.stampLabel), input.geometry.rect, font);
+
   const operators = buildAppearance(input.geometry, {
     style: input.style,
     fontName: 'Helv',
     textLines,
     ...(image === undefined ? {} : { imageName: 'Im0' }),
-    ...(input.stampLabel === undefined ? {} : { stampLabel: toSingleLine(input.stampLabel) }),
+    ...(stampText === undefined ? {} : { stampText }),
   });
 
   const resources: PdfDictLiteral = {};
@@ -109,7 +114,7 @@ function appearanceStream(
     // Multiply keeps the words under a highlight readable.
     resources['ExtGState'] = { GSH: { Type: 'ExtGState', BM: 'Multiply' } };
   }
-  if (textLines.length > 0 || input.stampLabel !== undefined) {
+  if (textLines.length > 0 || stampText !== undefined) {
     resources['Font'] = { Helv: font.ref };
   }
   if (image !== undefined) {
@@ -253,6 +258,44 @@ export function writeAnnotation(
 
   const dict = document.context.obj(entries);
   page.node.addAnnot(document.context.register(dict));
+}
+
+/**
+ * Sizes a stamp's label to its box and centres it.
+ *
+ * A stamp is read at a glance, so the label fills the box rather than sitting
+ * at whatever size the tool happened to be set to.
+ */
+function placeStampLabel(
+  text: string,
+  rect: { x: number; y: number; width: number; height: number },
+  font: PDFFont,
+): { text: string; size: number; x: number; y: number } {
+  const usableWidth = rect.width * 0.84;
+  let size = Math.min(rect.height * 0.5, 36);
+
+  for (let attempt = 0; attempt < 12 && size > 4; attempt += 1) {
+    if (widthOfText(font, text, size) <= usableWidth) break;
+    size -= Math.max(0.5, size * 0.12);
+  }
+
+  const width = widthOfText(font, text, size);
+  return {
+    text,
+    size,
+    x: rect.x + Math.max(0, (rect.width - width) / 2),
+    // Roughly centred on the cap height, which reads better than the baseline.
+    y: rect.y + (rect.height - size * 0.72) / 2,
+  };
+}
+
+/** Font metrics, with an estimate for a character the font refuses. */
+function widthOfText(font: PDFFont, text: string, size: number): number {
+  try {
+    return font.widthOfTextAtSize(text, size);
+  } catch {
+    return text.length * size * 0.5;
+  }
 }
 
 /** A stamp's `/Name`, which readers show when they have no appearance to draw. */

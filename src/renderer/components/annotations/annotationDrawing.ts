@@ -24,8 +24,12 @@ export const DRAG_THRESHOLD = 3;
 export const DEFAULT_TEXT_BOX = { width: 200, height: 64 };
 export const DEFAULT_STAMP = { width: 150, height: 48 };
 
-/** Tools that are drawn by dragging out a shape. */
+/**
+ * Tools that use the pointer on the page: most are dragged out, and a sticky
+ * note is simply put down where it was clicked.
+ */
 export const DRAG_TOOLS: readonly AnnotationKind[] = [
+  'note',
   'square',
   'circle',
   'line',
@@ -75,6 +79,10 @@ export function geometryFromDrag(
   const moved = Math.hypot(to.x - from.x, to.y - from.y) >= DRAG_THRESHOLD;
 
   switch (kind) {
+    case 'note':
+      // A note has no size to drag out: it goes where it was put down.
+      return { kind, point: from };
+
     case 'line':
     case 'arrow':
       return moved ? { kind, from, to } : null;
@@ -199,9 +207,6 @@ function timeOf(annotation: Annotation): number {
 /** Every kind that has a tool, which is what the filter can offer. */
 export const TOOL_KINDS: readonly AnnotationKind[] = [
   ...MARKUP_TOOLS,
-  'note',
-  'freeText',
-  'callout',
-  ...DRAG_TOOLS.filter((kind) => kind !== 'freeText' && kind !== 'callout'),
+  ...DRAG_TOOLS,
   ...PATH_TOOLS,
 ];

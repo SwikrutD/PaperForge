@@ -179,3 +179,15 @@ describe('arrangeComments', () => {
     ]);
   });
 });
+
+describe('placing a sticky note', () => {
+  // A note has no size to drag out, so a click has to be enough.
+  it('puts a note where the pointer went down', () => {
+    const geometry = geometryFromDrag('note', { x: 120, y: 640 }, { x: 121, y: 641 });
+    expect(geometry).toEqual({ kind: 'note', point: { x: 120, y: 640 } });
+  });
+
+  it('counts as a tool the page listens to', () => {
+    expect(isDragTool('note')).toBe(true);
+  });
+});
