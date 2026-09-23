@@ -61,6 +61,8 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const textPages = useTextEditStore((store) => store.pages);
   const textSelected = useTextEditStore((store) => store.selected);
   const textDraft = useTextEditStore((store) => store.draft);
+  const textPlacement = useTextEditStore((store) => store.placement);
+  const textPlacing = useTextEditStore((store) => store.placing);
   const requestConfirmation = useUiStore((store) => store.requestConfirmation);
 
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -281,7 +283,12 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
       />
 
       {findOpen && <FindBar />}
-      {editing && <TextEditToolbar disabled={state.status !== 'ready'} />}
+      {editing && (
+        <TextEditToolbar
+          disabled={state.status !== 'ready'}
+          hasText={runsFor(textPages, sessionId, view.pageNumber).length > 0}
+        />
+      )}
       {!editing && (commenting || toolActive) && (
         <AnnotationToolbar disabled={state.status !== 'ready'} />
       )}
@@ -313,7 +320,16 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                         rotation={view.rotation}
                         runs={runsFor(textPages, sessionId, pageNumber)}
                         selectedId={textSelected?.page === pageNumber ? textSelected.id : null}
-                        draft={textSelected?.page === pageNumber ? textDraft : null}
+                        draft={
+                          textPlacement?.page === pageNumber || textSelected?.page === pageNumber
+                            ? textDraft
+                            : null
+                        }
+                        placement={textPlacement?.page === pageNumber ? textPlacement : null}
+                        placing={textPlacing}
+                        onPlace={(x, y) =>
+                          useTextEditStore.getState().placeText({ page: pageNumber, x, y })
+                        }
                         onSelect={(id) => useTextEditStore.getState().select(pageNumber, id)}
                         onBeginEdit={(id) => useTextEditStore.getState().beginEdit(pageNumber, id)}
                         onDraft={(text) => useTextEditStore.getState().setDraft(text)}

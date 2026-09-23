@@ -2,10 +2,10 @@
 
 ## Current status
 
-- Last completed segment: **8 — Create PDF and Combine Files**
-- Next segment: **9 — Edit PDF: content model and text editing**
+- Last completed segment: **9 — Edit PDF: content model and text editing**
+- Next segment: **10 — Edit PDF: images, links, layout content**
 - Build status: `npm run package` succeeds; packaged app launches and closes cleanly on Windows 11 x64
-- Test status: 434 unit tests (41 files) and 61 Playwright end-to-end tests passing; typecheck, lint and format clean
+- Test status: 509 unit tests (45 files) and 73 Playwright end-to-end tests passing; typecheck, lint and format clean
 
 ## Completed segments
 
@@ -18,7 +18,7 @@
 - [x] 6 Comments and annotations
 - [x] 7 Organize Pages
 - [x] 8 Create PDF and Combine Files
-- [ ] 9 Edit PDF: content model and text editing
+- [x] 9 Edit PDF: content model and text editing
 - [ ] 10 Edit PDF: images, links, layout content
 - [ ] 11 Forms and Fill & Sign
 - [ ] 12 OCR
@@ -332,6 +332,53 @@ is installed, then rename. PaperForge opens what it wrote.
 | Renderer  | `renderer/stores/createStore.ts`, `renderer/components/create/*`                                          |
 | Tests     | `tests/unit/shared/{createDocuments,combineDocuments}.test.ts`, `tests/e2e/create.e2e.ts`                 |
 
+## Segment 9 — what landed
+
+Recorded as the subsegments `CLAUDE.md` asks for; all six are done.
+
+**9A — the content model.** PaperForge reads a page's drawing itself
+(`src/pdf/content`): a parser that records where every operand begins and ends, a state machine
+that follows the transform, the text state and the fill colour, and a text model that turns each
+show operation into a run — what it says, where its baseline starts, how wide it is, which font
+drew it, and the bytes that hold its text. Fonts come from the page's own resources: encodings,
+`/Differences`, `ToUnicode` CMaps (read with the same parser, because a CMap is written the same
+way), simple and composite widths, and the metrics of the standard fourteen for fonts that state
+none. Inline image data is stepped over rather than parsed, a comment is whitespace, and a damaged
+stream yields the operations before the damage.
+
+**9B — selection.** `Ctrl+E` puts a box around every run, in the right place at the right size,
+because the boxes come from the same geometry the page was drawn with. The properties panel names
+the font, size, colour and position, and says whether the text can be rewritten.
+
+**9C — the native rewrite (Tier A).** A change replaces only that run's own operand; the bytes
+around it are copied through untouched. A `TJ` array is written back as one string. The run keeps
+its starting point whatever its new length, so what follows moves exactly as the stream's own
+positioning says it should.
+
+**9D — the replacement (Tier B).** When the font cannot write what was typed, the run is
+neutralised — `[ n ] TJ` draws nothing and advances just as far — and the text is drawn again in a
+standard font at the same transform, size, colour and spacing. The reader is asked first, with the
+character that stopped the rewrite named. Text PaperForge drew is named `PF…` in the resources, and
+the panel says so.
+
+**9E — adding text and choosing its look.** **Add text** puts new text where the page is clicked.
+The panel chooses the family, weight, size and colour PaperForge draws with — the standard fourteen
+fonts, so nothing is embedded and no font is redistributed.
+
+**9F — the regression suite.** Ten cases of content that breaks naive editors: marked content, a
+transform that moves and turns the text, spacing operators, several runs on one line, an inline
+image before the text, a page with no text at all, a run that no longer exists, and a document
+edited a dozen times over.
+
+| Area     | Key files                                                                                                     |
+| -------- | ------------------------------------------------------------------------------------------------------------- |
+| Model    | `src/pdf/content/{parser,state,textRuns,fonts,encodings,pageContent}.ts`                                      |
+| Editing  | `src/pdf/content/{editText,drawText}.ts`, `src/pdf/mutate/{text,textResources}.ts`                            |
+| Shared   | `src/shared/schemas/text.ts`, the `editText`, `replaceText` and `addText` operations                          |
+| Main     | `main/ipc/handlers/textHandlers.ts`                                                                           |
+| Renderer | `renderer/stores/textEditStore.ts`, `renderer/components/edit/*`                                              |
+| Tests    | `tests/unit/shared/{contentParser,textRuns,editText,textEditRegression}.test.ts`, `tests/e2e/editText.e2e.ts` |
+
 ## Architecture decisions
 
 1. **Channel allowlist separate from schemas**, so the preload carries no validation library and
@@ -488,6 +535,22 @@ is installed, then rename. PaperForge opens what it wrote.
 64. **Bookmarks are carried as page indices.** A destination in the source means nothing in the
     result, so the outline is read as "which page", translated to where that page landed, and
     written again.
+65. **PaperForge reads content streams itself.** PDF.js gives text for searching; editing needs to
+    know _which bytes_ hold a run, which only a parser that records offsets can say. The parser is
+    the foundation the text editor, and later the image editor, stand on.
+66. **A run is named by the operation it came from.** `op12` holds for exactly one revision, because
+    every change rewrites the page; the editor reads the page again after each change rather than
+    patching the model it had.
+67. **A text change replaces one operand, not the stream.** Everything around it is copied through
+    byte for byte, so a page that PaperForge edits is otherwise the file it was.
+68. **Replacing is offered, not imposed.** Letterforms change when a font is substituted, so the
+    reader is asked, with the character that stopped the rewrite named. A run whose font says
+    nothing about its codes is marked before they type a word.
+69. **Neutralising beats painting over.** A covered rectangle hides whatever else is underneath and
+    depends on the page's background; `[ n ] TJ` removes exactly the glyphs that were there and
+    keeps the advance, so the rest of the line does not move.
+70. **PaperForge draws with the standard fourteen fonts only.** Nothing is embedded, so no font is
+    redistributed — and text outside Latin-1 is refused rather than drawn as question marks.
 
 ## Known limitations
 
@@ -508,9 +571,21 @@ is installed, then rename. PaperForge opens what it wrote.
 - Form fields are drawn from their appearance streams but are not interactive; that is Segment 11.
 - The encryption marker shown in the properties panel is still a trailer scan. The viewer knows the
   truth once a document is open, and the two are not yet reconciled.
-- Editing is structural and comment-level: rotate, delete, move, duplicate, insert, replace, crop
-  and renumber pages, plus annotations. The content editors (text and images) build on the same
-  pipeline in Segments 9 and 10.
+- Editing is structural, comment-level and textual: rotate, delete, move, duplicate, insert,
+  replace, crop and renumber pages, annotations, and the text a page draws. Images, links, headers
+  and watermarks are Segment 10.
+- Text editing rewrites a run in its own font where that works, and otherwise replaces it with text
+  drawn in a standard font, with the reader asked first.
+- PaperForge draws text with the fourteen standard fonts, which cover Latin-1. Cyrillic, Greek and
+  CJK cannot be written yet: embedding a system font is `CLAUDE.md` section 13.4's work and is not
+  built.
+- Text inside a form XObject is not listed by the editor, which reads the page's own content
+  stream. The toolbar says when it finds nothing it can edit on a page.
+- A rewritten page's content is written as one uncompressed stream; compression belongs with the
+  optimizer in Segment 16.
+- Reflow is not attempted: a run keeps its position, and changing its length moves what follows it
+  only as far as the stream's own positioning does. Paragraph reflow needs a block model, which is
+  where multi-line text boxes will start.
 - Bookmarks are not rewritten when pages move. A destination follows its page through a reorder,
   because it points at the page object; a bookmark whose page is deleted is left pointing at
   nothing. Editing the outline is Segment 17.
@@ -549,7 +624,7 @@ is installed, then rename. PaperForge opens what it wrote.
   the honest description is "PaperForge knows a document had unsaved changes, not what they were".
 - PaperForge does not claim byte-level incremental saving: pdf-lib rewrites the file. The internal
   recovery journal is the "incremental" of `CLAUDE.md` section 9.
-- Ten of the fifteen home-screen tool cards are disabled because their capability is not built; a
+- Nine of the fifteen home-screen tool cards are disabled because their capability is not built; a
   card whose tool exists but needs a document open says that instead.
 - Tabs reorder by dragging or the context menu; there is no keyboard chord for reordering yet.
 - The encryption marker is a trailer scan, not a parse. The viewer will confirm it properly.
@@ -577,19 +652,19 @@ Nothing is downloaded at runtime, then or now.
 
 Run on Windows 11 x64, Node 24.19.0, npm 11.17.0:
 
-| Command                     | Result                                                                                                                                                                                    |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                                                                                                            |
-| `npm run typecheck`         | Pass — four projects, no errors                                                                                                                                                           |
-| `npm run lint`              | Pass — no errors, no warnings                                                                                                                                                             |
-| `npm test`                  | Pass — 434 tests in 41 files                                                                                                                                                              |
-| `npm run test:e2e`          | Pass — 61 Playwright tests against the built application                                                                                                                                  |
-| `npm run format:check`      | Pass — Prettier clean                                                                                                                                                                     |
-| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                                                                                                                 |
-| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                                                                                                          |
-| Packaged launch/close smoke | Pass — window ready in ~400 ms, closes cleanly, and `%TEMP%/PaperForge/sessions` is empty afterwards                                                                                      |
-| Settings upgrade            | Pass — a settings file without the new `session` section is repaired in place                                                                                                             |
-| Appearance                  | Checked in light and dark by screenshotting the real application: the new-document workspace empty and with a mixed list of sources, a page range in place, and the blank-document dialog |
+| Command                     | Result                                                                                                                                                                                  |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                                                                                                          |
+| `npm run typecheck`         | Pass — four projects, no errors                                                                                                                                                         |
+| `npm run lint`              | Pass — no errors, no warnings                                                                                                                                                           |
+| `npm test`                  | Pass — 509 tests in 45 files                                                                                                                                                            |
+| `npm run test:e2e`          | Pass — 73 Playwright tests against the built application                                                                                                                                |
+| `npm run format:check`      | Pass — Prettier clean                                                                                                                                                                   |
+| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                                                                                                               |
+| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                                                                                                        |
+| Packaged launch/close smoke | Pass — window ready in ~400 ms, closes cleanly, and `%TEMP%/PaperForge/sessions` is empty afterwards                                                                                    |
+| Settings upgrade            | Pass — a settings file without the new `session` section is repaired in place                                                                                                           |
+| Appearance                  | Checked in light and dark by driving the real application: the text editor's boxes, a run open for typing, a replacement offered and refused, and text added where the page was clicked |
 
 ## Manual setup required
 

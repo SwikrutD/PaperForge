@@ -34,6 +34,7 @@ export const INVOKE_CHANNEL_NAMES = [
   'pages:stageOpenDocument',
   'pages:extract',
   'text:page',
+  'text:canWrite',
   'sources:add',
   'sources:list',
   'sources:remove',

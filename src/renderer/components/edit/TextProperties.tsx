@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 import { useDocumentStore } from '../../stores/documentStore';
 import { runsFor, useTextEditStore } from '../../stores/textEditStore';
+import { TextStyleControls } from './TextStyleControls';
 import styles from './TextProperties.module.css';
 
 /**
@@ -26,6 +27,7 @@ export function TextProperties(): ReactElement {
         <p className={styles.empty}>
           Click a piece of text on the page to see what drew it, then click again to change it.
         </p>
+        <TextStyleControls />
       </div>
     );
   }
@@ -77,11 +79,19 @@ export function TextProperties(): ReactElement {
         )}
       </dl>
 
+      {run.replaced && (
+        <p className={styles.replaced}>
+          PaperForge drew this text, in a standard font, in place of what was here.
+        </p>
+      )}
+
       <p className={run.editable ? styles.note : styles.warning}>
         {run.editable
           ? 'Click the text again to change it. It is written in the same font, so the page still looks like itself.'
-          : (run.reason ?? 'This text cannot be changed.')}
+          : `${run.reason ?? 'This text cannot be rewritten in its own font.'} Typing in it takes the old text out and draws yours in a standard font instead.`}
       </p>
+
+      <TextStyleControls />
     </div>
   );
 }

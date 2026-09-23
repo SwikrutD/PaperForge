@@ -109,18 +109,51 @@ The run keeps its starting point whatever its new length. What follows it on the
 if the stream positioned it relatively, and stays where it is if the stream positioned it
 absolutely — which is exactly what the original PDF would have done had it been written that way.
 
-### When Tier A cannot run
+### Tier B — the replacement
 
-PaperForge refuses rather than writing something it cannot read back. A run says so in the
-properties panel, and the box around it is marked:
+When the font a run is drawn in cannot write the new text, PaperForge does not force it. The run is
+**neutralised** and the text is **drawn again** in a font PaperForge controls:
 
-- the font does not say what its codes mean (no `ToUnicode`, no usable encoding);
-- the font has no code for a character being typed — Cyrillic in a WinAnsi font, say;
-- PaperForge cannot tell which font drew the text at all.
+```
+(the old words) Tj      becomes     [ -4821.5 ] TJ
+```
 
-Tiers B and C of `CLAUDE.md` section 13.2 — covering the old text and drawing a replacement in a
-font PaperForge embeds — are the next subsegment; until they land, the editor is honest about what
-it will not do.
+`[ n ] TJ` draws nothing and moves the pen exactly as far as the old glyphs did, so whatever
+followed on the line stays where it was. The new text is then appended to the page's content as its
+own `q … BT … ET … Q` block, at the same transform, size, colour and spacing — drawn last, so it
+sits over the page rather than under it.
+
+The reader is asked first. Replacing is a different thing from rewriting — the letterforms change —
+so PaperForge says which character stopped it, offers the replacement, and does nothing until the
+reader agrees. A run whose font never says what its codes mean is marked in the editor and replaced
+outright when typed into, because there is nothing to rewrite.
+
+Text PaperForge drew itself is named `PF…` in the page's resources, which is how the editor knows
+to tell the reader "PaperForge drew this text, in a standard font, in place of what was here".
+
+### Adding text
+
+**Add text** puts a caret where the reader clicks and appends the same kind of block. Nothing is
+removed, and the page keeps everything it had.
+
+### The fonts PaperForge draws with
+
+The fourteen fonts every PDF reader already has — Helvetica, Times, Courier and their bold and
+italic variants. Nothing is embedded, so a file PaperForge writes text into carries no font program
+that was not already there, and no font is redistributed.
+
+That also sets the limit: those fonts are Latin-1. Text outside it — Cyrillic, Greek, CJK — cannot
+be drawn with them, so PaperForge refuses it and says why rather than writing question marks.
+Embedding a system font for other writing systems is the work `CLAUDE.md` section 13.4 describes,
+and it is not built yet.
+
+### What the editor refuses
+
+- a font that does not say what its codes mean (no `ToUnicode`, no usable encoding) cannot be
+  **rewritten**, only replaced;
+- text outside Latin-1 cannot be written at all yet, in either tier;
+- text drawn inside a form XObject is not listed, because the parser reads the page's own content
+  stream; the editor says plainly when it finds no text it can edit on a page.
 
 ### What a change costs
 
@@ -182,9 +215,15 @@ so reverting is itself undoable — a reader who reverts by mistake has not lost
   duplicate, insert blank pages, insert pages from another document, insert an image as a page,
   crop, page numbering, adding, changing or removing comments, and rewriting a run of text in the
   font that drew it. Image editing follows in Segment 10.
-- **Text editing is Tier A only.** A run whose font cannot write the new text is refused with the
-  character that stopped it; covering the old text and drawing a replacement is the next
-  subsegment.
+- **Text editing is Tier A and Tier B.** A run is rewritten in its own font where that works, and
+  otherwise taken out and drawn again in a standard font, with the reader asked first.
+- **PaperForge draws with the standard fourteen fonts, which are Latin-1.** Text in another writing
+  system is refused, with the character that stopped it named. Embedding a system font is not built
+  yet.
+- **Text inside a form XObject is not listed.** The editor reads the page's own content stream, and
+  says when it finds nothing it can edit.
+- **Reflow is not attempted.** A run keeps its own position; changing its length moves what follows
+  it only as far as the stream's own positioning does.
 - **A rewritten page's content is written as one uncompressed stream.** It is what PaperForge can
   read back, and the optimizer in Segment 16 is where compression belongs.
 - **Every change rewrites the whole file.** That is what makes a revision a plain PDF that can be

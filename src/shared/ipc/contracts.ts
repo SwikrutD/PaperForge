@@ -171,6 +171,23 @@ export const invokeContracts = {
   },
 
   /**
+   * Whether the font a run is drawn in can write some text, and which
+   * character stops it when it cannot.
+   */
+  'text:canWrite': {
+    request: z.strictObject({
+      sessionId: z.string().min(1),
+      page: z.number().int().min(1).max(100_000),
+      runId: z.string().min(1).max(64),
+      text: z.string().max(4000),
+    }),
+    response: z.strictObject({
+      ok: z.boolean(),
+      missing: z.string().max(8).nullable(),
+    }),
+  },
+
+  /**
    * Stages local files for a new document: they are read, converted to pages
    * by their provider, and listed by name and page count. The picker is
    * native, so the renderer never names a file.

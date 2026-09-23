@@ -6,6 +6,7 @@ import { readPageContent, type PageContent } from '../../../src/pdf/content/page
 import { rewritability } from '../../../src/pdf/content/editText';
 import type { TextRun } from '../../../src/pdf/content/textRuns';
 import { runIdOf } from '../../../src/pdf/mutate/text';
+import { isReplacementFont } from '../../../src/pdf/mutate/textResources';
 import { buildPdf, type PdfSpec } from '../../fixtures/pdf';
 
 /**
@@ -195,5 +196,169 @@ describe('when it cannot', () => {
     const edited = await editText(bytes, id, 'BA');
     const content = new TextDecoder('latin1').decode((await firstRun(edited)).content.bytes);
     expect(content).toContain('<00420041> Tj');
+  });
+});
+
+describe('replacing text PaperForge cannot write natively', () => {
+  const style = {
+    family: 'helvetica' as const,
+    bold: false,
+    italic: false,
+    size: 18,
+    color: { r: 0, g: 0, b: 0 },
+  };
+
+  it('draws the new text and takes the old glyphs out', async () => {
+    const original = documentOf({
+      pages: [{ content: 'BT /F1 18 Tf 1 0 0 1 60 700 Tm (old words) Tj ET' }],
+    });
+
+    const result = await engine.apply(original, [
+      { kind: 'replaceText', page: 1, runId: 'op3', text: 'new words', style: null },
+    ]);
+
+    expect(await textOnPage(result.bytes)).toBe('new words');
+  });
+
+  it('keeps the rest of the line where it was', async () => {
+    // Two runs on one line, the second positioned by the first's advance.
+    const original = documentOf({
+      pages: [{ content: 'BT /F1 18 Tf 1 0 0 1 60 700 Tm (first ) Tj (second) Tj ET' }],
+    });
+    const before = (await firstRun(original)).content.runs[1]?.origin;
+
+    const result = await engine.apply(original, [
+      { kind: 'replaceText', page: 1, runId: 'op3', text: 'other', style: null },
+    ]);
+    const after = (await firstRun(result.bytes)).content.runs.find(
+      (run) => run.text === 'second',
+    )?.origin;
+
+    expect(after?.x).toBeCloseTo(before?.x ?? 0, 4);
+    expect(after?.y).toBeCloseTo(before?.y ?? 0, 4);
+  });
+
+  it('draws the replacement where the original sat', async () => {
+    const original = documentOf({
+      pages: [{ content: 'BT /F1 18 Tf 1 0 0 1 60 700 Tm (old) Tj ET' }],
+    });
+
+    const result = await engine.apply(original, [
+      { kind: 'replaceText', page: 1, runId: 'op3', text: 'new', style: null },
+    ]);
+    const drawn = (await firstRun(result.bytes)).content.runs.find((run) => run.text === 'new');
+
+    expect(drawn?.origin.x).toBeCloseTo(60, 4);
+    expect(drawn?.origin.y).toBeCloseTo(700, 4);
+    expect(drawn?.fontSize).toBeCloseTo(18, 4);
+  });
+
+  it('writes characters the original font could not', async () => {
+    const original = documentOf({ pages: [{ text: 'plain' }] });
+
+    // Latin-1 characters a standard font can draw, in a run that keeps them.
+    const result = await engine.apply(original, [
+      { kind: 'replaceText', page: 1, runId: 'op3', text: 'Grüße', style: null },
+    ]);
+    expect(await textOnPage(result.bytes)).toBe('Grüße');
+  });
+
+  it('marks what it drew as its own', async () => {
+    const original = documentOf({ pages: [{ text: 'plain' }] });
+    const result = await engine.apply(original, [
+      { kind: 'replaceText', page: 1, runId: 'op3', text: 'replaced', style: null },
+    ]);
+
+    const drawn = (await firstRun(result.bytes)).content.runs.find(
+      (run) => run.text === 'replaced',
+    );
+    expect(isReplacementFont(drawn?.fontName ?? null)).toBe(true);
+  });
+
+  it('takes the style the reader chose', async () => {
+    const original = documentOf({ pages: [{ text: 'plain' }] });
+    const result = await engine.apply(original, [
+      {
+        kind: 'replaceText',
+        page: 1,
+        runId: 'op3',
+        text: 'styled',
+        style: { ...style, family: 'times', bold: true, size: 30, color: { r: 1, g: 0, b: 0 } },
+      },
+    ]);
+
+    const drawn = (await firstRun(result.bytes)).content.runs.find((run) => run.text === 'styled');
+    expect(drawn?.fontSize).toBeCloseTo(30, 4);
+    expect(drawn?.font?.baseFont).toContain('Times');
+    expect(drawn?.color.components).toEqual([1, 0, 0]);
+  });
+
+  it('draws a question mark for what no standard font can write', async () => {
+    const original = documentOf({ pages: [{ text: 'plain' }] });
+    const result = await engine.apply(original, [
+      { kind: 'replaceText', page: 1, runId: 'op3', text: 'Привет', style: null },
+    ]);
+
+    // Honest rather than silent: the text is there, the glyphs are not.
+    expect(await textOnPage(result.bytes)).toBe('??????');
+  });
+});
+
+describe('adding text', () => {
+  it('draws new text where it was asked for', async () => {
+    const original = documentOf({ pages: [{ text: 'existing' }] });
+
+    const result = await engine.apply(original, [
+      {
+        kind: 'addText',
+        page: 1,
+        x: 100,
+        y: 200,
+        text: 'added later',
+        style: {
+          family: 'helvetica',
+          bold: false,
+          italic: false,
+          size: 14,
+          color: { r: 0, g: 0, b: 1 },
+        },
+      },
+    ]);
+
+    const added = (await firstRun(result.bytes)).content.runs.find(
+      (run) => run.text === 'added later',
+    );
+    expect(added?.origin).toEqual({ x: 100, y: 200 });
+    expect(added?.fontSize).toBe(14);
+    expect(added?.color.components).toEqual([0, 0, 1]);
+    // What was already there is still there.
+    expect(await textOnPage(result.bytes)).toContain('existing');
+  });
+
+  it('reuses one font resource however many times it is asked for', async () => {
+    let bytes = documentOf({ pages: [{ text: 'existing' }] });
+    for (const text of ['one', 'two', 'three']) {
+      const result = await engine.apply(bytes, [
+        {
+          kind: 'addText',
+          page: 1,
+          x: 100,
+          y: 200,
+          text,
+          style: {
+            family: 'helvetica',
+            bold: false,
+            italic: false,
+            size: 12,
+            color: { r: 0, g: 0, b: 0 },
+          },
+        },
+      ]);
+      bytes = result.bytes;
+    }
+
+    const { content } = await firstRun(bytes);
+    const names = new Set([...content.fonts.keys()].filter((name) => name.startsWith('PF')));
+    expect(names.size).toBe(1);
   });
 });

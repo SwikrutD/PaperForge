@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { annotationInputSchema, annotationPatchSchema } from './annotation';
 import { pageBoxSchema, pageLabelStyleSchema } from './pages';
+import { textStyleSchema } from './text';
 import { documentSessionSchema } from './document';
 
 /**
@@ -120,6 +121,33 @@ export const editTextOperationSchema = z.strictObject({
   text: z.string().max(4000),
 });
 
+/**
+ * Takes a run of text out and draws it again in a font PaperForge controls.
+ *
+ * This is what happens when the font that drew the text cannot write what the
+ * reader typed. The original glyphs are removed and the advance kept, so the
+ * rest of the line stays where it was.
+ */
+export const replaceTextOperationSchema = z.strictObject({
+  kind: z.literal('replaceText'),
+  page: z.number().int().min(1).max(100_000),
+  runId: z.string().min(1).max(64),
+  text: z.string().max(4000),
+  /** Null keeps the look of the text being replaced, as closely as it can. */
+  style: textStyleSchema.nullable(),
+});
+
+/** Draws new text on a page, where there was none. */
+export const addTextOperationSchema = z.strictObject({
+  kind: z.literal('addText'),
+  page: z.number().int().min(1).max(100_000),
+  /** Where the baseline starts, in PDF user space. */
+  x: z.number().finite().min(-1_000_000).max(1_000_000),
+  y: z.number().finite().min(-1_000_000).max(1_000_000),
+  text: z.string().min(1).max(4000),
+  style: textStyleSchema,
+});
+
 export const editOperationSchema = z.discriminatedUnion('kind', [
   rotatePagesOperationSchema,
   deletePagesOperationSchema,
@@ -131,6 +159,8 @@ export const editOperationSchema = z.discriminatedUnion('kind', [
   cropPagesOperationSchema,
   setPageLabelsOperationSchema,
   editTextOperationSchema,
+  replaceTextOperationSchema,
+  addTextOperationSchema,
   addAnnotationsOperationSchema,
   updateAnnotationsOperationSchema,
   deleteAnnotationsOperationSchema,

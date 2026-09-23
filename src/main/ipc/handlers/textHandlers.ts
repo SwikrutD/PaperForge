@@ -2,9 +2,10 @@ import { PDFDocument } from 'pdf-lib';
 import { AppError } from '@shared/errors/appError';
 import type { PageTextModel, TextColor, TextRunModel } from '@shared/schemas/text';
 import { readPageContent } from '@pdf/content/pageContent';
-import { rewritability } from '@pdf/content/editText';
+import { encodeForFont, rewritability } from '@pdf/content/editText';
 import { runBounds, type TextRun } from '@pdf/content/textRuns';
-import { runIdOf } from '@pdf/mutate/text';
+import { findRun, runIdOf } from '@pdf/mutate/text';
+import { isReplacementFont } from '@pdf/mutate/textResources';
 import type { Color } from '@pdf/content/state';
 import type { DocumentEditor } from '../../services/documents/documentEditor';
 import type { RegisterInvoke } from '../registry';
@@ -46,9 +47,29 @@ export function registerTextHandlers(registerInvoke: RegisterInvoke, deps: TextH
     const model: PageTextModel = {
       page,
       revision,
-      runs: content.runs.filter((run) => run.text !== '').map(describeRun),
+      // A run whose font will not say what its characters are still exists on
+      // the page: it is listed, with nothing to read and a reason why.
+      runs: content.runs.filter((run) => run.glyphs.length > 0).map(describeRun),
     };
     return model;
+  });
+
+  /**
+   * Asked before a change is sent, so the editor can offer to replace the text
+   * instead of failing after the fact.
+   */
+  registerInvoke('text:canWrite', async ({ sessionId, page, runId, text }) => {
+    const bytes = await deps.editor.currentBytes(sessionId);
+    const document = await PDFDocument.load(bytes, { updateMetadata: false });
+    if (page < 1 || page > document.getPageCount()) return { ok: false, missing: null };
+
+    const content = await readPageContent(document, page - 1);
+    const run = findRun(content, runId);
+    if (run?.font === undefined || run.font === null) return { ok: false, missing: null };
+    if (!rewritability(run).editable) return { ok: false, missing: null };
+
+    const encoded = encodeForFont(run.font, text);
+    return encoded.ok ? { ok: true, missing: null } : { ok: false, missing: encoded.missing };
   });
 }
 
@@ -73,6 +94,7 @@ function describeRun(run: TextRun): TextRunModel {
     invisible: run.invisible,
     editable: verdict.editable,
     reason: verdict.reason ?? null,
+    replaced: isReplacementFont(run.fontName),
   };
 }
 

@@ -286,3 +286,34 @@ Run in both light and dark themes:
 - [ ] Close leaves the workspace without losing the list; opening it again shows the same files.
 - [ ] The workspace, its list and the blank dialog are correct in light and dark, at 125% and 150%
       Windows scaling.
+
+## Segment 9 — editing text
+
+- [ ] `Ctrl+E`, the Tools menu and the Edit PDF card all open the text editor, and the card is
+      clearly disabled with a reason while no document is open.
+- [ ] Every piece of text a page draws gets a box, in the right place, at the right size, including
+      text that is turned, scaled or drawn inside a layer.
+- [ ] The properties panel names the font, size, colour and position of the selected text, and says
+      whether it can be rewritten.
+- [ ] Clicking a selected run opens it for typing at the size it is drawn; Enter keeps the change
+      and Escape leaves the text as it was.
+- [ ] A change is drawn in the font that was already there, and the rest of the page is untouched:
+      other runs, drawings and images do not move.
+- [ ] Undo, redo and revert work on a text change exactly as they do on a page rotation, and the
+      tab's unsaved marker follows.
+- [ ] Saving writes what the page shows; reopening the file — in PaperForge and in another reader —
+      shows the same.
+- [ ] Typing a character the font cannot write asks whether to replace the text instead, naming the
+      character; cancelling writes nothing.
+- [ ] Agreeing replaces the text: the old glyphs are gone, the new text sits in the same place, and
+      what followed on the line has not moved.
+- [ ] Text PaperForge drew is marked as such in the properties panel.
+- [ ] Text outside Latin-1 — Cyrillic, Greek, CJK — is refused with a plain explanation, and
+      nothing is written.
+- [ ] A run whose font says nothing about its characters is shown with a reason, and typing in it
+      replaces it rather than rewriting it.
+- [ ] Add text puts new text where the page is clicked, in the font, size and colour chosen in the
+      panel; the page keeps everything it had.
+- [ ] A page with no text PaperForge can read says so rather than looking broken.
+- [ ] The editor closes with the last document, and Done goes back to reading.
+- [ ] The editor and its panel are correct in light and dark, at 125% and 150% Windows scaling.

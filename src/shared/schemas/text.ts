@@ -42,8 +42,32 @@ export const textRunModelSchema = z.strictObject({
   editable: z.boolean(),
   /** Why it cannot be, in words for the reader. */
   reason: z.string().max(300).nullable(),
+  /** True when PaperForge drew this text itself, in a font it substituted. */
+  replaced: z.boolean(),
 });
 export type TextRunModel = z.infer<typeof textRunModelSchema>;
+
+/** A font PaperForge can draw with: the families every reader already has. */
+export const textFamilySchema = z.enum(['helvetica', 'times', 'courier']);
+export type TextFamily = z.infer<typeof textFamilySchema>;
+
+/** How PaperForge draws text it writes itself. */
+export const textStyleSchema = z.strictObject({
+  family: textFamilySchema,
+  bold: z.boolean(),
+  italic: z.boolean(),
+  size: z.number().finite().min(1).max(1000),
+  color: textColorSchema,
+});
+export type TextStyle = z.infer<typeof textStyleSchema>;
+
+export const DEFAULT_TEXT_STYLE: TextStyle = {
+  family: 'helvetica',
+  bold: false,
+  italic: false,
+  size: 12,
+  color: { r: 0, g: 0, b: 0 },
+};
 
 export const pageTextModelSchema = z.strictObject({
   page: z.number().int().min(1),

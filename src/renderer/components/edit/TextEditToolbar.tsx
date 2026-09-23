@@ -1,7 +1,8 @@
 import type { ReactElement } from 'react';
-import { Check, PenLine, Redo2, Save, Undo2 } from 'lucide-react';
+import { Check, PenLine, Redo2, Save, TextCursorInput, Undo2 } from 'lucide-react';
 import { Button } from '../controls/Button';
 import { CommandIconButton } from '../controls/CommandIconButton';
+import { IconButton } from '../controls/IconButton';
 import { useTextEditStore } from '../../stores/textEditStore';
 import styles from './TextEditToolbar.module.css';
 
@@ -12,11 +13,20 @@ import styles from './TextEditToolbar.module.css';
  * room as it can, and it says plainly what the editor can and cannot do rather
  * than leaving the reader to find out by clicking.
  */
-export function TextEditToolbar({ disabled }: { disabled: boolean }): ReactElement {
+export function TextEditToolbar({
+  disabled,
+  hasText,
+}: {
+  disabled: boolean;
+  /** False when the page being read draws no text this editor can see. */
+  hasText: boolean;
+}): ReactElement {
   const setActive = useTextEditStore((store) => store.setActive);
   const busy = useTextEditStore((store) => store.busy);
   const selected = useTextEditStore((store) => store.selected);
   const editing = useTextEditStore((store) => store.draft !== null);
+  const placing = useTextEditStore((store) => store.placing);
+  const setPlacing = useTextEditStore((store) => store.setPlacing);
 
   return (
     <div className={styles.bar} role="toolbar" aria-label="Text editing">
@@ -25,12 +35,25 @@ export function TextEditToolbar({ disabled }: { disabled: boolean }): ReactEleme
         Edit text
       </span>
 
+      <IconButton
+        icon={TextCursorInput}
+        label="Add text"
+        tooltip="Add text: click where it should start"
+        pressed={placing}
+        disabled={disabled || busy}
+        onClick={() => setPlacing(!placing)}
+      />
+
       <p className={styles.hint} aria-live="polite">
-        {editing
-          ? 'Enter keeps the change, Escape leaves the text as it was.'
-          : selected === null
-            ? 'Click a piece of text to select it, then click again to type.'
-            : 'Click again to type, or press Enter.'}
+        {placing
+          ? 'Click the page where the new text should start.'
+          : editing
+            ? 'Enter keeps the change, Escape leaves the text as it was.'
+            : !hasText
+              ? 'PaperForge finds no text it can edit on this page. Add text is still available.'
+              : selected === null
+                ? 'Click a piece of text to select it, then click again to type.'
+                : 'Click again to type, or press Enter.'}
       </p>
 
       <div className={styles.end}>

@@ -143,6 +143,10 @@ export function describeOperation(operation: EditOperation): string {
       return 'Change page numbering';
     case 'editText':
       return operation.text === '' ? 'Delete text' : 'Edit text';
+    case 'replaceText':
+      return operation.text === '' ? 'Delete text' : 'Replace text';
+    case 'addText':
+      return 'Add text';
   }
 }
 

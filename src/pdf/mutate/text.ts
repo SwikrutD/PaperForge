@@ -1,12 +1,22 @@
 import { PDFName, type PDFDocument } from 'pdf-lib';
 import { AppError } from '@shared/errors/appError';
 import type { EditOperation } from '@shared/schemas/edit';
+import type { TextStyle } from '@shared/schemas/text';
 import { readPageContent, type PageContent } from '@pdf/content/pageContent';
 import { rewriteRunText } from '@pdf/content/editText';
+import { appendTextBlock, neutralizeRun } from '@pdf/content/drawText';
+import { multiply, type Matrix } from '@pdf/content/state';
 import type { TextRun } from '@pdf/content/textRuns';
+import { toWinAnsi } from '@pdf/text/layout';
+import { ensureFontResource } from './textResources';
 
 /**
  * Changing the text a page draws.
+ *
+ * Three things can happen to a run: it is rewritten in the font that drew it
+ * (Tier A), it is taken out and drawn again in a font PaperForge controls
+ * (Tier B), or text is added where there was none. All three end as content
+ * for the page, written back as one stream.
  *
  * The run to change is named by the operation it came from, which is stable
  * for as long as the content is: every change produces a new revision, the
@@ -37,7 +47,13 @@ export async function applyTextOperation(
   document: PDFDocument,
   operation: EditOperation,
 ): Promise<boolean> {
-  if (operation.kind !== 'editText') return false;
+  if (
+    operation.kind !== 'editText' &&
+    operation.kind !== 'replaceText' &&
+    operation.kind !== 'addText'
+  ) {
+    return false;
+  }
 
   const pageIndex = operation.page - 1;
   if (pageIndex < 0 || pageIndex >= document.getPageCount()) {
@@ -45,6 +61,24 @@ export async function applyTextOperation(
       message: 'That page is not in this document any more.',
       details: `page ${String(operation.page)} of ${String(document.getPageCount())}`,
     });
+  }
+
+  if (operation.kind === 'addText') {
+    const content = await readPageContent(document, pageIndex);
+    const style = operation.style;
+    const resource = await ensureFontResource(document, document.getPage(pageIndex), style);
+    const matrix: Matrix = { a: 1, b: 0, c: 0, d: 1, e: operation.x, f: operation.y };
+
+    setPageContent(
+      document,
+      pageIndex,
+      appendTextBlock(content.bytes, matrix, drawable(operation.text), {
+        fontResource: resource,
+        size: style.size,
+        color: style.color,
+      }),
+    );
+    return true;
   }
 
   const content = await readPageContent(document, pageIndex);
@@ -56,17 +90,104 @@ export async function applyTextOperation(
     });
   }
 
-  const result = rewriteRunText(content.bytes, run, operation.text);
-  if (!result.ok) {
-    throw new AppError('pdf/malformed-content', {
-      message:
-        result.reason === 'no-font'
-          ? 'PaperForge cannot tell which font drew that text, so it cannot rewrite it.'
-          : `The font this text is drawn in cannot write “${result.character ?? '?'}”.`,
-      details: `run ${operation.runId} on page ${String(operation.page)}`,
-    });
+  if (operation.kind === 'editText') {
+    const result = rewriteRunText(content.bytes, run, operation.text);
+    if (!result.ok) {
+      throw new AppError('pdf/malformed-content', {
+        message:
+          result.reason === 'no-font'
+            ? 'PaperForge cannot tell which font drew that text, so it cannot rewrite it.'
+            : `The font this text is drawn in cannot write “${result.character ?? '?'}”.`,
+        details: `run ${operation.runId} on page ${String(operation.page)}`,
+      });
+    }
+    setPageContent(document, pageIndex, result.bytes);
+    return true;
   }
 
-  setPageContent(document, pageIndex, result.bytes);
+  // Tier B: the original glyphs come out, and the new text is drawn over the
+  // page in a font PaperForge controls.
+  const style = operation.style ?? styleOf(run);
+  const resource = await ensureFontResource(document, document.getPage(pageIndex), style);
+  const emptied = neutralizeRun(content.bytes, run);
+
+  setPageContent(
+    document,
+    pageIndex,
+    appendTextBlock(emptied, replacementMatrix(run, style), drawable(operation.text), {
+      fontResource: resource,
+      size: style.size,
+      color: style.color,
+      ...(run.charSpacing === 0 ? {} : { charSpacing: run.charSpacing }),
+      ...(run.wordSpacing === 0 ? {} : { wordSpacing: run.wordSpacing }),
+      ...(run.horizontalScale === 100 ? {} : { horizontalScale: run.horizontalScale }),
+    }),
+  );
   return true;
+}
+
+/**
+ * Where replacement text goes: exactly where the original sat.
+ *
+ * The run's matrix already carries the page's own transform, so the text
+ * lands in the same place at the same angle. The size is taken out of the
+ * matrix and put in `Tf`, so a page that scales its text still gets text of
+ * the size the reader chose.
+ */
+function replacementMatrix(run: TextRun, style: TextStyle): Matrix {
+  const rise: Matrix = { a: 1, b: 0, c: 0, d: 1, e: 0, f: run.rise };
+  const scale = run.fontSize === 0 ? 1 : style.size / run.fontSize;
+  const normalize: Matrix = { a: 1 / scale, b: 0, c: 0, d: 1 / scale, e: 0, f: 0 };
+  return multiply(normalize, multiply(rise, run.matrix));
+}
+
+/** The style a replacement takes when the reader did not choose one. */
+function styleOf(run: TextRun): TextStyle {
+  const base = (run.font?.baseFont ?? '').toLowerCase();
+  const family =
+    base.includes('times') || base.includes('serif')
+      ? 'times'
+      : base.includes('courier') || base.includes('mono')
+        ? 'courier'
+        : 'helvetica';
+
+  return {
+    family,
+    bold: /bold|black|heavy/.test(base),
+    italic: /italic|oblique/.test(base),
+    // The run's size already includes whatever its matrix scales by.
+    size: run.fontSize === 0 ? 12 : run.fontSize,
+    color: colorOf(run),
+  };
+}
+
+function colorOf(run: TextRun): { r: number; g: number; b: number } {
+  const [first = 0, second = 0, third = 0, fourth = 0] = run.color.components;
+  if (run.color.space === 'rgb') return { r: first, g: second, b: third };
+  if (run.color.space === 'gray') return { r: first, g: first, b: first };
+  if (run.color.space === 'cmyk') {
+    return {
+      r: (1 - first) * (1 - fourth),
+      g: (1 - second) * (1 - fourth),
+      b: (1 - third) * (1 - fourth),
+    };
+  }
+  return { r: 0, g: 0, b: 0 };
+}
+
+/**
+ * What a standard font can draw.
+ *
+ * The fourteen standard fonts are Latin-1; a character outside that cannot be
+ * drawn with one at all, so it is shown as a question mark rather than
+ * silently dropped. Text that needs more than Latin-1 needs an embedded font,
+ * which is its own piece of work.
+ */
+function drawable(text: string): Uint8Array {
+  const usable = toWinAnsi(text);
+  const bytes = new Uint8Array(usable.length);
+  for (let index = 0; index < usable.length; index += 1) {
+    bytes[index] = usable.charCodeAt(index) & 0xff;
+  }
+  return bytes;
 }

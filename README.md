@@ -20,9 +20,12 @@ in [`CLAUDE.md`](./CLAUDE.md):
   replace, crop and renumber, with extraction and splitting into new files;
 - making documents: a blank one, or one made from images, text files, local web pages and other
   PDFs — with the pages each file contributes, their order, and bookmarks naming where they came
-  from.
+  from;
+- editing text: PaperForge reads a page's content stream itself, so a line can be rewritten in the
+  font that drew it, replaced in a standard font when that font cannot write it, or added where
+  you click.
 
-Editing text and images, OCR, exporting to other formats, protection and redaction arrive in later
+Editing images and links, OCR, exporting to other formats, protection and redaction arrive in later
 segments.
 
 [`PROGRESS.md`](./PROGRESS.md) is the authoritative status file.
