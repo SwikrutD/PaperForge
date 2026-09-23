@@ -8,6 +8,12 @@ import {
 } from '../schemas/document';
 import { annotationSchema, stampImageSchema } from '../schemas/annotation';
 import {
+  exportResultSchema,
+  pageBoxesSchema,
+  pageSourceSchema,
+  splitPartSchema,
+} from '../schemas/pages';
+import {
   documentEditStateSchema,
   editTransactionSchema,
   qpdfStatusSchema,
@@ -114,6 +120,38 @@ export const invokeContracts = {
     }),
     response: saveOutcomeSchema,
   },
+  /** What each page of a document says about its own geometry. */
+  'pages:boxes': {
+    request: z.strictObject({ sessionId: z.string().min(1) }),
+    response: z.array(pageBoxesSchema),
+  },
+  /** Stages another PDF to take pages from; null when nothing was chosen. */
+  'pages:choosePdfSource': {
+    request: z.strictObject({ sessionId: z.string().min(1) }),
+    response: pageSourceSchema.nullable(),
+  },
+  'pages:chooseImageSource': {
+    request: z.strictObject({ sessionId: z.string().min(1) }),
+    response: pageSourceSchema.nullable(),
+  },
+  /** Stages another open document, for moving pages between tabs. */
+  'pages:stageOpenDocument': {
+    request: z.strictObject({
+      sessionId: z.string().min(1),
+      fromSessionId: z.string().min(1),
+    }),
+    response: pageSourceSchema,
+  },
+  /** Writes pages out as new documents, asking where they should go. */
+  'pages:extract': {
+    request: z.strictObject({
+      sessionId: z.string().min(1),
+      parts: z.array(splitPartSchema).min(1).max(2000),
+      mode: z.enum(['single', 'perPage']),
+    }),
+    response: exportResultSchema,
+  },
+
   /** Every annotation in a document, as the file itself records them. */
   'annotations:list': {
     request: z.strictObject({ sessionId: z.string().min(1) }),

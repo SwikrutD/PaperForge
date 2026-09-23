@@ -4,7 +4,7 @@ import type { SaveMode, SaveOutcome } from '@shared/schemas/edit';
 import type { DocumentEditor } from '../../services/documents/documentEditor';
 import type { DocumentService } from '../../services/documents/documentService';
 import type { QpdfService } from '../../services/qpdf/qpdfService';
-import type { StampImages } from '../../services/documents/stampImages';
+import type { StagedAssets } from '../../services/documents/stagedAssets';
 import type { SettingsStore } from '../../services/settings/settingsStore';
 import type { RegisterInvoke } from '../registry';
 
@@ -12,7 +12,7 @@ export interface EditHandlerDeps {
   documents: DocumentService;
   editor: DocumentEditor;
   qpdf: QpdfService;
-  stampImages: StampImages;
+  stagedAssets: StagedAssets;
   settings: SettingsStore;
   senderWindow: (event: Electron.IpcMainInvokeEvent) => BrowserWindow;
 }
@@ -66,7 +66,7 @@ export function registerEditHandlers(registerInvoke: RegisterInvoke, deps: EditH
 
     const chosen = result.canceled ? undefined : result.filePaths[0];
     if (chosen === undefined) return null;
-    return deps.stampImages.stage(sessionId, chosen);
+    return deps.stagedAssets.stageImage(sessionId, chosen);
   });
 
   registerInvoke('tools:qpdfStatus', () => deps.qpdf.status());

@@ -21,11 +21,14 @@ export interface MutationResult {
   pageCount: number;
 }
 
-/** An image staged for stamping, with the format its bytes are in. */
-export interface StampImageBytes {
-  bytes: Uint8Array;
-  format: 'png' | 'jpeg';
-}
+/**
+ * A file the main process has staged for a change to use: an image to stamp or
+ * to put on a page of its own, or another PDF to take pages from. The bytes
+ * stay in the main process; an operation refers to one by token.
+ */
+export type StagedAsset =
+  | { kind: 'image'; bytes: Uint8Array; format: 'png' | 'jpeg'; width: number; height: number }
+  | { kind: 'pdf'; bytes: Uint8Array; pageCount: number };
 
 export interface PdfMutationEngine {
   inspect(bytes: Uint8Array): Promise<DocumentFacts>;
@@ -35,12 +38,13 @@ export interface PdfMutationEngine {
    * Applies operations in order and returns the new document. The input bytes
    * are never modified: a caller keeps its own copy either way.
    *
-   * `images` holds the bytes an image stamp needs, by the token its annotation
-   * refers to, so image data never travels over IPC.
+   * `assets` holds the files an operation refers to by token — an image to
+   * stamp, an image to make a page of, another document to take pages from —
+   * so their bytes never travel over IPC.
    */
   apply(
     bytes: Uint8Array,
     operations: readonly EditOperation[],
-    images?: ReadonlyMap<string, StampImageBytes>,
+    assets?: ReadonlyMap<string, StagedAsset>,
   ): Promise<MutationResult>;
 }

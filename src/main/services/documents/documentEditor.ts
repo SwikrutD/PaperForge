@@ -10,7 +10,7 @@ import type {
 import type { DocumentSession } from '@shared/schemas/document';
 import type { Annotation } from '@shared/schemas/annotation';
 import { validateTransaction } from '@pdf/mutate/operations';
-import type { PdfMutationEngine, StampImageBytes } from '@pdf/mutate/types';
+import type { PdfMutationEngine, StagedAsset } from '@pdf/mutate/types';
 import { writeFileAtomic } from '../filesystem/atomicWrite';
 import type { Logger } from '../logging/logger';
 import type { QpdfService } from '../qpdf/qpdfService';
@@ -39,8 +39,8 @@ export interface DocumentEditorDeps {
   workspaceDirectory: (sessionId: string) => string;
   /** Records unsaved changes in the recovery journal. */
   setDirty: (sessionId: string, dirty: boolean) => Promise<void>;
-  /** Images staged for stamping, which a mutation may need to embed. */
-  stampImages: (sessionId: string) => ReadonlyMap<string, StampImageBytes>;
+  /** Files staged for this session, which a change may need to embed. */
+  stagedAssets: (sessionId: string) => ReadonlyMap<string, StagedAsset>;
 }
 
 interface EditedDocument {
@@ -79,6 +79,11 @@ export class DocumentEditor {
   private readonly edited = new Map<string, EditedDocument>();
 
   constructor(private readonly deps: DocumentEditorDeps) {}
+
+  /** The bytes of the revision being shown, for reading pages out of it. */
+  async currentBytes(sessionId: string): Promise<Uint8Array> {
+    return this.readCurrentBytes(this.requireSession(sessionId));
+  }
 
   /** The file the viewer should read: the current revision, or the original. */
   currentBytesPath(sessionId: string): string | undefined {
@@ -134,7 +139,7 @@ export class DocumentEditor {
     const result = await this.deps.engine.apply(
       bytes,
       operations,
-      this.deps.stampImages(sessionId),
+      this.deps.stagedAssets(sessionId),
     );
 
     delete entry.annotations;

@@ -6,13 +6,16 @@ import { buildAppInfo } from '../services/appInfo';
 import type { DocumentEditor } from '../services/documents/documentEditor';
 import type { DocumentService } from '../services/documents/documentService';
 import type { QpdfService } from '../services/qpdf/qpdfService';
-import type { StampImages } from '../services/documents/stampImages';
+import type { StagedAssets } from '../services/documents/stagedAssets';
 import type { RecentFilesStore } from '../services/recentFiles/recentFilesStore';
 import type { SessionWorkspaces } from '../services/recovery/recoveryJournal';
 import type { SettingsStore } from '../services/settings/settingsStore';
 import type { Logger } from '../services/logging/logger';
 import type { ThemeController } from '../theme/themeController';
+import type { PageExport } from '../services/documents/pageExport';
+import type { PdfMutationEngine } from '@pdf/mutate/types';
 import { registerEditHandlers } from './handlers/editHandlers';
+import { registerOrganizeHandlers } from './handlers/organizeHandlers';
 import { registerFileHandlers } from './handlers/fileHandlers';
 import { createIpcRegistrar } from './registry';
 
@@ -22,7 +25,9 @@ export interface IpcDependencies {
   documents: DocumentService;
   editor: DocumentEditor;
   qpdf: QpdfService;
-  stampImages: StampImages;
+  stagedAssets: StagedAssets;
+  pageExport: PageExport;
+  engine: PdfMutationEngine;
   workspaces: SessionWorkspaces;
   theme: ThemeController;
   logger: Logger;
@@ -82,8 +87,17 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
     documents: deps.documents,
     editor: deps.editor,
     qpdf: deps.qpdf,
-    stampImages: deps.stampImages,
+    stagedAssets: deps.stagedAssets,
     settings: deps.settings,
+    senderWindow,
+  });
+
+  registerOrganizeHandlers(registerInvoke, {
+    documents: deps.documents,
+    editor: deps.editor,
+    stagedAssets: deps.stagedAssets,
+    pageExport: deps.pageExport,
+    engine: deps.engine,
     senderWindow,
   });
 

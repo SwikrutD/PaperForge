@@ -58,6 +58,37 @@ export function validateTransaction(
       continue;
     }
 
+    if (
+      operation.kind === 'movePages' ||
+      operation.kind === 'duplicatePages' ||
+      operation.kind === 'cropPages'
+    ) {
+      const targets = normalizePages(operation.pages, pages);
+      if (targets.length === 0) {
+        throw new AppError('internal/unexpected', {
+          message: 'That change does not apply to any page of this document.',
+          details: `${operation.kind}: no page of ${pages} matched`,
+        });
+      }
+      if (operation.kind === 'duplicatePages') pages += targets.length;
+      operations.push({ ...operation, pages: targets });
+      continue;
+    }
+
+    if (operation.kind === 'insertBlankPages') {
+      pages += operation.count;
+    }
+
+    if (operation.kind === 'insertImagePages') {
+      pages += 1;
+    }
+
+    if (operation.kind === 'insertPages') {
+      // How many pages arrive depends on the source, which only the engine
+      // has; the count is corrected when the change is applied.
+      pages += operation.pages?.length ?? 1;
+    }
+
     if (operation.kind === 'addAnnotations') {
       const outside = operation.annotations.filter(
         (annotation) => annotation.pageNumber < 1 || annotation.pageNumber > pages,
@@ -94,6 +125,22 @@ export function describeOperation(operation: EditOperation): string {
       return operation.updates.length === 1 ? 'Change comment' : 'Change comments';
     case 'deleteAnnotations':
       return operation.ids.length === 1 ? 'Delete comment' : 'Delete comments';
+    case 'movePages':
+      return `Move ${plural(operation.pages)} ${formatPageList(operation.pages)}`;
+    case 'duplicatePages':
+      return `Duplicate ${plural(operation.pages)} ${formatPageList(operation.pages)}`;
+    case 'insertBlankPages':
+      return operation.count === 1
+        ? 'Insert a blank page'
+        : `Insert ${operation.count} blank pages`;
+    case 'insertPages':
+      return 'Insert pages';
+    case 'insertImagePages':
+      return 'Insert an image as a page';
+    case 'cropPages':
+      return `Crop ${plural(operation.pages)} ${formatPageList(operation.pages)}`;
+    case 'setPageLabels':
+      return 'Change page numbering';
   }
 }
 

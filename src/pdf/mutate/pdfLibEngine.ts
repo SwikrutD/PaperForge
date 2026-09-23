@@ -12,7 +12,8 @@ import {
   type WriteContext,
 } from './annotations/write';
 import { normalizePages, rotationAfter } from './operations';
-import type { DocumentFacts, MutationResult, PdfMutationEngine, StampImageBytes } from './types';
+import { applyPageOperation, type PageContext } from './pages';
+import type { DocumentFacts, MutationResult, PdfMutationEngine, StagedAsset } from './types';
 
 /**
  * The write engine, and the only file that imports pdf-lib.
@@ -50,7 +51,7 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
   async apply(
     bytes: Uint8Array,
     operations: readonly EditOperation[],
-    images: ReadonlyMap<string, StampImageBytes> = new Map(),
+    assets: ReadonlyMap<string, StagedAsset> = new Map(),
   ): Promise<MutationResult> {
     const document = await load(bytes);
 
@@ -58,31 +59,43 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
       // pdf-lib's page cache is not invalidated when a page is removed, so
       // pages are held by identity and the running order is kept here rather
       // than asked for again.
-      let order: PDFPage[] = document.getPages().slice();
+      const pageContext: PageContext = {
+        document,
+        order: document.getPages().slice(),
+        assets,
+        sources: new Map(),
+      };
       let annotations: AnnotationContext | null = null;
       // Reading the annotations that are already there is only worth doing
       // once, and only for the operations that need it.
       const annotationContext = async (): Promise<AnnotationContext> => {
-        annotations ??= await createContext(document, images);
+        annotations ??= await createContext(document, assets);
         return annotations;
       };
 
       for (const operation of operations) {
+        // Anything that changes which pages exist invalidates what was read
+        // about the annotations on them.
+        if (await applyPageOperation(pageContext, operation)) {
+          annotations = null;
+          continue;
+        }
+
         switch (operation.kind) {
           case 'rotatePages': {
-            for (const page of pagesFor(order, operation.pages)) {
+            for (const page of pagesFor(pageContext.order, operation.pages)) {
               page.setRotation(degrees(rotationAfter(page.getRotation().angle, operation.degrees)));
             }
             break;
           }
 
           case 'deletePages': {
-            const doomed = new Set(pagesFor(order, operation.pages));
+            const doomed = new Set(pagesFor(pageContext.order, operation.pages));
             // Highest index first, so each removal leaves the lower ones alone.
-            for (let index = order.length - 1; index >= 0; index -= 1) {
-              if (doomed.has(order[index] as PDFPage)) document.removePage(index);
+            for (let index = pageContext.order.length - 1; index >= 0; index -= 1) {
+              if (doomed.has(pageContext.order[index] as PDFPage)) document.removePage(index);
             }
-            order = order.filter((page) => !doomed.has(page));
+            pageContext.order = pageContext.order.filter((page) => !doomed.has(page));
             annotations = null;
             break;
           }
@@ -90,7 +103,7 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
           case 'addAnnotations': {
             const context = await annotationContext();
             for (const input of operation.annotations) {
-              const page = order[input.pageNumber - 1];
+              const page = pageContext.order[input.pageNumber - 1];
               if (page === undefined) continue;
               const now = new Date();
               writeAnnotation(context.write, page, input, nextAnnotationId(), {
@@ -122,7 +135,7 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
             }
 
             for (const [pageIndex, refs] of byPage) {
-              const page = order[pageIndex];
+              const page = pageContext.order[pageIndex];
               if (page !== undefined) removeAnnotations(page, refs);
             }
             annotations = null;
@@ -146,15 +159,16 @@ interface AnnotationContext {
 /** Embeds what appearances need, once, and reads what is already there. */
 async function createContext(
   document: PDFDocument,
-  images: ReadonlyMap<string, StampImageBytes>,
+  assets: ReadonlyMap<string, StagedAsset>,
 ): Promise<AnnotationContext> {
   const embedded = new Map<string, PDFImage>();
-  for (const [token, image] of images) {
+  for (const [token, asset] of assets) {
+    if (asset.kind !== 'image') continue;
     embedded.set(
       token,
-      image.format === 'png'
-        ? await document.embedPng(image.bytes)
-        : await document.embedJpg(image.bytes),
+      asset.format === 'png'
+        ? await document.embedPng(asset.bytes)
+        : await document.embedJpg(asset.bytes),
     );
   }
 

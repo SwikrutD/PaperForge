@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { annotationInputSchema, annotationPatchSchema } from './annotation';
+import { pageBoxSchema, pageLabelStyleSchema } from './pages';
 import { documentSessionSchema } from './document';
 
 /**
@@ -47,9 +48,74 @@ export const deleteAnnotationsOperationSchema = z.strictObject({
   ids: z.array(z.string().min(1).max(120)).min(1).max(500),
 });
 
+/** Moves pages to a new position, keeping their order among themselves. */
+export const movePagesOperationSchema = z.strictObject({
+  kind: z.literal('movePages'),
+  pages: pageListSchema,
+  /** Where the block lands, counted in pages before the move. */
+  toIndex: z.number().int().min(0).max(100_000),
+});
+
+export const duplicatePagesOperationSchema = z.strictObject({
+  kind: z.literal('duplicatePages'),
+  pages: pageListSchema,
+});
+
+export const insertBlankPagesOperationSchema = z.strictObject({
+  kind: z.literal('insertBlankPages'),
+  atIndex: z.number().int().min(0).max(100_000),
+  count: z.number().int().min(1).max(500),
+  /** Null takes the size of the page the new ones follow. */
+  size: z.strictObject({ width: z.number().positive(), height: z.number().positive() }).nullable(),
+});
+
+/** Inserts pages from another document, staged by the main process. */
+export const insertPagesOperationSchema = z.strictObject({
+  kind: z.literal('insertPages'),
+  atIndex: z.number().int().min(0).max(100_000),
+  token: z.string().min(1).max(200),
+  /** Which pages of the source; null takes all of them. */
+  pages: pageListSchema.nullable(),
+});
+
+export const insertImagePagesOperationSchema = z.strictObject({
+  kind: z.literal('insertImagePages'),
+  atIndex: z.number().int().min(0).max(100_000),
+  token: z.string().min(1).max(200),
+  /** Null makes the page the size of the image itself. */
+  size: z.strictObject({ width: z.number().positive(), height: z.number().positive() }).nullable(),
+  margin: z.number().min(0).max(300),
+});
+
+export const cropPagesOperationSchema = z.strictObject({
+  kind: z.literal('cropPages'),
+  pages: pageListSchema,
+  box: pageBoxSchema,
+  /**
+   * The crop box hides what is outside it and can be undone; the media box is
+   * the page itself, which is why changing it is a separate choice.
+   */
+  target: z.enum(['crop', 'media']),
+});
+
+export const setPageLabelsOperationSchema = z.strictObject({
+  kind: z.literal('setPageLabels'),
+  fromPage: z.number().int().min(1).max(100_000),
+  style: pageLabelStyleSchema,
+  prefix: z.string().max(60),
+  start: z.number().int().min(1).max(100_000),
+});
+
 export const editOperationSchema = z.discriminatedUnion('kind', [
   rotatePagesOperationSchema,
   deletePagesOperationSchema,
+  movePagesOperationSchema,
+  duplicatePagesOperationSchema,
+  insertBlankPagesOperationSchema,
+  insertPagesOperationSchema,
+  insertImagePagesOperationSchema,
+  cropPagesOperationSchema,
+  setPageLabelsOperationSchema,
   addAnnotationsOperationSchema,
   updateAnnotationsOperationSchema,
   deleteAnnotationsOperationSchema,
