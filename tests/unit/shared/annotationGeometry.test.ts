@@ -11,7 +11,7 @@ import {
   translateGeometry,
 } from '../../../src/pdf/mutate/annotations/geometry';
 import { fromPdfDate, toPdfDate } from '../../../src/pdf/mutate/annotations/pdfDate';
-import { isDrawable, toWinAnsi, wrapText } from '../../../src/pdf/mutate/annotations/text';
+import { isDrawable, toWinAnsi, wrapText } from '../../../src/pdf/text/layout';
 
 describe('annotation bounds', () => {
   it('covers every quad of marked text', () => {

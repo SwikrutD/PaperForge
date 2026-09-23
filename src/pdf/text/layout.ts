@@ -1,12 +1,14 @@
 import type { PDFFont } from 'pdf-lib';
 
 /**
- * Text for appearance streams.
+ * Laying text out with a standard PDF font: what can be drawn, and where the
+ * lines end.
  *
- * The comment itself is stored as written, in full Unicode. What an appearance
- * *draws* is limited by the font it draws with: Helvetica is a Latin-1 font,
- * so anything outside that is shown as a question mark rather than crashing
- * the save or silently dropping the line.
+ * Shared by the comments that draw their own appearance and by the pages made
+ * from a text file. Text is stored as written, in full Unicode; what is
+ * *drawn* is limited by the font drawing it — Helvetica is a Latin-1 font, so
+ * anything outside that is shown as a question mark rather than crashing the
+ * write or silently dropping the line.
  */
 
 const REPLACEMENT = '?';

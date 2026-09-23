@@ -31,6 +31,20 @@ export function documentUrlForSession(sessionId: string, revision = 0): string {
   return revision === 0 ? base : `${base}?r=${String(revision)}`;
 }
 
+/** Host component of a staged source URL: pfdoc://source/<source id> */
+export const SOURCE_HOST = 'source';
+
+/**
+ * URL the renderer previews a staged source from.
+ *
+ * A source is a file the reader added to a new document but has not saved
+ * anywhere: the bytes live in the main process, and this is how the renderer
+ * draws a thumbnail of one without ever holding it.
+ */
+export function sourceUrlFor(sourceId: string): string {
+  return `${DOCUMENT_SCHEME}://${SOURCE_HOST}/${encodeURIComponent(sourceId)}`;
+}
+
 /** Name of the settings file inside the per-user data directory. */
 export const SETTINGS_FILE_NAME = 'settings.json';
 

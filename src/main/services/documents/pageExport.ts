@@ -1,10 +1,9 @@
-import fs from 'node:fs/promises';
 import path from 'node:path';
 import { AppError } from '@shared/errors/appError';
 import type { ExportResult, SplitPart } from '@shared/schemas/pages';
 import { extractPages } from '@pdf/mutate/extract';
 import type { PdfMutationEngine } from '@pdf/mutate/types';
-import { writeFileAtomic } from '../filesystem/atomicWrite';
+import { publishDocument } from './publishDocument';
 import type { Logger } from '../logging/logger';
 import type { QpdfService } from '../qpdf/qpdfService';
 
@@ -45,13 +44,9 @@ export class PageExport {
             : path.join(job.destination.path, uniqueName(safeFileName(part.name), written));
 
         const bytes = await extractPages(job.bytes, part.pages);
-        await writeFileAtomic(target, bytes, {
-          // The same rule as a save: a file PaperForge cannot read back is
-          // never published.
-          validate: async (tempPath) => {
-            await this.validate(tempPath, path.basename(target));
-          },
-        });
+        // The same rule as a save: a file PaperForge cannot read back is never
+        // published.
+        await publishDocument(this.deps, bytes, target);
 
         written.push(target);
         this.deps.logger.info('Wrote pages to a new document.', target, `part ${index + 1}`);
@@ -77,24 +72,6 @@ export class PageExport {
           ? job.destination.path
           : path.dirname(job.destination.path),
     };
-  }
-
-  private async validate(tempPath: string, displayName: string): Promise<void> {
-    const written = new Uint8Array(await fs.readFile(tempPath));
-    const facts = await this.deps.engine.inspect(written);
-    if (facts.pageCount < 1) {
-      throw new AppError('io/write-failed', {
-        message: `${displayName} was not written: the file PaperForge produced could not be reopened.`,
-      });
-    }
-
-    const check = await this.deps.qpdf.check(tempPath).catch(() => undefined);
-    if (check !== undefined && !check.readable) {
-      throw new AppError('io/write-failed', {
-        message: `${displayName} was not written: qpdf could not read the file PaperForge produced.`,
-        details: check.output.slice(0, 2000),
-      });
-    }
   }
 }
 

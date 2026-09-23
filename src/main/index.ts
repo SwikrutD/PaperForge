@@ -12,6 +12,11 @@ import {
 import { DocumentEditor } from './services/documents/documentEditor';
 import { DocumentService } from './services/documents/documentService';
 import { PageExport } from './services/documents/pageExport';
+import { DocumentCreator } from './services/creation/documentCreator';
+import { SourceLibrary } from './services/creation/sourceLibrary';
+import { createHtmlProvider } from './services/conversion/htmlProvider';
+import { ConversionRegistry } from '@conversion/models/provider';
+import { imageProvider, pdfProvider, textProvider } from '@conversion/providers/localProviders';
 import { StagedAssets } from './services/documents/stagedAssets';
 import { QpdfService } from './services/qpdf/qpdfService';
 import { PdfLibMutationEngine } from '@pdf/mutate/pdfLibEngine';
@@ -89,6 +94,18 @@ async function bootstrap(): Promise<void> {
   const stagedAssets = new StagedAssets();
   const engine = new PdfLibMutationEngine();
   const pageExport = new PageExport({ engine, qpdf, logger });
+  // Everything a new document can be made from. The web-page provider needs
+  // Chromium's own printing, so it is registered by the process that has it;
+  // local Office conversion joins the list in Segment 13.
+  const conversions = new ConversionRegistry();
+  conversions.add(pdfProvider);
+  conversions.add(imageProvider);
+  conversions.add(textProvider);
+  conversions.add(createHtmlProvider(logger));
+
+  const library = new SourceLibrary({ registry: conversions, engine, logger });
+  const creator = new DocumentCreator({ library, engine, qpdf, logger });
+
   const editor = new DocumentEditor({
     documents,
     engine,
@@ -124,10 +141,20 @@ async function bootstrap(): Promise<void> {
   }
   // The viewer reads the current revision once a document has been changed,
   // and the original file until then.
-  registerDocumentProtocol(documents, logger, (sessionId) => editor.currentBytesPath(sessionId));
+  registerDocumentProtocol(
+    documents,
+    logger,
+    (sessionId) => editor.currentBytesPath(sessionId),
+    (sourceId) => library.bytesOf(sourceId),
+  );
 
-  const openWindow = (): BrowserWindow =>
-    createMainWindow({ settings, theme, logger, preloadPath, devServerUrl });
+  const openWindow = (): BrowserWindow => {
+    const window = createMainWindow({ settings, theme, logger, preloadPath, devServerUrl });
+    // Files staged for a new document belong to the window that added them.
+    const ownerId = window.webContents.id;
+    window.on('closed', () => library.clear(ownerId));
+    return window;
+  };
 
   registerIpcHandlers({
     settings,
@@ -138,6 +165,9 @@ async function bootstrap(): Promise<void> {
     stagedAssets,
     pageExport,
     engine,
+    library,
+    creator,
+    conversions,
     workspaces,
     theme,
     logger,

@@ -13,8 +13,12 @@ import type { SettingsStore } from '../services/settings/settingsStore';
 import type { Logger } from '../services/logging/logger';
 import type { ThemeController } from '../theme/themeController';
 import type { PageExport } from '../services/documents/pageExport';
+import type { DocumentCreator } from '../services/creation/documentCreator';
+import type { SourceLibrary } from '../services/creation/sourceLibrary';
+import type { ConversionRegistry } from '@conversion/models/provider';
 import type { PdfMutationEngine } from '@pdf/mutate/types';
 import { registerEditHandlers } from './handlers/editHandlers';
+import { registerCreationHandlers } from './handlers/creationHandlers';
 import { registerOrganizeHandlers } from './handlers/organizeHandlers';
 import { registerFileHandlers } from './handlers/fileHandlers';
 import { createIpcRegistrar } from './registry';
@@ -28,6 +32,9 @@ export interface IpcDependencies {
   stagedAssets: StagedAssets;
   pageExport: PageExport;
   engine: PdfMutationEngine;
+  library: SourceLibrary;
+  creator: DocumentCreator;
+  conversions: ConversionRegistry;
   workspaces: SessionWorkspaces;
   theme: ThemeController;
   logger: Logger;
@@ -98,6 +105,13 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
     stagedAssets: deps.stagedAssets,
     pageExport: deps.pageExport,
     engine: deps.engine,
+    senderWindow,
+  });
+
+  registerCreationHandlers(registerInvoke, {
+    library: deps.library,
+    creator: deps.creator,
+    registry: deps.conversions,
     senderWindow,
   });
 

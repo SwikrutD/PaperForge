@@ -20,6 +20,14 @@ import {
   saveModeSchema,
   saveOutcomeSchema,
 } from '../schemas/edit';
+import {
+  blankRequestSchema,
+  combineRequestSchema,
+  createOutcomeSchema,
+  pageSetupSchema,
+  stagedSourceSchema,
+  stagedSourcesSchema,
+} from '../schemas/create';
 import { recentFilesListSchema } from '../schemas/recentFiles';
 import { settingsPatchSchema, settingsSchema } from '../schemas/settings';
 import { themeStateSchema } from '../schemas/theme';
@@ -150,6 +158,43 @@ export const invokeContracts = {
       mode: z.enum(['single', 'perPage']),
     }),
     response: exportResultSchema,
+  },
+
+  /**
+   * Stages local files for a new document: they are read, converted to pages
+   * by their provider, and listed by name and page count. The picker is
+   * native, so the renderer never names a file.
+   */
+  'sources:add': {
+    request: z.strictObject({ setup: pageSetupSchema }),
+    response: stagedSourcesSchema,
+  },
+  'sources:list': {
+    request: z.strictObject({}),
+    response: z.array(stagedSourceSchema),
+  },
+  'sources:remove': {
+    request: z.strictObject({ ids: z.array(z.string().min(1).max(200)).min(1).max(1000) }),
+    response: z.array(stagedSourceSchema),
+  },
+  'sources:clear': {
+    request: z.strictObject({}),
+    response: z.array(stagedSourceSchema),
+  },
+  /** Converts the staged files again on different paper. */
+  'sources:setPageSetup': {
+    request: z.strictObject({ setup: pageSetupSchema }),
+    response: stagedSourcesSchema,
+  },
+  /** Makes an empty document, asking where it should go. */
+  'create:blank': {
+    request: blankRequestSchema,
+    response: createOutcomeSchema,
+  },
+  /** Makes one document out of the staged files. */
+  'create:combine': {
+    request: combineRequestSchema,
+    response: createOutcomeSchema,
   },
 
   /** Every annotation in a document, as the file itself records them. */

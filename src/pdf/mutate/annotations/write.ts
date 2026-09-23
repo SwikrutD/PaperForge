@@ -22,7 +22,7 @@ import type {
 import { buildAppearance } from './appearance';
 import { boundsOf } from './geometry';
 import { toPdfDate } from './pdfDate';
-import { wrapText, toSingleLine } from './text';
+import { wrapText, toSingleLine } from '../../text/layout';
 
 /**
  * Writing annotations into a document as real PDF annotations.

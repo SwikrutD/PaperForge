@@ -1,7 +1,11 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "paths": { "@shared/*": ["./src/shared/*"], "@pdf/*": ["./src/pdf/*"] },
+    "paths": {
+      "@shared/*": ["./src/shared/*"],
+      "@pdf/*": ["./src/pdf/*"],
+      "@conversion/*": ["./src/conversion/*"]
+    },
     "module": "ESNext",
     "moduleResolution": "bundler",
     "verbatimModuleSyntax": true,
