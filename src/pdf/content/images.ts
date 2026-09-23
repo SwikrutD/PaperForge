@@ -1,6 +1,6 @@
 import type { ByteRange, ContentOperation } from './parser';
-import { applyMatrix, matrixRotation, walkContent, type Matrix } from './state';
-import { nameOf } from './values';
+import { applyMatrix, invert, matrixRotation, walkContent, type Matrix } from './state';
+import { nameOf, numberOf } from './values';
 
 /**
  * The images a page draws.
@@ -41,6 +41,11 @@ export interface ImagePlacement {
   /** True when the image is mirrored along its own axes. */
   flippedX: boolean;
   flippedY: boolean;
+  /**
+   * The part of the image that shows, in its own square, when the page clips
+   * it to less than all of it. Null means all of it shows.
+   */
+  crop: { x: number; y: number; width: number; height: number } | null;
   facts: ImageFacts;
 }
 
@@ -51,11 +56,32 @@ export function extractImages(
   ctm?: Matrix,
 ): ImagePlacement[] {
   const images: ImagePlacement[] = [];
+  /**
+   * The clip in force for the image about to be drawn, in user space. Only a
+   * clip set alongside the image counts: an outer one belongs to the page
+   * rather than to the picture, and is not the reader's crop.
+   */
+  let rect: Rect | null = null;
+  let clip: Rect | null = null;
 
   walkContent(operations, {
     ...(ctm === undefined ? {} : { ctm }),
     onOperation: (context) => {
       const { operation, state } = context;
+
+      if (operation.operator === 'q' || operation.operator === 'Q') {
+        rect = null;
+        clip = null;
+        return;
+      }
+      if (operation.operator === 're') {
+        rect = rectangleOf(operation, state.ctm);
+        return;
+      }
+      if (operation.operator === 'W' || operation.operator === 'W*') {
+        clip = rect;
+        return;
+      }
       if (operation.operator !== 'Do') return;
 
       const name = nameOf(operation.operands[0]);
@@ -77,12 +103,70 @@ export function extractImages(
         // A mirrored image has a negative scale down one of its axes.
         flippedX: state.ctm.a * state.ctm.d - state.ctm.b * state.ctm.c < 0,
         flippedY: state.ctm.d < 0 && state.ctm.a >= 0,
+        crop: cropOf(clip, state.ctm),
         facts,
       });
+      clip = null;
+      rect = null;
     },
   });
 
   return images;
+}
+
+interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** A rectangle an `re` operator draws, in user space. */
+function rectangleOf(operation: ContentOperation, ctm: Matrix): Rect | null {
+  const operands = operation.operands.slice(0, 4);
+  if (operands.length < 4 || operands.some((operand) => operand.kind !== 'number')) return null;
+  const [x, y, width, height] = operands.map((operand) => numberOf(operand)) as [
+    number,
+    number,
+    number,
+    number,
+  ];
+
+  const corners = [
+    applyMatrix(ctm, x, y),
+    applyMatrix(ctm, x + width, y),
+    applyMatrix(ctm, x, y + height),
+    applyMatrix(ctm, x + width, y + height),
+  ];
+  const xs = corners.map((corner) => corner.x);
+  const ys = corners.map((corner) => corner.y);
+  const left = Math.min(...xs);
+  const bottom = Math.min(...ys);
+  return {
+    x: left,
+    y: bottom,
+    width: Math.max(...xs) - left,
+    height: Math.max(...ys) - bottom,
+  };
+}
+
+/** A clip in user space, as the part of the image it leaves showing. */
+function cropOf(clip: Rect | null, ctm: Matrix): Rect | null {
+  if (clip === null) return null;
+  const undo = invert(ctm);
+  if (undo === null) return null;
+
+  const first = applyMatrix(undo, clip.x, clip.y);
+  const second = applyMatrix(undo, clip.x + clip.width, clip.y + clip.height);
+  const x = Math.max(0, Math.min(first.x, second.x));
+  const y = Math.max(0, Math.min(first.y, second.y));
+  const width = Math.min(1, Math.max(first.x, second.x)) - x;
+  const height = Math.min(1, Math.max(first.y, second.y)) - y;
+
+  // A clip that leaves the whole image showing is not a crop.
+  if (width >= 0.999 && height >= 0.999) return null;
+  if (width <= 0 || height <= 0) return null;
+  return { x, y, width, height };
 }
 
 /** The box the unit square occupies once a matrix has had its way with it. */
@@ -103,6 +187,43 @@ export function boundsOf(matrix: Matrix): {
   const x = Math.min(...xs);
   const y = Math.min(...ys);
   return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
+}
+
+/** Where an image sits, as the reader sees it. */
+export interface ImageBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  flipX: boolean;
+  flipY: boolean;
+}
+
+/**
+ * The box an image is drawn in, read back out of its matrix.
+ *
+ * This undoes {@link placementMatrix}: the box is the one the reader drags, so
+ * a turned image reports the size it is, not the size of the upright box that
+ * would contain it. A mirrored image is always reported as mirrored across x,
+ * because mirroring the other way is the same matrix turned half a circle.
+ */
+export function placementOf(matrix: Matrix): ImageBox {
+  const width = Math.hypot(matrix.a, matrix.b);
+  const height = Math.hypot(matrix.c, matrix.d);
+  const centre = applyMatrix(matrix, 0.5, 0.5);
+  const radians = Math.atan2(-matrix.c, matrix.d);
+  const degrees = ((((radians * 180) / Math.PI) % 360) + 360) % 360;
+
+  return {
+    x: centre.x - width / 2,
+    y: centre.y - height / 2,
+    width,
+    height,
+    rotation: Math.round(degrees * 100) / 100,
+    flipX: matrix.a * matrix.d - matrix.b * matrix.c < 0,
+    flipY: false,
+  };
 }
 
 /**

@@ -4,7 +4,7 @@ import { PdfLibMutationEngine } from '../../../src/pdf/mutate/pdfLibEngine';
 import { imageIdOf, readPageWithImages } from '../../../src/pdf/mutate/images';
 import { exportImage, isAddedImage } from '../../../src/pdf/mutate/imageResources';
 import { resourcesOf, type PageContent } from '../../../src/pdf/content/pageContent';
-import { placementMatrix } from '../../../src/pdf/content/images';
+import { placementMatrix, placementOf } from '../../../src/pdf/content/images';
 import { applyMatrix } from '../../../src/pdf/content/state';
 import type { StagedAsset } from '../../../src/pdf/mutate/types';
 import { buildPdf, type PdfSpec } from '../../fixtures/pdf';
@@ -154,6 +154,44 @@ describe('moving an image', () => {
     expect((await pageOf(mirrored.bytes)).images[0]?.flippedX).toBe(true);
   });
 
+  it('reads back the crop it wrote, so cropping twice is not cumulative', async () => {
+    const original = withImage();
+    const id = imageIdOf((await pageOf(original)).images[0]!);
+
+    const result = await engine.apply(original, [
+      {
+        kind: 'placeImage',
+        page: 1,
+        imageId: id,
+        placement: { ...placement, x: 100, y: 500, width: 200, height: 100 },
+        crop: { x: 0.25, y: 0.1, width: 0.5, height: 0.8 },
+        token: null,
+      },
+    ]);
+
+    const image = (await pageOf(result.bytes)).images[0];
+    expect(image?.crop?.x).toBeCloseTo(0.25, 4);
+    expect(image?.crop?.y).toBeCloseTo(0.1, 4);
+    expect(image?.crop?.width).toBeCloseTo(0.5, 4);
+    expect(image?.crop?.height).toBeCloseTo(0.8, 4);
+  });
+
+  it('does not call the page it is drawn on a crop', async () => {
+    // A clip around the whole page is the page's business, not the image's.
+    const bytes = documentOf({
+      pages: [
+        {
+          content: '0 0 612 792 re W n q 200 0 0 100 100 500 cm /Im0 Do Q\n',
+          image: { x: 0, y: 0, width: 1, height: 1, matrix: [1, 0, 0, 1, -9000, -9000] },
+        },
+      ],
+    });
+
+    const images = (await pageOf(bytes)).images;
+    expect(images).toHaveLength(2);
+    expect(images[1]?.crop).toBeNull();
+  });
+
   it('crops it by clipping, without touching the image itself', async () => {
     const original = withImage();
     const id = imageIdOf((await pageOf(original)).images[0]!);
@@ -281,6 +319,40 @@ describe('adding an image', () => {
 });
 
 describe('the placement matrix', () => {
+  it('reads back the box it was built from', () => {
+    for (const rotation of [0, 90, 180, 270, 37]) {
+      for (const flipX of [false, true]) {
+        const box = { x: 12, y: 34, width: 100, height: 50, rotation, flipX, flipY: false };
+        const read = placementOf(placementMatrix(box));
+
+        expect(read.x).toBeCloseTo(box.x, 4);
+        expect(read.y).toBeCloseTo(box.y, 4);
+        expect(read.width).toBeCloseTo(box.width, 4);
+        expect(read.height).toBeCloseTo(box.height, 4);
+        expect(read.rotation).toBeCloseTo(rotation, 2);
+        expect(read.flipX).toBe(flipX);
+      }
+    }
+  });
+
+  it('reports mirroring the other way as the same thing turned about', () => {
+    // Mirroring up-down is mirroring left-right, turned half a circle; saying
+    // so keeps what is read back the same as what was written.
+    const read = placementOf(
+      placementMatrix({
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 40,
+        rotation: 0,
+        flipX: false,
+        flipY: true,
+      }),
+    );
+    expect(read.flipX).toBe(true);
+    expect(read.rotation).toBeCloseTo(180, 2);
+  });
+
   it('maps the unit square onto the box asked for', () => {
     const matrix = placementMatrix({
       x: 10,

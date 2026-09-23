@@ -29,6 +29,7 @@ import {
   stagedSourcesSchema,
 } from '../schemas/create';
 import { pageTextModelSchema } from '../schemas/text';
+import { pageImageModelSchema } from '../schemas/image';
 import { recentFilesListSchema } from '../schemas/recentFiles';
 import { settingsPatchSchema, settingsSchema } from '../schemas/settings';
 import { themeStateSchema } from '../schemas/theme';
@@ -185,6 +186,31 @@ export const invokeContracts = {
       ok: z.boolean(),
       missing: z.string().max(8).nullable(),
     }),
+  },
+
+  /** The images a page draws, with the boxes they are drawn in. */
+  'images:page': {
+    request: z.strictObject({
+      sessionId: z.string().min(1),
+      page: z.number().int().min(1).max(100_000),
+    }),
+    response: pageImageModelSchema,
+  },
+
+  /** Stages an image file to draw on a page, or in place of another. */
+  'images:choose': {
+    request: z.strictObject({ sessionId: z.string().min(1) }),
+    response: stampImageSchema.nullable(),
+  },
+
+  /** Writes an image the page draws out to a file the reader chooses. */
+  'images:export': {
+    request: z.strictObject({
+      sessionId: z.string().min(1),
+      page: z.number().int().min(1).max(100_000),
+      imageId: z.string().min(1).max(64),
+    }),
+    response: exportResultSchema,
   },
 
   /**
