@@ -4,7 +4,7 @@ PaperForge is an offline-first PDF workspace for Windows. It is being built to c
 work people do with a PDF tool — read, annotate, organize, edit, recognize text, convert, protect
 and redact — on a local machine, with no account, no telemetry and no cloud services.
 
-**Status: early development.** This repository currently contains Segments 0 to 5 of the build plan
+**Status: early development.** This repository currently contains Segments 0 to 6 of the build plan
 in [`CLAUDE.md`](./CLAUDE.md): the secure Electron foundation, the Fluent Workspace shell with its
 command system, the file layer (tabs, recent files, watching, session restore, crash recovery), the
 viewer — PDFs render with selectable text, working links, zoom, rotation and password support — and
@@ -12,7 +12,9 @@ the way around a document: page thumbnails, bookmarks, attachments, layers, page
 mode and text search across pages and open documents — and the foundation every editing feature
 builds on: changes applied to a working copy, undo and redo by revision, and a save pipeline that
 reopens what it wrote before it replaces your file. Page rotation and deletion are the first
-operations to use it. Annotating, organising and text editing arrive in later segments.
+operations to use it — and commenting: highlights, notes, shapes, freehand ink and stamps,
+written into the PDF as real annotations, with a comments panel that lists them. Organising pages
+and editing text arrive in later segments.
 [`PROGRESS.md`](./PROGRESS.md) is the authoritative status file.
 
 ## Principles
@@ -67,6 +69,7 @@ The Windows installer, file associations and "Open with" support arrive in Segme
 
 - [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — process model, layering, IPC
 - [`docs/EDITING_MODEL.md`](./docs/EDITING_MODEL.md) — how a change is applied, undone and saved
+- [`docs/ANNOTATIONS.md`](./docs/ANNOTATIONS.md) — how comments are written into the PDF itself
 - [`docs/SECURITY.md`](./docs/SECURITY.md) — the Electron security baseline PaperForge holds itself to
 - [`docs/DEPENDENCIES.md`](./docs/DEPENDENCIES.md) — why each dependency is here, and its license
 - [`docs/KEYBOARD_SHORTCUTS.md`](./docs/KEYBOARD_SHORTCUTS.md) — planned and implemented shortcuts

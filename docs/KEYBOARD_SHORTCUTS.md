@@ -27,6 +27,7 @@ refuses to start if two commands claim the same one.
 | `Ctrl+H`       | Find Options    | Find, with the scope and page-range row expanded                             |
 | `F3`           | Find Next       | Wraps around; works while the find field has focus                           |
 | `Shift+F3`     | Find Previous   |                                                                              |
+| `Ctrl+M`       | Comment         | Show or hide the comment tools                                               |
 | `Ctrl+Shift+R` | Reading Mode    | Only the title bar and the document; `Esc` leaves it                         |
 | `F4`           | Tools Panel     | Show or hide the right panel                                                 |
 | `F6`           | Next Region     | Cycle command bar → rail → left panel → workspace → tools panel → status bar |
@@ -35,18 +36,18 @@ refuses to start if two commands claim the same one.
 
 Shell behaviour that needs no chord:
 
-| Keys                      | Behaviour                                                                |
-| ------------------------- | ------------------------------------------------------------------------ |
-| `Tab` / `Shift+Tab`       | Move between controls, with a visible focus ring                         |
-| Middle-click a tab        | Close that document                                                      |
-| `Arrow keys`              | Move within a menu, the palette results, the theme options, or a divider |
-| `Ctrl+wheel`              | Zoom the document                                                        |
-| `Page Up` / `Page Down`   | Scroll the page column by a screen                                       |
-| `Home` / `End`            | Jump to the start or the end of the document                             |
-| `Home` / `End`            | On a panel divider: minimum and maximum width                            |
-| `Enter` / `Space`         | Activate the focused control                                             |
-| `Escape`                  | Close the palette, a menu, a dialog, the find bar or reading mode        |
-| `Enter` in the find field | Next match; `Shift+Enter` for the previous one                           |
+| Keys                      | Behaviour                                                                                        |
+| ------------------------- | ------------------------------------------------------------------------------------------------ |
+| `Tab` / `Shift+Tab`       | Move between controls, with a visible focus ring                                                 |
+| Middle-click a tab        | Close that document                                                                              |
+| `Arrow keys`              | Move within a menu, the palette results, the theme options, or a divider                         |
+| `Ctrl+wheel`              | Zoom the document                                                                                |
+| `Page Up` / `Page Down`   | Scroll the page column by a screen                                                               |
+| `Home` / `End`            | Jump to the start or the end of the document                                                     |
+| `Home` / `End`            | On a panel divider: minimum and maximum width                                                    |
+| `Enter` / `Space`         | Activate the focused control                                                                     |
+| `Escape`                  | Close the palette, a menu, a dialog, the find bar or reading mode, or go back to the select tool |
+| `Enter` in the find field | Next match; `Shift+Enter` for the previous one                                                   |
 
 Bare printable keys are suppressed while the focus is in a text field. Function keys are not:
 `F3` has to keep stepping through matches while the find field has focus, and `F4`, `F6` and `F11`

@@ -2,10 +2,10 @@
 
 ## Current status
 
-- Last completed segment: **5 — Mutation engine, save pipeline, undo/redo**
-- Next segment: **6 — Comments and annotations**
+- Last completed segment: **6 — Comments and annotations**
+- Next segment: **7 — Organize Pages**
 - Build status: `npm run package` succeeds; packaged app launches and closes cleanly on Windows 11 x64
-- Test status: 315 unit tests (33 files) and 31 Playwright end-to-end tests passing; typecheck, lint and format clean
+- Test status: 368 unit tests (36 files) and 39 Playwright end-to-end tests passing; typecheck, lint and format clean
 
 ## Completed segments
 
@@ -15,7 +15,7 @@
 - [x] 3 PDF.js viewer foundation
 - [x] 4 Navigation panels and search
 - [x] 5 Mutation engine, save pipeline, undo/redo
-- [ ] 6 Comments and annotations
+- [x] 6 Comments and annotations
 - [ ] 7 Organize Pages
 - [ ] 8 Create PDF and Combine Files
 - [ ] 9 Edit PDF: content model and text editing
@@ -216,6 +216,45 @@ picker to point at another one or go back to looking automatically.
 | Renderer | `renderer/stores/documentStore.ts`, `renderer/commands/*`, `renderer/components/overlays/QpdfSetting.tsx` |
 | Tests    | `tests/unit/main/{documentEditor,revisionHistory,qpdfService}.test.ts`, `tests/e2e/editing.e2e.ts`        |
 
+## Segment 6 — what landed
+
+**Real annotations.** Every comment is an annotation dictionary in the page's `/Annots` with the
+entries its subtype is defined by — quad points, ink lists, vertices, line coordinates, callout
+lines — plus author, subject, dates, colours and an appearance stream PaperForge draws itself. What
+a reader sees comes from the file rather than from each viewer's idea of what the mark should look
+like, and a highlight multiplies with the page so the words stay readable.
+
+**The tools.** `Ctrl+M` shows them: highlight, underline, strikethrough and squiggly from selected
+text; sticky notes, text boxes and callouts; rectangle, ellipse, line, arrow, polygon and polyline;
+freehand ink with an eraser; the built-in stamps and an image stamp. Text markup is taken from the
+browser's own selection rectangles, so it lands on the glyphs rather than near them.
+
+**Reading what is there.** Annotations are read back out of the file, so a document marked up in
+another application lists properly, with its authors and text. One PaperForge cannot redraw is
+still listed and can still be deleted — marked as not editable rather than hidden or silently
+replaced.
+
+**The comments panel** sorts by page, date or author and filters by type, author and status. A
+comment can be written on in place, gone to, marked done or deleted. The properties panel edits the
+selected mark — colour, opacity, line width and dash, fill, font size, text colour — or sets what
+the next one will look like.
+
+**Identity and geometry.** `/NM` carries a PaperForge id, so a mark keeps its identity through the
+whole-file rewrite every change makes. `/RD` records the difference between the annotation
+rectangle and the shape inside it, without which a read-modify-write cycle grew every shape by its
+stroke width.
+
+**Image stamps** are chosen through a native picker and staged in the main process: the bytes never
+cross IPC, only a token and the size to place the stamp at.
+
+| Area     | Key files                                                                                                             |
+| -------- | --------------------------------------------------------------------------------------------------------------------- |
+| Model    | `src/shared/schemas/annotation.ts`                                                                                    |
+| Engine   | `src/pdf/mutate/annotations/{geometry,appearance,write,read,text,pdfDate}.ts`                                         |
+| Main     | `main/services/documents/stampImages.ts`, `documentEditor.annotations`                                                |
+| Renderer | `renderer/stores/annotationStore.ts`, `renderer/components/annotations/*`                                             |
+| Tests    | `tests/unit/shared/annotation*.test.ts`, `tests/unit/renderer/annotationDrawing.test.ts`, `tests/e2e/comments.e2e.ts` |
+
 ## Architecture decisions
 
 1. **Channel allowlist separate from schemas**, so the preload carries no validation library and
@@ -318,6 +357,24 @@ picker to point at another one or go back to looking automatically.
 44. **pdf-lib's page cache is not to be trusted after a removal.** It is not invalidated by
     `removePage`, so the engine holds pages by identity and keeps the running order itself.
 
+45. **A comment is a PDF annotation, not a record in an application store.** Everything PaperForge
+    shows about a comment comes from the file, which is why a document marked up elsewhere reads
+    correctly and a document marked up here reads correctly elsewhere.
+46. **PaperForge writes the appearance itself.** Relying on each reader to synthesise one means the
+    mark looks different everywhere; an `/AP` stream means it does not.
+47. **The renderer never draws the finished mark.** It draws what does not exist yet — the shape
+    being dragged, the selection outline, the hit areas — and the page comes from the engine. Two
+    drawing implementations would be two things to keep in step.
+48. **Text markup comes from the browser's selection rectangles.** The text layer already knows
+    exactly where the glyphs are; anything else would be a guess at word boundaries.
+49. **The pointer layer has three modes, not two.** Drawing takes the pointer for itself; erasing
+    and selecting leave it on the marks, because both act on what is already there.
+50. **The resolved flag is PaperForge's own.** PDF has no portable place for it, so it is written
+    to `/PFStatus` and the panel says other readers ignore it.
+51. **An annotation PaperForge cannot redraw is listed, not hidden.** Its text and status can still
+    be changed and it can be deleted; its appearance cannot, because redrawing it would mean
+    replacing a mark PaperForge does not understand.
+
 ## Known limitations
 
 - The viewer is continuous scrolling only. Single page, two-page spread, cover page, the hand and
@@ -337,8 +394,17 @@ picker to point at another one or go back to looking automatically.
 - Form fields are drawn from their appearance streams but are not interactive; that is Segment 11.
 - The encryption marker shown in the properties panel is still a trailer scan. The viewer knows the
   truth once a document is open, and the two are not yet reconciled.
-- Editing is page rotation and page deletion. They exercise the whole pipeline; the Organize
-  workspace (Segment 7) and the content editors build on it.
+- Editing is page rotation, page deletion and commenting. The Organize workspace (Segment 7) and
+  the content editors build on the same pipeline.
+- A comment can be moved but not resized by handle: changing a shape's size means drawing it
+  again. Text markup and ink are deliberately not resizable — one belongs to the words it marks,
+  the other to the movement of the hand.
+- Text in a text box, callout or stamp is drawn in Helvetica. The comment itself keeps whatever was
+  typed, in full Unicode; the drawn appearance shows a question mark for a character Helvetica
+  cannot draw.
+- XFDF import and export is not implemented, so comments cannot be sent to or from Acrobat as a
+  separate file. File attachment annotations wait for the embedded-file work in Segment 14, and
+  measurement annotations for the practical tools in Segment 17.
 - An encrypted document can be read but not changed, and says so.
 - Every change rewrites the whole document. That is fine for page operations on ordinary files; a
   very large document and a rapid series of changes would be the first thing to batch.
@@ -348,7 +414,8 @@ picker to point at another one or go back to looking automatically.
   the honest description is "PaperForge knows a document had unsaved changes, not what they were".
 - PaperForge does not claim byte-level incremental saving: pdf-lib rewrites the file. The internal
   recovery journal is the "incremental" of `CLAUDE.md` section 9.
-- Fourteen of the fifteen home-screen tool cards are disabled because their capability is not built.
+- Thirteen of the fifteen home-screen tool cards are disabled because their capability is not
+  built; a card whose tool exists but needs a document open now says that instead.
 - Tabs reorder by dragging or the context menu; there is no keyboard chord for reordering yet.
 - The encryption marker is a trailer scan, not a parse. The viewer will confirm it properly.
 - File watching uses `fs.watch`, which reports a change but not who made it; a file replaced by a
@@ -380,8 +447,8 @@ Run on Windows 11 x64, Node 24.19.0, npm 11.17.0:
 | `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                                        |
 | `npm run typecheck`         | Pass — four projects, no errors                                                                                       |
 | `npm run lint`              | Pass — no errors, no warnings                                                                                         |
-| `npm test`                  | Pass — 315 tests in 33 files                                                                                          |
-| `npm run test:e2e`          | Pass — 31 Playwright tests against the built application                                                              |
+| `npm test`                  | Pass — 368 tests in 36 files                                                                                          |
+| `npm run test:e2e`          | Pass — 39 Playwright tests against the built application                                                              |
 | `npm run format:check`      | Pass — Prettier clean                                                                                                 |
 | `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                                             |
 | `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                                      |

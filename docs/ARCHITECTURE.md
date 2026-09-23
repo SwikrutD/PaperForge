@@ -42,6 +42,7 @@ src/
       controls/    button, icon button, menu bar, theme switcher
       home/        home screen, tool catalogue, recent files
       overlays/    dialog shell, settings, about, command palette, toasts
+      annotations/ comment tools, the layer that draws them, panel and properties
       panels/      left panel, thumbnails, bookmarks, attachments, layers, right panel
       search/      find bar, results list, the scan that feeds them
       progress/    progress centre
@@ -51,7 +52,7 @@ src/
       surfaces/    card, message bar
     design-system/ tokens.css and base.css
     services/      typed IPC client
-    stores/        Zustand state (app, documents, search, ui, jobs)
+    stores/        Zustand state (app, documents, annotations, search, ui, jobs)
     types/         UI and job models
     utils/         small renderer helpers
   shared/          used by all three contexts
@@ -63,6 +64,7 @@ src/
   pdf/             PDF engine layer, free of UI
     render/        engine contract and its PDF.js implementation
     mutate/        write contract, its pdf-lib implementation, operation arithmetic
+      annotations/ annotation geometry, appearances, reading and writing
     search/        matching and match geometry, pure and unit-tested
 scripts/           build-time tooling (icon generation)
 tests/unit/        Vitest suites mirroring src/
@@ -258,6 +260,14 @@ Two rules matter architecturally:
   qpdf is launched from one wrapper, with an argument array and no shell.
 - **Only `src/pdf/mutate/pdfLibEngine.ts` imports pdf-lib**, as only `pdfjsEngine.ts` imports
   PDF.js. Everything else talks to `PdfMutationEngine`.
+
+## Comments
+
+A comment is a real PDF annotation with an appearance stream PaperForge draws, so every reader
+shows what PaperForge showed. The renderer turns a gesture or a text selection into geometry, the
+main process writes it through the same mutation engine every other change goes through, and the
+comments panel lists what the file contains — including annotations another application wrote.
+`docs/ANNOTATIONS.md` has the subtypes, the entries and the limits.
 
 ## Error model
 
