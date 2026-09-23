@@ -15,8 +15,29 @@ export interface PageSpec {
   rotate?: number;
   /** Text drawn near the top of the page. */
   text?: string;
+  /**
+   * The page's content stream, written out as given. Takes the place of the
+   * default drawing, so a test can state exactly which operators a page uses.
+   */
+  content?: string;
   /** Puts the page's text inside this optional content group, by name. */
   layer?: string;
+}
+
+/** A font resource beyond the Helvetica every fixture already has. */
+export interface FontSpec {
+  /** Resource name the content stream uses, without its slash. */
+  name: string;
+  /** Codes the font maps differently from its base encoding. */
+  differences?: Record<number, string>;
+  /** Widths from code 32 onwards, in thousandths. */
+  widths?: number[];
+  /** Codes and what they say, written as a ToUnicode CMap. */
+  toUnicode?: Record<number, string>;
+  /** Makes a two-byte composite font instead of a simple one. */
+  composite?: boolean;
+  /** Widths by CID for a composite font. */
+  cidWidths?: Record<number, number>;
 }
 
 /** One outline entry. Children nest to any depth. */
@@ -50,6 +71,8 @@ export interface PdfSpec {
   attachments?: AttachmentSpec[];
   /** Optional content groups, by name, in the order the panel should show them. */
   layers?: string[];
+  /** Extra fonts, added to every page's resources as /F2, /F3 and so on. */
+  fonts?: FontSpec[];
 }
 
 interface PdfObject {
@@ -66,6 +89,67 @@ function latin1(text: string): Buffer {
 /** Escapes a string for a PDF literal. */
 function pdfString(value: string): string {
   return `(${value.replace(/([\\()])/g, '\\$1')})`;
+}
+
+/** Writes a font dictionary, with whatever the spec asked it to carry. */
+function addFont(add: (body: string | Buffer) => number, font: FontSpec): number {
+  const toUnicodeNumber =
+    font.toUnicode === undefined ? undefined : add(toUnicodeCMap(font.toUnicode));
+
+  if (font.composite === true) {
+    const widths = Object.entries(font.cidWidths ?? {})
+      .map(([cid, width]) => `${cid} [${width}]`)
+      .join(' ');
+    const descendantNumber = add(
+      `<< /Type /Font /Subtype /CIDFontType2 /BaseFont /Test ` +
+        `/CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> ` +
+        `/DW 1000${widths === '' ? '' : ` /W [${widths}]`} >>`,
+    );
+    return add(
+      `<< /Type /Font /Subtype /Type0 /BaseFont /Test /Encoding /Identity-H ` +
+        `/DescendantFonts [${descendantNumber} 0 R]` +
+        `${toUnicodeNumber === undefined ? '' : ` /ToUnicode ${toUnicodeNumber} 0 R`} >>`,
+    );
+  }
+
+  const differences = Object.entries(font.differences ?? {})
+    .map(([code, name]) => `${code} /${name}`)
+    .join(' ');
+  const encoding =
+    differences === ''
+      ? '/WinAnsiEncoding'
+      : `<< /Type /Encoding /BaseEncoding /WinAnsiEncoding /Differences [${differences}] >>`;
+
+  return add(
+    `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding ${encoding}` +
+      `${
+        font.widths === undefined
+          ? ''
+          : ` /FirstChar 32 /LastChar ${32 + font.widths.length - 1} /Widths [${font.widths.join(' ')}]`
+      }` +
+      `${toUnicodeNumber === undefined ? '' : ` /ToUnicode ${toUnicodeNumber} 0 R`} >>`,
+  );
+}
+
+/** A ToUnicode CMap, in the postfix syntax a CMap is written in. */
+function toUnicodeCMap(mapping: Record<number, string>): string {
+  const entries = Object.entries(mapping);
+  const lines = entries
+    .map(([code, text]) => {
+      const codeHex = Number(code).toString(16).padStart(4, '0');
+      const textHex = [...text]
+        .map((character) => (character.codePointAt(0) ?? 0).toString(16).padStart(4, '0'))
+        .join('');
+      return `<${codeHex}> <${textHex}>`;
+    })
+    .join('\n');
+
+  const body =
+    `/CIDInit /ProcSet findresource begin 12 dict begin begincmap\n` +
+    `1 begincodespacerange <0000> <FFFF> endcodespacerange\n` +
+    `${entries.length} beginbfchar\n${lines}\nendbfchar\n` +
+    `endcmap CMapName currentdict /CMap defineresource pop end end`;
+  return `<< /Length ${body.length} >>\nstream\n${body}\nendstream`;
 }
 
 export function buildPdf(spec: PdfSpec): Buffer {
@@ -88,13 +172,20 @@ export function buildPdf(spec: PdfSpec): Buffer {
     layerNumbers.set(name, add(`<< /Type /OCG /Name ${pdfString(name)} >>`));
   }
 
+  // Extra fonts come before the pages that name them.
+  const extraFonts = new Map<string, number>();
+  for (const font of spec.fonts ?? []) {
+    extraFonts.set(font.name, addFont(add, font));
+  }
+
   const pageNumbers: number[] = [];
   for (const page of spec.pages) {
     const width = page.width ?? LETTER.width;
     const height = page.height ?? LETTER.height;
     const text = page.text ?? '';
     const layerNumber = page.layer === undefined ? undefined : layerNumbers.get(page.layer);
-    const drawing = `BT /F1 24 Tf 1 0 0 1 60 ${height - 80} Tm ${pdfString(text)} Tj ET\n`;
+    const drawing =
+      page.content ?? `BT /F1 24 Tf 1 0 0 1 60 ${height - 80} Tm ${pdfString(text)} Tj ET\n`;
     // Marked content ties the drawing to an optional content group.
     const content = layerNumber === undefined ? drawing : `/OC /MC0 BDC\n${drawing}EMC\n`;
     const contentNumber = add(`<< /Length ${content.length} >>\nstream\n${content}endstream`);
@@ -104,7 +195,9 @@ export function buildPdf(spec: PdfSpec): Buffer {
       add(
         `<< /Type /Page /Parent ${pagesNumber} 0 R /MediaBox [0 0 ${width} ${height}]` +
           `${page.rotate === undefined ? '' : ` /Rotate ${page.rotate}`}` +
-          ` /Resources << /Font << /F1 ${fontNumber} 0 R >>${properties} >>` +
+          ` /Resources << /Font << /F1 ${fontNumber} 0 R${[...extraFonts]
+            .map(([name, number]) => ` /${name} ${number} 0 R`)
+            .join('')} >>${properties} >>` +
           ` /Contents ${contentNumber} 0 R >>`,
       ),
     );
