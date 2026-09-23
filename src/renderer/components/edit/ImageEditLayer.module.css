@@ -1,0 +1,47 @@
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+}
+
+.image {
+  position: absolute;
+  cursor: move;
+  touch-action: none;
+}
+
+/* The outline sits inside the box, so it never hides what it surrounds. */
+.frame {
+  position: absolute;
+  inset: 0;
+  border: 1px dashed color-mix(in srgb, var(--pf-color-accent) 70%, transparent);
+  border-radius: 2px;
+}
+
+.image:hover .frame {
+  border-style: solid;
+  background-color: color-mix(in srgb, var(--pf-color-accent) 10%, transparent);
+}
+
+.selected .frame,
+.selected:hover .frame {
+  border-style: solid;
+  border-color: var(--pf-color-accent);
+  background-color: color-mix(in srgb, var(--pf-color-accent) 6%, transparent);
+}
+
+.handle {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -5px 0 0 -5px;
+  border: 1px solid var(--pf-color-accent);
+  border-radius: 2px;
+  background-color: var(--pf-color-bg-surface);
+  touch-action: none;
+}
+
+/* While an image is waiting to be placed, the page itself is the target. */
+.placing {
+  cursor: crosshair;
+}

@@ -53,7 +53,7 @@ function field(): Locator {
 }
 
 async function openEditor(): Promise<void> {
-  const toolbar = page.getByRole('toolbar', { name: 'Text editing' });
+  const toolbar = page.getByRole('toolbar', { name: 'Editing' });
   if ((await toolbar.count()) === 0) await page.keyboard.press('Control+e');
   await expect(toolbar).toBeVisible();
 }

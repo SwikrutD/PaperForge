@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react';
 import type { TextFamily } from '@shared/schemas/text';
 import { useTextEditStore } from '../../stores/textEditStore';
-import styles from './TextProperties.module.css';
+import styles from './EditProperties.module.css';
 
 const FAMILIES: Array<{ id: TextFamily; label: string }> = [
   { id: 'helvetica', label: 'Helvetica' },

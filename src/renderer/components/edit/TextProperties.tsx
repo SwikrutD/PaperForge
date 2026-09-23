@@ -2,7 +2,7 @@ import type { ReactElement } from 'react';
 import { useDocumentStore } from '../../stores/documentStore';
 import { runsFor, useTextEditStore } from '../../stores/textEditStore';
 import { TextStyleControls } from './TextStyleControls';
-import styles from './TextProperties.module.css';
+import styles from './EditProperties.module.css';
 
 /**
  * What the selected text is: the font that drew it, its size and colour, and

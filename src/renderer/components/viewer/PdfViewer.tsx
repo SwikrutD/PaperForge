@@ -17,8 +17,10 @@ import {
   useAnnotationStore,
 } from '../../stores/annotationStore';
 import { TextEditLayer } from '../edit/TextEditLayer';
-import { TextEditToolbar } from '../edit/TextEditToolbar';
+import { ImageEditLayer } from '../edit/ImageEditLayer';
+import { EditToolbar } from '../edit/EditToolbar';
 import { runsFor, useTextEditStore } from '../../stores/textEditStore';
+import { imagesFor, useImageEditStore } from '../../stores/imageEditStore';
 import { FindBar } from '../search/FindBar';
 import { highlightsByPage } from '../search/searchNavigation';
 import { pdfRectToCss } from './pageGeometry';
@@ -63,6 +65,11 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const textDraft = useTextEditStore((store) => store.draft);
   const textPlacement = useTextEditStore((store) => store.placement);
   const textPlacing = useTextEditStore((store) => store.placing);
+  const editingImages = useImageEditStore((store) => store.active);
+  const imagePages = useImageEditStore((store) => store.pages);
+  const imageSelected = useImageEditStore((store) => store.selected);
+  const imageDrag = useImageEditStore((store) => store.drag);
+  const imagePending = useImageEditStore((store) => store.pending);
   const requestConfirmation = useUiStore((store) => store.requestConfirmation);
 
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -171,6 +178,13 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   useEffect(() => {
     if (!editing || state.status !== 'ready') return;
     const load = useTextEditStore.getState().load;
+    for (const pageNumber of mounted) void load(sessionId, pageNumber, tab.edit.revision);
+  }, [editing, state.status, mounted, sessionId, tab.edit.revision]);
+
+  // And the images, which are read the same way and belong to the same revision.
+  useEffect(() => {
+    if (!editing || state.status !== 'ready') return;
+    const load = useImageEditStore.getState().load;
     for (const pageNumber of mounted) void load(sessionId, pageNumber, tab.edit.revision);
   }, [editing, state.status, mounted, sessionId, tab.edit.revision]);
 
@@ -284,9 +298,10 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
 
       {findOpen && <FindBar />}
       {editing && (
-        <TextEditToolbar
+        <EditToolbar
           disabled={state.status !== 'ready'}
           hasText={runsFor(textPages, sessionId, view.pageNumber).length > 0}
+          hasImages={imagesFor(imagePages, sessionId, view.pageNumber).length > 0}
         />
       )}
       {!editing && (commenting || toolActive) && (
@@ -313,7 +328,27 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                   layersVersion={state.layersVersion}
                   highlights={highlights.get(pageNumber)}
                   overlay={
-                    state.document === null ? null : editing ? (
+                    state.document === null ? null : editing && editingImages ? (
+                      <ImageEditLayer
+                        geometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}
+                        scale={scale}
+                        rotation={view.rotation}
+                        images={imagesFor(imagePages, sessionId, pageNumber)}
+                        selectedId={imageSelected?.page === pageNumber ? imageSelected.id : null}
+                        drag={imageDrag?.page === pageNumber ? imageDrag : null}
+                        placing={imagePending !== null}
+                        onSelect={(id) => useImageEditStore.getState().select(pageNumber, id)}
+                        onDrag={(id, placement) =>
+                          useImageEditStore.getState().setDrag({ page: pageNumber, id, placement })
+                        }
+                        onDrop={(id, placement) =>
+                          void useImageEditStore.getState().place(pageNumber, id, placement)
+                        }
+                        onPlace={(x, y) =>
+                          void useImageEditStore.getState().addAt(pageNumber, x, y)
+                        }
+                      />
+                    ) : editing ? (
                       <TextEditLayer
                         geometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}
                         scale={scale}
