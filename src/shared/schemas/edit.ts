@@ -106,6 +106,20 @@ export const setPageLabelsOperationSchema = z.strictObject({
   start: z.number().int().min(1).max(100_000),
 });
 
+/**
+ * Rewrites one run of text a page draws.
+ *
+ * The run is named by the operation it came from, which holds for as long as
+ * the content does — every change makes a new revision, and the runs are read
+ * again from it.
+ */
+export const editTextOperationSchema = z.strictObject({
+  kind: z.literal('editText'),
+  page: z.number().int().min(1).max(100_000),
+  runId: z.string().min(1).max(64),
+  text: z.string().max(4000),
+});
+
 export const editOperationSchema = z.discriminatedUnion('kind', [
   rotatePagesOperationSchema,
   deletePagesOperationSchema,
@@ -116,6 +130,7 @@ export const editOperationSchema = z.discriminatedUnion('kind', [
   insertImagePagesOperationSchema,
   cropPagesOperationSchema,
   setPageLabelsOperationSchema,
+  editTextOperationSchema,
   addAnnotationsOperationSchema,
   updateAnnotationsOperationSchema,
   deleteAnnotationsOperationSchema,

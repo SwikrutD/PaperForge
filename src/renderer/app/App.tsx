@@ -25,6 +25,7 @@ import { useAppStore } from '../stores/appStore';
 import { useDocumentStore, type DocumentViewState } from '../stores/documentStore';
 import { useCreateStore } from '../stores/createStore';
 import { useOrganizeStore } from '../stores/organizeStore';
+import { useTextEditStore } from '../stores/textEditStore';
 import { useUiStore } from '../stores/uiStore';
 import { AppErrorBoundary } from './AppErrorBoundary';
 import styles from './App.module.css';
@@ -76,6 +77,8 @@ export function App(): ReactElement {
 
   const organizing = useOrganizeStore((state) => state.active);
   const creating = useCreateStore((state) => state.open);
+  const editingText = useTextEditStore((state) => state.active);
+  const setEditingText = useTextEditStore((state) => state.setActive);
   const setOrganizing = useOrganizeStore((state) => state.setActive);
 
   const [recovery, setRecovery] = useState<RecoveryEntry[] | null>(null);
@@ -101,12 +104,14 @@ export function App(): ReactElement {
     };
   }, [initializeDocuments, restoreSession]);
 
-  // Organizing pages is a way of working on a document; with none open there is
-  // nothing to organize, so the grid closes rather than waiting behind the home
-  // screen for the next document.
+  // Organizing pages and editing text are ways of working on a document; with
+  // none open there is nothing to work on, so they close rather than waiting
+  // behind the home screen for the next document.
   useEffect(() => {
-    if (activeId === null && organizing) setOrganizing(false);
-  }, [activeId, organizing, setOrganizing]);
+    if (activeId !== null) return;
+    if (organizing) setOrganizing(false);
+    if (editingText) setEditingText(false);
+  }, [activeId, organizing, setOrganizing, editingText, setEditingText]);
 
   const resolvedTheme = theme?.resolved ?? null;
   useEffect(() => {

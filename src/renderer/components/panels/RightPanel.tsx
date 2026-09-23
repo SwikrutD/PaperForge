@@ -4,11 +4,13 @@ import type { RightPanelId } from '@shared/schemas/settings';
 import { useCommands } from '../../commands/useCommands';
 import { useDocumentStore } from '../../stores/documentStore';
 import { useOrganizeStore } from '../../stores/organizeStore';
+import { useTextEditStore } from '../../stores/textEditStore';
 import { useUiStore } from '../../stores/uiStore';
 import { DocumentProperties } from '../workspace/DocumentProperties';
 import { AnnotationProperties } from '../annotations/AnnotationProperties';
 import { CommentsPanel } from '../annotations/CommentsPanel';
 import { PageProperties } from '../organize/PageProperties';
+import { TextProperties } from '../edit/TextProperties';
 import { selectedAnnotation, useAnnotationStore } from '../../stores/annotationStore';
 import { cx } from '../../utils/classNames';
 import { IconButton } from '../controls/IconButton';
@@ -34,6 +36,7 @@ export function RightPanel({ panel }: { panel: RightPanelId }): ReactElement {
   const selectedId = useAnnotationStore((state) => state.selectedId);
   const commenting = useUiStore((state) => state.commenting);
   const organizing = useOrganizeStore((state) => state.active);
+  const editingText = useTextEditStore((state) => state.active);
   const selected = selectedAnnotation({ annotations, selectedId });
 
   const select = (id: RightPanelId): void => {
@@ -94,6 +97,9 @@ export function RightPanel({ panel }: { panel: RightPanelId }): ReactElement {
               title="Nothing selected"
               description="Open a document, then select text, an image, an annotation or a form field."
             />
+          ) : editingText ? (
+            // While editing, this panel is about the text that is selected.
+            <TextProperties />
           ) : organizing ? (
             // In the page grid this panel is about the page, not the document.
             <PageProperties />

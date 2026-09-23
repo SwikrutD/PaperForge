@@ -33,6 +33,7 @@ export const INVOKE_CHANNEL_NAMES = [
   'pages:chooseImageSource',
   'pages:stageOpenDocument',
   'pages:extract',
+  'text:page',
   'sources:add',
   'sources:list',
   'sources:remove',

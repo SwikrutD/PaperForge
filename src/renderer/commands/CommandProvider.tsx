@@ -11,6 +11,7 @@ import { useAppStore } from '../stores/appStore';
 import { useDocumentStore } from '../stores/documentStore';
 import { useAnnotationStore } from '../stores/annotationStore';
 import { useCreateStore } from '../stores/createStore';
+import { useTextEditStore } from '../stores/textEditStore';
 import { useOrganizeStore } from '../stores/organizeStore';
 import { useSearchStore } from '../stores/searchStore';
 import { useUiStore } from '../stores/uiStore';
@@ -33,6 +34,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
   const commenting = useUiStore((state) => state.commenting);
   const organizing = useOrganizeStore((state) => state.active);
   const creating = useCreateStore((state) => state.open);
+  const editingText = useTextEditStore((state) => state.active);
   const annotationTool = useAnnotationStore((state) => state.tool);
   const annotationSelected = useAnnotationStore((state) => state.selectedId !== null);
   const findOpen = useSearchStore((state) => state.open);
@@ -48,6 +50,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     const annotations = useAnnotationStore.getState;
     const organize = useOrganizeStore.getState;
     const creation = useCreateStore.getState;
+    const textEditor = useTextEditStore.getState;
 
     const activeSessionId = (): string | null => documents().activeId;
 
@@ -169,6 +172,19 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
           });
         }
       },
+      toggleTextEditing: () => {
+        const next = !textEditor().active;
+        // Editing text and marking it up are different jobs; one at a time.
+        if (next) {
+          ui().setCommenting(false);
+          annotations().setTool('select');
+          organize().setActive(false);
+          void app().patchSettings({
+            layout: { activeRightPanel: 'properties', rightPanel: { visible: true } },
+          });
+        }
+        textEditor().setActive(next);
+      },
       openCreateWorkspace: (intent) => {
         // Making a document is its own workspace: the page grid has nothing to
         // act on while it is open.
@@ -227,6 +243,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
       commenting,
       organizing,
       creating,
+      editingText,
       annotationTool: annotationTool === 'select' ? null : annotationTool,
       annotationSelected,
       findOpen,
@@ -245,6 +262,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     commenting,
     organizing,
     creating,
+    editingText,
     annotationTool,
     annotationSelected,
     findOpen,

@@ -141,11 +141,16 @@ describe('home screen', () => {
     const organize = screen.getByRole('button', { name: /Organize Pages/ });
     expect(organize).toBeDisabled();
     expect(organize).toHaveAttribute('title', 'No document is open.');
-    expect(screen.getAllByText('Needs a document')).toHaveLength(2);
-
+    // Editing text is built as well, and needs one too.
     const editTool = screen.getByRole('button', { name: /Edit PDF/ });
     expect(editTool).toBeDisabled();
-    expect(editTool).toHaveAttribute('title', expect.stringContaining('Not available yet'));
-    expect(screen.getAllByText('Not yet available').length).toBeGreaterThan(10);
+    expect(editTool).toHaveAttribute('title', 'No document is open.');
+    expect(screen.getAllByText('Needs a document')).toHaveLength(3);
+
+    // A tool whose capability is not built says something different.
+    const ocrTool = screen.getByRole('button', { name: /Recognize Text/ });
+    expect(ocrTool).toBeDisabled();
+    expect(ocrTool).toHaveAttribute('title', expect.stringContaining('Not available yet'));
+    expect(screen.getAllByText('Not yet available').length).toBeGreaterThan(8);
   });
 });

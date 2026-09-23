@@ -141,6 +141,8 @@ export function describeOperation(operation: EditOperation): string {
       return `Crop ${plural(operation.pages)} ${formatPageList(operation.pages)}`;
     case 'setPageLabels':
       return 'Change page numbering';
+    case 'editText':
+      return operation.text === '' ? 'Delete text' : 'Edit text';
   }
 }
 

@@ -85,6 +85,11 @@ export class DocumentEditor {
     return this.readCurrentBytes(this.requireSession(sessionId));
   }
 
+  /** Which revision is being shown, which every model read from it belongs to. */
+  revisionOf(sessionId: string): number {
+    return this.edited.get(sessionId)?.history.currentRevision ?? 0;
+  }
+
   /** The file the viewer should read: the current revision, or the original. */
   currentBytesPath(sessionId: string): string | undefined {
     return this.edited.get(sessionId)?.history.current?.filePath;

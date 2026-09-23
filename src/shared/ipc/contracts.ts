@@ -28,6 +28,7 @@ import {
   stagedSourceSchema,
   stagedSourcesSchema,
 } from '../schemas/create';
+import { pageTextModelSchema } from '../schemas/text';
 import { recentFilesListSchema } from '../schemas/recentFiles';
 import { settingsPatchSchema, settingsSchema } from '../schemas/settings';
 import { themeStateSchema } from '../schemas/theme';
@@ -158,6 +159,15 @@ export const invokeContracts = {
       mode: z.enum(['single', 'perPage']),
     }),
     response: exportResultSchema,
+  },
+
+  /** The text a page draws, as the editor needs to see it. */
+  'text:page': {
+    request: z.strictObject({
+      sessionId: z.string().min(1),
+      page: z.number().int().min(1).max(100_000),
+    }),
+    response: pageTextModelSchema,
   },
 
   /**

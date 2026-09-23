@@ -41,6 +41,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     title: 'Edit PDF',
     description: 'Change text and images on the page.',
     icon: PenLine,
+    commandId: 'tools.edit',
     requires: 'the PDF editor',
   },
   {

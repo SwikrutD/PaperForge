@@ -20,6 +20,7 @@ import type { PdfMutationEngine } from '@pdf/mutate/types';
 import { registerEditHandlers } from './handlers/editHandlers';
 import { registerCreationHandlers } from './handlers/creationHandlers';
 import { registerOrganizeHandlers } from './handlers/organizeHandlers';
+import { registerTextHandlers } from './handlers/textHandlers';
 import { registerFileHandlers } from './handlers/fileHandlers';
 import { createIpcRegistrar } from './registry';
 
@@ -107,6 +108,8 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
     engine: deps.engine,
     senderWindow,
   });
+
+  registerTextHandlers(registerInvoke, { editor: deps.editor });
 
   registerCreationHandlers(registerInvoke, {
     library: deps.library,

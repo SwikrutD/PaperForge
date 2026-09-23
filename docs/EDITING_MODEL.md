@@ -79,6 +79,59 @@ is never dropped, and neither is the base snapshot.
 today that is fast and predictable; when the editing segments bring changes that are made many
 times in a row, this is the first place to look at batching.
 
+## Editing text
+
+A page's drawing is a content stream: operands, then the operator that consumes them. PaperForge
+reads it with its own parser (`src/pdf/content`), which records where every operand begins and ends,
+and a state machine that follows the transform, the text state and the fill colour. Each show
+operation — `Tj`, `TJ`, `'`, `"` — becomes a **run**: what it says, where its baseline starts, how
+wide it is, which font drew it, and the exact bytes that hold its text.
+
+Fonts come from the page's own resources: encodings and `/Differences`, `ToUnicode` CMaps (read
+with the same parser, since a CMap is written the same way), simple and composite widths, and the
+metrics of the standard fourteen for fonts that state none.
+
+### Tier A — the native rewrite
+
+When the font that drew a run can write the new text, PaperForge replaces the run's own operand and
+nothing else:
+
+```
+BT /F1 18 Tf 1 0 0 1 60 700 Tm (The first line) Tj ET
+                               ^^^^^^^^^^^^^^^^ only this changes
+```
+
+The bytes before and after are copied through untouched, so the rest of the page — its drawings,
+its other text, its marked content — is the same file it was. A `TJ` array is written back as a
+single string, because the offsets in it belonged to the old text.
+
+The run keeps its starting point whatever its new length. What follows it on the line moves with it
+if the stream positioned it relatively, and stays where it is if the stream positioned it
+absolutely — which is exactly what the original PDF would have done had it been written that way.
+
+### When Tier A cannot run
+
+PaperForge refuses rather than writing something it cannot read back. A run says so in the
+properties panel, and the box around it is marked:
+
+- the font does not say what its codes mean (no `ToUnicode`, no usable encoding);
+- the font has no code for a character being typed — Cyrillic in a WinAnsi font, say;
+- PaperForge cannot tell which font drew the text at all.
+
+Tiers B and C of `CLAUDE.md` section 13.2 — covering the old text and drawing a replacement in a
+font PaperForge embeds — are the next subsegment; until they land, the editor is honest about what
+it will not do.
+
+### What a change costs
+
+A text edit is an `editText` operation like any other: it goes through the same transaction, makes
+a new revision, and is undone by moving the revision pointer. The page's content is written back as
+a single uncompressed stream, which the optimizer compresses when the reader asks it to.
+
+Run ids (`op12`) name the operation the run came from and hold only for the revision they were read
+from. Every change rewrites the page, so the editor reads the page again afterwards rather than
+patching what it had.
+
 ## Saving
 
 Nothing is written to the reader's file until they ask. `Save` writes the current revision;
@@ -125,10 +178,15 @@ so reverting is itself undoable — a reader who reverts by mistake has not lost
 - **Encrypted documents cannot be changed.** pdf-lib cannot decrypt, and PaperForge will not write
   a file it has not really understood. The password the viewer holds lives in the renderer and is
   never sent to the main process. Decryption belongs with the qpdf-based security tools.
-- **The operations are structural and annotation-level so far**: rotate, delete, move, duplicate,
-  insert blank pages, insert pages from another document, insert an image as a page, crop, page
-  numbering, and adding, changing or removing comments. Text and image editing follow in their own
-  segments.
+- **The operations are structural, annotation-level and textual so far**: rotate, delete, move,
+  duplicate, insert blank pages, insert pages from another document, insert an image as a page,
+  crop, page numbering, adding, changing or removing comments, and rewriting a run of text in the
+  font that drew it. Image editing follows in Segment 10.
+- **Text editing is Tier A only.** A run whose font cannot write the new text is refused with the
+  character that stopped it; covering the old text and drawing a replacement is the next
+  subsegment.
+- **A rewritten page's content is written as one uncompressed stream.** It is what PaperForge can
+  read back, and the optimizer in Segment 16 is where compression belongs.
 - **Every change rewrites the whole file.** That is what makes a revision a plain PDF that can be
   reopened and checked, and it is why an annotation carries `/NM` to keep its identity across the
   rewrite. Byte-level incremental update is not used, and PaperForge does not claim it.

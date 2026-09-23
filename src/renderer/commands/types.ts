@@ -41,6 +41,8 @@ export interface CommandContext {
   readonly organizing: boolean;
   /** True while the workspace for making a new document has the window. */
   readonly creating: boolean;
+  /** True while the text editor is on. */
+  readonly editingText: boolean;
   /** The comment tool in use, or null while the select tool is. */
   readonly annotationTool: AnnotationKind | 'eraser' | null;
   /** True when a comment is selected. */
@@ -83,6 +85,7 @@ export interface CommandActions {
   toggleReadingMode(): void;
   toggleCommenting(): void;
   toggleOrganizing(): void;
+  toggleTextEditing(): void;
   openCreateWorkspace(intent: 'create' | 'combine'): void;
   closeCreateWorkspace(): void;
   setAnnotationTool(tool: AnnotationKind | 'eraser' | 'select'): void;

@@ -1,0 +1,56 @@
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+}
+
+.run {
+  position: absolute;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  cursor: text;
+  /* The text underneath has to stay readable through the box. */
+  background-color: color-mix(in srgb, var(--pf-color-accent) 8%, transparent);
+  outline-offset: 1px;
+}
+
+.run:hover {
+  border-color: var(--pf-color-accent);
+  background-color: color-mix(in srgb, var(--pf-color-accent) 16%, transparent);
+}
+
+.selected,
+.selected:hover {
+  border-color: var(--pf-color-accent);
+  background-color: color-mix(in srgb, var(--pf-color-accent) 22%, transparent);
+}
+
+/* Text PaperForge cannot rewrite is shown, but not offered. */
+.locked {
+  background-color: color-mix(in srgb, var(--pf-color-warning) 10%, transparent);
+  cursor: not-allowed;
+}
+
+.locked:hover {
+  border-color: var(--pf-color-warning);
+  background-color: color-mix(in srgb, var(--pf-color-warning) 18%, transparent);
+}
+
+/* Text drawn in a mode that shows nothing, such as an OCR layer. */
+.invisible {
+  border-style: dashed;
+  border-color: var(--pf-color-border-strong);
+}
+
+.input {
+  position: absolute;
+  inset: -1px;
+  width: calc(100% + 2px);
+  padding: 0 1px;
+  border: 1px solid var(--pf-color-accent);
+  border-radius: 2px;
+  background-color: var(--pf-color-bg-surface);
+  color: var(--pf-color-text-primary);
+  font-family: inherit;
+  line-height: 1;
+}

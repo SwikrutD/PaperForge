@@ -13,6 +13,7 @@ import {
 } from './annotations/write';
 import { normalizePages, rotationAfter } from './operations';
 import { applyPageOperation, type PageContext } from './pages';
+import { applyTextOperation } from './text';
 import type { DocumentFacts, MutationResult, PdfMutationEngine, StagedAsset } from './types';
 
 /**
@@ -80,6 +81,10 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
           annotations = null;
           continue;
         }
+
+        // Rewriting text replaces a page's content stream, which says nothing
+        // about its annotations.
+        if (await applyTextOperation(document, operation)) continue;
 
         switch (operation.kind) {
           case 'rotatePages': {

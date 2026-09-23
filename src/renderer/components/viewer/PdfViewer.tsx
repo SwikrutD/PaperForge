@@ -16,6 +16,9 @@ import {
   annotationsOnPage,
   useAnnotationStore,
 } from '../../stores/annotationStore';
+import { TextEditLayer } from '../edit/TextEditLayer';
+import { TextEditToolbar } from '../edit/TextEditToolbar';
+import { runsFor, useTextEditStore } from '../../stores/textEditStore';
 import { FindBar } from '../search/FindBar';
 import { highlightsByPage } from '../search/searchNavigation';
 import { pdfRectToCss } from './pageGeometry';
@@ -54,6 +57,10 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const commenting = useUiStore((store) => store.commenting);
   const toolActive = useAnnotationStore((store) => store.tool !== 'select');
   const showToast = useUiStore((store) => store.showToast);
+  const editing = useTextEditStore((store) => store.active);
+  const textPages = useTextEditStore((store) => store.pages);
+  const textSelected = useTextEditStore((store) => store.selected);
+  const textDraft = useTextEditStore((store) => store.draft);
   const requestConfirmation = useUiStore((store) => store.requestConfirmation);
 
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -157,6 +164,13 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
     goToPage(requested);
     updateView(sessionId, { pendingPage: null });
   }, [view.pendingPage, state.status, goToPage, sessionId, updateView]);
+
+  // The editor needs the text of the pages on screen, from this revision.
+  useEffect(() => {
+    if (!editing || state.status !== 'ready') return;
+    const load = useTextEditStore.getState().load;
+    for (const pageNumber of mounted) void load(sessionId, pageNumber, tab.edit.revision);
+  }, [editing, state.status, mounted, sessionId, tab.edit.revision]);
 
   const highlights = useMemo(
     () => highlightsByPage(results.hits, sessionId, results.currentIndex, highlightAll),
@@ -267,7 +281,10 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
       />
 
       {findOpen && <FindBar />}
-      {(commenting || toolActive) && <AnnotationToolbar disabled={state.status !== 'ready'} />}
+      {editing && <TextEditToolbar disabled={state.status !== 'ready'} />}
+      {!editing && (commenting || toolActive) && (
+        <AnnotationToolbar disabled={state.status !== 'ready'} />
+      )}
 
       <div className={styles.scroller} ref={scrollerRef} onScroll={onScroll} tabIndex={0}>
         {state.status === 'ready' && state.document !== null ? (
@@ -289,7 +306,21 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                   layersVersion={state.layersVersion}
                   highlights={highlights.get(pageNumber)}
                   overlay={
-                    state.document === null ? null : (
+                    state.document === null ? null : editing ? (
+                      <TextEditLayer
+                        geometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}
+                        scale={scale}
+                        rotation={view.rotation}
+                        runs={runsFor(textPages, sessionId, pageNumber)}
+                        selectedId={textSelected?.page === pageNumber ? textSelected.id : null}
+                        draft={textSelected?.page === pageNumber ? textDraft : null}
+                        onSelect={(id) => useTextEditStore.getState().select(pageNumber, id)}
+                        onBeginEdit={(id) => useTextEditStore.getState().beginEdit(pageNumber, id)}
+                        onDraft={(text) => useTextEditStore.getState().setDraft(text)}
+                        onCommit={() => void useTextEditStore.getState().commitEdit()}
+                        onCancel={() => useTextEditStore.getState().cancelEdit()}
+                      />
+                    ) : (
                       <>
                         <AnnotationLayer
                           geometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}
