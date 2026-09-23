@@ -39,6 +39,8 @@ export interface CommandContext {
   readonly commenting: boolean;
   /** True while the page grid has taken the workspace. */
   readonly organizing: boolean;
+  /** True while the workspace for making a new document has the window. */
+  readonly creating: boolean;
   /** The comment tool in use, or null while the select tool is. */
   readonly annotationTool: AnnotationKind | 'eraser' | null;
   /** True when a comment is selected. */
@@ -81,6 +83,8 @@ export interface CommandActions {
   toggleReadingMode(): void;
   toggleCommenting(): void;
   toggleOrganizing(): void;
+  openCreateWorkspace(intent: 'create' | 'combine'): void;
+  closeCreateWorkspace(): void;
   setAnnotationTool(tool: AnnotationKind | 'eraser' | 'select'): void;
   deleteSelectedAnnotation(): void;
   toggleSelectedAnnotationResolved(): void;

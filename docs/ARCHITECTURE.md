@@ -297,6 +297,21 @@ document — are staged in the main process by `stagedAssets.ts`; the renderer r
 never sees the bytes or a path. A name the renderer suggests for a written file is reduced to a bare
 file name before it is joined onto the folder the reader chose.
 
+## Making documents
+
+A new document is made from files the main process has staged: `SourceLibrary` reads each one,
+converts it to pages through the `ConversionProvider` for its extension, and keeps the result as
+PDF bytes belonging to the window that added it. The renderer arranges a list of names, kinds and
+page counts — never a path, never the bytes — and previews each source over the document protocol,
+the same way it reads an open document.
+
+`@pdf/create` then does the work: `documents.ts` makes pages out of nothing, images or text,
+`combine.ts` copies pages from several documents into one, and `outline.ts` reads and writes the
+bookmark tree pdf-lib has no API for. The result is published through the same
+write-validate-rename pipeline a save uses, and PaperForge opens what it wrote.
+
+`docs/CONVERSION_PIPELINE.md` describes the providers, the staging model and the limits.
+
 ## Error model
 
 `shared/errors/appError.ts` defines a closed set of error codes covering the categories in

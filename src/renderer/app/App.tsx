@@ -18,10 +18,12 @@ import { SearchRunner } from '../components/search/SearchRunner';
 import { PdfDocumentProvider } from '../components/viewer/PdfDocumentContext';
 import { PdfViewer } from '../components/viewer/PdfViewer';
 import { OrganizeWorkspace } from '../components/organize/OrganizeWorkspace';
+import { CreateWorkspace } from '../components/create/CreateWorkspace';
 import { ErrorMessageBar } from '../components/surfaces/MessageBar';
 import { invoke } from '../services/ipcClient';
 import { useAppStore } from '../stores/appStore';
 import { useDocumentStore, type DocumentViewState } from '../stores/documentStore';
+import { useCreateStore } from '../stores/createStore';
 import { useOrganizeStore } from '../stores/organizeStore';
 import { useUiStore } from '../stores/uiStore';
 import { AppErrorBoundary } from './AppErrorBoundary';
@@ -73,6 +75,7 @@ export function App(): ReactElement {
   const confirmation = useUiStore((state) => state.confirmation);
 
   const organizing = useOrganizeStore((state) => state.active);
+  const creating = useCreateStore((state) => state.open);
   const setOrganizing = useOrganizeStore((state) => state.setActive);
 
   const [recovery, setRecovery] = useState<RecoveryEntry[] | null>(null);
@@ -158,7 +161,10 @@ export function App(): ReactElement {
               <ErrorMessageBar error={error} />
             </div>
           )}
-          {activeTab === null ? (
+          {creating ? (
+            // Making a document does not need one open, so it comes first.
+            <CreateWorkspace />
+          ) : activeTab === null ? (
             <HomeScreen recentFiles={recentFiles} />
           ) : organizing ? (
             <OrganizeWorkspace key={activeTab.session.id} tab={activeTab} />

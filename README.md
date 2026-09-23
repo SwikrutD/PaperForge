@@ -17,9 +17,13 @@ in [`CLAUDE.md`](./CLAUDE.md):
 - commenting: highlights, notes, shapes, freehand ink and stamps, written into the PDF as real
   annotations, with a comments panel that lists them;
 - organizing pages: a grid of the whole document to reorder, rotate, duplicate, delete, insert,
-  replace, crop and renumber, with extraction and splitting into new files.
+  replace, crop and renumber, with extraction and splitting into new files;
+- making documents: a blank one, or one made from images, text files, local web pages and other
+  PDFs — with the pages each file contributes, their order, and bookmarks naming where they came
+  from.
 
-Editing text and images, OCR, conversion, protection and redaction arrive in later segments.
+Editing text and images, OCR, exporting to other formats, protection and redaction arrive in later
+segments.
 
 [`PROGRESS.md`](./PROGRESS.md) is the authoritative status file.
 
@@ -77,6 +81,7 @@ The Windows installer, file associations and "Open with" support arrive in Segme
 - [`docs/EDITING_MODEL.md`](./docs/EDITING_MODEL.md) — how a change is applied, undone and saved
 - [`docs/ANNOTATIONS.md`](./docs/ANNOTATIONS.md) — how comments are written into the PDF itself
 - [`docs/PAGE_ORGANIZATION.md`](./docs/PAGE_ORGANIZATION.md) — the page grid, and how pages leave a document
+- [`docs/CONVERSION_PIPELINE.md`](./docs/CONVERSION_PIPELINE.md) — how a file becomes a PDF, and how documents are combined
 - [`docs/SECURITY.md`](./docs/SECURITY.md) — the Electron security baseline PaperForge holds itself to
 - [`docs/DEPENDENCIES.md`](./docs/DEPENDENCIES.md) — why each dependency is here, and its license
 - [`docs/KEYBOARD_SHORTCUTS.md`](./docs/KEYBOARD_SHORTCUTS.md) — planned and implemented shortcuts

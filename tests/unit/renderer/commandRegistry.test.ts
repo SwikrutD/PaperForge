@@ -19,6 +19,7 @@ function makeContext(overrides: Partial<CommandContext> = {}): CommandContext {
     readingMode: false,
     commenting: false,
     organizing: false,
+    creating: false,
     annotationTool: null,
     annotationSelected: false,
     findOpen: false,

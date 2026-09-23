@@ -10,6 +10,7 @@ import { buildShortcutTable, findShortcutCommand } from '../keyboard/shortcuts';
 import { useAppStore } from '../stores/appStore';
 import { useDocumentStore } from '../stores/documentStore';
 import { useAnnotationStore } from '../stores/annotationStore';
+import { useCreateStore } from '../stores/createStore';
 import { useOrganizeStore } from '../stores/organizeStore';
 import { useSearchStore } from '../stores/searchStore';
 import { useUiStore } from '../stores/uiStore';
@@ -31,6 +32,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
   const readingMode = useUiStore((state) => state.readingMode);
   const commenting = useUiStore((state) => state.commenting);
   const organizing = useOrganizeStore((state) => state.active);
+  const creating = useCreateStore((state) => state.open);
   const annotationTool = useAnnotationStore((state) => state.tool);
   const annotationSelected = useAnnotationStore((state) => state.selectedId !== null);
   const findOpen = useSearchStore((state) => state.open);
@@ -45,6 +47,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     const search = useSearchStore.getState;
     const annotations = useAnnotationStore.getState;
     const organize = useOrganizeStore.getState;
+    const creation = useCreateStore.getState;
 
     const activeSessionId = (): string | null => documents().activeId;
 
@@ -166,6 +169,13 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
           });
         }
       },
+      openCreateWorkspace: (intent) => {
+        // Making a document is its own workspace: the page grid has nothing to
+        // act on while it is open.
+        organize().setActive(false);
+        creation().openWorkspace(intent);
+      },
+      closeCreateWorkspace: () => creation().closeWorkspace(),
       setAnnotationTool: (tool) => {
         ui().setCommenting(true);
         annotations().setTool(tool);
@@ -216,6 +226,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
       readingMode,
       commenting,
       organizing,
+      creating,
       annotationTool: annotationTool === 'select' ? null : annotationTool,
       annotationSelected,
       findOpen,
@@ -233,6 +244,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     readingMode,
     commenting,
     organizing,
+    creating,
     annotationTool,
     annotationSelected,
     findOpen,

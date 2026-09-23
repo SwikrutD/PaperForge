@@ -250,3 +250,39 @@ Run in both light and dark themes:
 - [ ] Done goes back to reading the same document, at the page that was being read.
 - [ ] Double-clicking a page leaves the grid and shows that page.
 - [ ] The grid and its dialogs are correct in light and dark, at 125% and 150% Windows scaling.
+
+## Segment 8 — creating and combining
+
+- [ ] The Create PDF and Combine Files cards work from the home screen with no document open, and
+      `Ctrl+N` and the Tools menu open the same workspace with a document open.
+- [ ] The empty workspace says what it wants and offers one way to get it; the count reads "No files
+      yet".
+- [ ] Add files… accepts PDFs, PNG and JPEG images, text files and local HTML, and lists each one
+      with what it was, how many pages it became, and a preview of its first page.
+- [ ] A file PaperForge cannot make pages from is listed as a failure by name, with a reason, and
+      nothing else in the list is disturbed.
+- [ ] An encrypted PDF is refused as a source, in plain words.
+- [ ] The count in the toolbar follows the list: files, and the pages the new document will have.
+- [ ] A page range on a row changes the count and says how many pages that file contributes; a range
+      that is not a range is marked on the field and stops the Combine button, with a reason.
+- [ ] Rows reorder by dragging the number on the left, and by the up and down buttons, which are
+      disabled at the ends.
+- [ ] Rotating a row turns its preview, and the pages it contributes come out turned.
+- [ ] Changing the paper or the margin converts the images, text files and web pages again and
+      leaves the PDFs alone; the size under the controls follows the choice.
+- [ ] "The image's own size" makes each image page the size of the image and its margins.
+- [ ] Combine… asks where to save, writes the document, opens it, and clears the list.
+- [ ] The document has exactly the pages the list promised, in that order, and the files it was made
+      from are unchanged on disk.
+- [ ] With "One for each file" on, the outline names each file and goes to its first page.
+- [ ] With "Keep the bookmarks" on, a source's own bookmarks appear on the pages they landed on; a
+      bookmark whose page was not taken is gone and the ones below it are not.
+- [ ] With both on, the carried bookmarks sit under the file they came from.
+- [ ] Blank document… makes an empty document of the paper, orientation and page count chosen, opens
+      it, and records the title given.
+- [ ] Cancelling either save dialog leaves the list as it was and writes nothing.
+- [ ] Converting a local web page shows no network activity, and a page that tries to load a remote
+      image still converts.
+- [ ] Close leaves the workspace without losing the list; opening it again shows the same files.
+- [ ] The workspace, its list and the blank dialog are correct in light and dark, at 125% and 150%
+      Windows scaling.

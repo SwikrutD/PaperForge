@@ -2,10 +2,10 @@
 
 ## Current status
 
-- Last completed segment: **7 — Organize Pages**
-- Next segment: **8 — Create PDF and Combine Files**
+- Last completed segment: **8 — Create PDF and Combine Files**
+- Next segment: **9 — Edit PDF: content model and text editing**
 - Build status: `npm run package` succeeds; packaged app launches and closes cleanly on Windows 11 x64
-- Test status: 410 unit tests (39 files) and 53 Playwright end-to-end tests passing; typecheck, lint and format clean
+- Test status: 434 unit tests (41 files) and 61 Playwright end-to-end tests passing; typecheck, lint and format clean
 
 ## Completed segments
 
@@ -17,7 +17,7 @@
 - [x] 5 Mutation engine, save pipeline, undo/redo
 - [x] 6 Comments and annotations
 - [x] 7 Organize Pages
-- [ ] 8 Create PDF and Combine Files
+- [x] 8 Create PDF and Combine Files
 - [ ] 9 Edit PDF: content model and text editing
 - [ ] 10 Edit PDF: images, links, layout content
 - [ ] 11 Forms and Fill & Sign
@@ -293,6 +293,45 @@ choice that says what it discards.
 | Renderer | `renderer/stores/organizeStore.ts`, `renderer/components/organize/*`, `renderer/components/pages/*`                                                            |
 | Tests    | `tests/unit/shared/pageOperations.test.ts`, `tests/unit/renderer/organizeSelection.test.ts`, `tests/unit/main/pageExport.test.ts`, `tests/e2e/organize.e2e.ts` |
 
+## Segment 8 — what landed
+
+**One interface for every way in.** `ConversionProvider` (`src/conversion`) is what a file type
+means to PaperForge: the extensions it covers, whether it can run at all, and how it becomes pages.
+Four are registered — PDF, images, text files, and local web pages through Chromium's own printing
+— and local Office conversion joins the same list in Segment 13 without anything else changing.
+
+**Files are staged, never uploaded.** A file chosen in the native picker is read by `SourceLibrary`
+in the main process, converted by its provider, and kept as PDF bytes belonging to the window that
+added it. The renderer arranges names, kinds and page counts; it previews each source over the
+document protocol, so the first page is drawn without the bytes ever crossing IPC.
+
+**The workspace.** One screen answers both "create a PDF" and "combine files": add files, order
+them, take a page range from each, turn them, and say what the result is called. Changing the paper
+converts the staged files again, because for a file that has already become pages that is the only
+thing changing the paper can mean.
+
+**Bookmarks survive.** `outline.ts` reads a source's outline as page indices — resolving direct
+destinations, `/GoTo` actions and both kinds of named destination — translates them to where those
+pages landed, and writes the tree again. An entry whose page was not taken is dropped and its
+children take its place. A top-level bookmark per file is optional, and nests the carried ones
+underneath.
+
+**Web pages are printed, not run.** The page loads in a window with its own empty session, no
+scripting, no node, and every request that is not the local file refused, then Chromium prints it.
+
+**Publishing is the save pipeline.** Everything written — blank, combined, extracted or split — goes
+through `publishDocument`: temporary sibling, flush, reopen through the engine, qpdf check when it
+is installed, then rename. PaperForge opens what it wrote.
+
+| Area      | Key files                                                                                                 |
+| --------- | --------------------------------------------------------------------------------------------------------- |
+| Model     | `src/shared/schemas/create.ts`, `src/conversion/models/provider.ts`                                       |
+| Engine    | `src/pdf/create/{documents,combine,outline,paper}.ts`, `src/pdf/text/layout.ts`                           |
+| Providers | `src/conversion/providers/localProviders.ts`, `main/services/conversion/htmlProvider.ts`                  |
+| Main      | `main/services/creation/{sourceLibrary,documentCreator}.ts`, `main/services/documents/publishDocument.ts` |
+| Renderer  | `renderer/stores/createStore.ts`, `renderer/components/create/*`                                          |
+| Tests     | `tests/unit/shared/{createDocuments,combineDocuments}.test.ts`, `tests/e2e/create.e2e.ts`                 |
+
 ## Architecture decisions
 
 1. **Channel allowlist separate from schemas**, so the preload carries no validation library and
@@ -431,6 +470,24 @@ choice that says what it discards.
 57. **A zustand selector must return what the store holds.** Filtering or mapping inside one makes a
     new array on every render, which React reads as a new snapshot and renders again — the toolbar's
     list of other open documents hit exactly that and is now derived with `useMemo`.
+58. **Every way into PaperForge is a `ConversionProvider`.** Images, text and web pages today, local
+    Office conversion in Segment 13. A provider states whether it can run, so a missing local
+    component is a sentence the reader can act on rather than a silent failure.
+59. **A source is converted when it is added, not when it is used.** That is what makes a page count,
+    a preview and a page range possible before anything is written, and it is why changing the paper
+    converts the staged files again.
+60. **Staged files belong to a window.** Two windows cannot see each other's list, and a window's
+    list goes when it closes. The renderer refers to a source by an id it was given; it cannot name
+    a file.
+61. **The document protocol serves staged sources too**, so previewing a file that is not open uses
+    the same path — and the same range support — as reading one that is.
+62. **Web pages are printed by Chromium, in a window that can reach nothing.** No scripting, its own
+    empty session, every non-file request refused. A local HTML file is as untrusted as a PDF.
+63. **Creating and combining are the same workspace.** They differ only in what the reader came in
+    for; one list, one set of options, one place where the arrangement lives.
+64. **Bookmarks are carried as page indices.** A destination in the source means nothing in the
+    result, so the outline is read as "which page", translated to where that page landed, and
+    written again.
 
 ## Known limitations
 
@@ -461,8 +518,19 @@ choice that says what it discards.
   attachments or form. Carrying bookmarks across is part of Combine in Segment 8.
 - Cropping is numeric. Dragging a crop frame on the page, and editing the bleed, trim and art
   boxes, belong with the crop and page-box tools in Segment 16.
-- Inserting from another PDF takes the whole of it. Choosing which of its pages to take is what the
-  Combine workspace is for, in Segment 8.
+- Inserting from another PDF in the page grid takes the whole of it; choosing which of its pages to
+  take is what the Combine workspace does.
+- Office documents cannot be made into PDFs yet: the provider interface is in place and the file
+  dialog offers only what really works. Local LibreOffice lands in Segment 13, as does exporting a
+  PDF to images, text, Word, Excel or PowerPoint.
+- A staged source is converted once, when it is added. A file changed on disk afterwards is combined
+  as it was; removing and adding it again picks up the change.
+- Text files are set in Courier, a standard PDF font, so no font is embedded and no licence is in
+  question. Choosing a font belongs with the text editor in Segment 9.
+- A web page is converted without running its scripts, deliberately. A page that builds itself with
+  JavaScript converts as the markup it shipped with.
+- Staged sources are held in memory, which is why one file is limited to 512 MB and one window to
+  500 files.
 - A comment can be moved but not resized by handle: changing a shape's size means drawing it
   again. Text markup and ink are deliberately not resizable — one belongs to the words it marks,
   the other to the movement of the hand.
@@ -481,8 +549,8 @@ choice that says what it discards.
   the honest description is "PaperForge knows a document had unsaved changes, not what they were".
 - PaperForge does not claim byte-level incremental saving: pdf-lib rewrites the file. The internal
   recovery journal is the "incremental" of `CLAUDE.md` section 9.
-- Twelve of the fifteen home-screen tool cards are disabled because their capability is not built;
-  a card whose tool exists but needs a document open says that instead.
+- Ten of the fifteen home-screen tool cards are disabled because their capability is not built; a
+  card whose tool exists but needs a document open says that instead.
 - Tabs reorder by dragging or the context menu; there is no keyboard chord for reordering yet.
 - The encryption marker is a trailer scan, not a parse. The viewer will confirm it properly.
 - File watching uses `fs.watch`, which reports a change but not who made it; a file replaced by a
@@ -509,19 +577,19 @@ Nothing is downloaded at runtime, then or now.
 
 Run on Windows 11 x64, Node 24.19.0, npm 11.17.0:
 
-| Command                     | Result                                                                                                                                                                          |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                                                                                                  |
-| `npm run typecheck`         | Pass — four projects, no errors                                                                                                                                                 |
-| `npm run lint`              | Pass — no errors, no warnings                                                                                                                                                   |
-| `npm test`                  | Pass — 410 tests in 39 files                                                                                                                                                    |
-| `npm run test:e2e`          | Pass — 53 Playwright tests against the built application                                                                                                                        |
-| `npm run format:check`      | Pass — Prettier clean                                                                                                                                                           |
-| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                                                                                                       |
-| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                                                                                                |
-| Packaged launch/close smoke | Pass — window ready in ~400 ms, closes cleanly, and `%TEMP%/PaperForge/sessions` is empty afterwards                                                                            |
-| Settings upgrade            | Pass — a settings file without the new `session` section is repaired in place                                                                                                   |
-| Appearance                  | Checked in light and dark by screenshotting the real application: the page grid, a selection with the page-box inspector, a drag in progress, and each of the four page dialogs |
+| Command                     | Result                                                                                                                                                                                    |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                                                                                                            |
+| `npm run typecheck`         | Pass — four projects, no errors                                                                                                                                                           |
+| `npm run lint`              | Pass — no errors, no warnings                                                                                                                                                             |
+| `npm test`                  | Pass — 434 tests in 41 files                                                                                                                                                              |
+| `npm run test:e2e`          | Pass — 61 Playwright tests against the built application                                                                                                                                  |
+| `npm run format:check`      | Pass — Prettier clean                                                                                                                                                                     |
+| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                                                                                                                 |
+| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                                                                                                          |
+| Packaged launch/close smoke | Pass — window ready in ~400 ms, closes cleanly, and `%TEMP%/PaperForge/sessions` is empty afterwards                                                                                      |
+| Settings upgrade            | Pass — a settings file without the new `session` section is repaired in place                                                                                                             |
+| Appearance                  | Checked in light and dark by screenshotting the real application: the new-document workspace empty and with a mixed list of sources, a page range in place, and the blank-document dialog |
 
 ## Manual setup required
 

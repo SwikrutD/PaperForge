@@ -169,18 +169,12 @@ export const invokeContracts = {
     request: z.strictObject({ setup: pageSetupSchema }),
     response: stagedSourcesSchema,
   },
-  'sources:list': {
-    request: z.strictObject({}),
-    response: z.array(stagedSourceSchema),
-  },
+  'sources:list': { request: z.void(), response: z.array(stagedSourceSchema) },
   'sources:remove': {
     request: z.strictObject({ ids: z.array(z.string().min(1).max(200)).min(1).max(1000) }),
     response: z.array(stagedSourceSchema),
   },
-  'sources:clear': {
-    request: z.strictObject({}),
-    response: z.array(stagedSourceSchema),
-  },
+  'sources:clear': { request: z.void(), response: z.array(stagedSourceSchema) },
   /** Converts the staged files again on different paper. */
   'sources:setPageSetup': {
     request: z.strictObject({ setup: pageSetupSchema }),

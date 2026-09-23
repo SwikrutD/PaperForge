@@ -122,7 +122,7 @@ describe('AppShell layout', () => {
     });
   });
 
-  it('shows an honest empty state in the tools panel while no tool is available', async () => {
+  it('lists only the tools that can be used right now', async () => {
     renderShell(
       settingsWith({
         rightPanel: { visible: true, width: 300 },
@@ -130,7 +130,11 @@ describe('AppShell layout', () => {
       }),
     );
 
-    expect(screen.getByText('No tools available yet')).toBeInTheDocument();
+    // Making a document needs no document, so these work from the start.
+    expect(screen.getByRole('button', { name: /Create PDF/ })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /Combine Files/ })).toBeEnabled();
+    // A tool that needs a document, and one that is not built, are both absent.
+    expect(screen.queryByRole('button', { name: /Organize Pages/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Edit PDF/ })).not.toBeInTheDocument();
     await Promise.resolve();
   });

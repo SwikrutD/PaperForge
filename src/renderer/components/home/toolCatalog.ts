@@ -48,6 +48,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     title: 'Create PDF',
     description: 'Start from images, text or a blank page.',
     icon: FilePlus2,
+    commandId: 'tools.create',
     requires: 'document creation',
   },
   {
@@ -62,6 +63,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     title: 'Combine Files',
     description: 'Merge several documents into one.',
     icon: Combine,
+    commandId: 'tools.combine',
     requires: 'document creation',
   },
   {

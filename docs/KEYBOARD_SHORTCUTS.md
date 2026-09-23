@@ -28,6 +28,7 @@ refuses to start if two commands claim the same one.
 | `F3`           | Find Next       | Wraps around; works while the find field has focus                           |
 | `Shift+F3`     | Find Previous   |                                                                              |
 | `Ctrl+M`       | Comment         | Show or hide the comment tools                                               |
+| `Ctrl+N`       | Create PDF      | Make a document from images, text files, web pages or other PDFs             |
 | `Ctrl+Shift+P` | Organize Pages  | Show or hide the page grid                                                   |
 | `Ctrl+Shift+R` | Reading Mode    | Only the title bar and the document; `Esc` leaves it                         |
 | `F4`           | Tools Panel     | Show or hide the right panel                                                 |
