@@ -52,8 +52,8 @@ export function TextEditToolbar({
             : !hasText
               ? 'PaperForge finds no text it can edit on this page. Add text is still available.'
               : selected === null
-                ? 'Click a piece of text to select it, then click again to type.'
-                : 'Click again to type, or press Enter.'}
+                ? 'Click a piece of text to change it.'
+                : 'Type to change it, or press Escape to leave it alone.'}
       </p>
 
       <div className={styles.end}>

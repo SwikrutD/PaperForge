@@ -25,7 +25,7 @@ export function TextProperties(): ReactElement {
     return (
       <div className={styles.panel}>
         <p className={styles.empty}>
-          Click a piece of text on the page to see what drew it, then click again to change it.
+          Click a piece of text on the page to change it, and to see what drew it.
         </p>
         <TextStyleControls />
       </div>
@@ -87,7 +87,7 @@ export function TextProperties(): ReactElement {
 
       <p className={run.editable ? styles.note : styles.warning}>
         {run.editable
-          ? 'Click the text again to change it. It is written in the same font, so the page still looks like itself.'
+          ? 'Click the text on the page to change it. It is written back in the same font, so the page still looks like itself.'
           : `${run.reason ?? 'This text cannot be rewritten in its own font.'} Typing in it takes the old text out and draws yours in a standard font instead.`}
       </p>
 
