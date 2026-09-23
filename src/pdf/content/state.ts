@@ -40,6 +40,30 @@ export function applyMatrix(matrix: Matrix, x: number, y: number): { x: number; 
   };
 }
 
+/**
+ * The transform that undoes another one.
+ *
+ * Null when the matrix collapses everything onto a line or a point, which no
+ * transform can undo — a page that draws like that is left alone.
+ */
+export function invert(matrix: Matrix): Matrix | null {
+  const determinant = matrix.a * matrix.d - matrix.b * matrix.c;
+  if (!Number.isFinite(determinant) || Math.abs(determinant) < 1e-9) return null;
+
+  const a = matrix.d / determinant;
+  const b = -matrix.b / determinant;
+  const c = -matrix.c / determinant;
+  const d = matrix.a / determinant;
+  return {
+    a,
+    b,
+    c,
+    d,
+    e: -(matrix.e * a + matrix.f * c),
+    f: -(matrix.e * b + matrix.f * d),
+  };
+}
+
 /** Horizontal and vertical scale a matrix applies, ignoring rotation. */
 export function matrixScale(matrix: Matrix): { x: number; y: number } {
   return {

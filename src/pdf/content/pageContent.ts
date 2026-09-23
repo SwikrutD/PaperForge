@@ -11,6 +11,7 @@ import {
 import { parseContent, type ContentOperation } from './parser';
 import { readPageFonts, type FontMetrics } from './fonts';
 import { extractTextRuns, type TextRun } from './textRuns';
+import { extractImages, type ImageFacts, type ImagePlacement } from './images';
 
 /**
  * A page's drawing, read for editing.
@@ -28,19 +29,32 @@ export interface PageContent {
   operations: ContentOperation[];
   fonts: Map<string, FontMetrics>;
   runs: TextRun[];
+  /** The images the page draws, in the order it draws them. */
+  images: ImagePlacement[];
 }
+
+/** What the page's XObjects are; supplied by the caller, which has pdf-lib. */
+export type XObjectReader = (
+  document: PDFDocument,
+  resources: PDFDict | undefined,
+) => Map<string, ImageFacts>;
 
 export async function readPageContent(
   document: PDFDocument,
   pageIndex: number,
+  readXObjects?: XObjectReader,
 ): Promise<PageContent> {
   const page = document.getPage(pageIndex);
+  const resources = resourcesOf(document, page);
   const bytes = contentBytes(document, page);
   const operations = parseContent(bytes);
-  const fonts = await readPageFonts(document, resourcesOf(document, page));
+  const fonts = await readPageFonts(document, resources);
   const runs = extractTextRuns(operations, { fonts: (name) => fonts.get(name) });
 
-  return { pageIndex, bytes, operations, fonts, runs };
+  const xobjects = readXObjects?.(document, resources) ?? new Map<string, ImageFacts>();
+  const images = extractImages(operations, (name) => xobjects.get(name));
+
+  return { pageIndex, bytes, operations, fonts, runs, images };
 }
 
 /** The page's resource dictionary, inherited from its parents when absent. */

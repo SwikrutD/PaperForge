@@ -14,6 +14,7 @@ import {
 import { normalizePages, rotationAfter } from './operations';
 import { applyPageOperation, type PageContext } from './pages';
 import { applyTextOperation } from './text';
+import { applyImageOperation } from './images';
 import type { DocumentFacts, MutationResult, PdfMutationEngine, StagedAsset } from './types';
 
 /**
@@ -82,9 +83,10 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
           continue;
         }
 
-        // Rewriting text replaces a page's content stream, which says nothing
-        // about its annotations.
+        // Rewriting text or moving an image replaces a page's content stream,
+        // which says nothing about its annotations.
         if (await applyTextOperation(document, operation)) continue;
+        if (await applyImageOperation(document, operation, assets)) continue;
 
         switch (operation.kind) {
           case 'rotatePages': {

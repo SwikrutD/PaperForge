@@ -22,6 +22,21 @@ export interface PageSpec {
   content?: string;
   /** Puts the page's text inside this optional content group, by name. */
   layer?: string;
+  /** An image drawn on the page, as its own XObject. */
+  image?: ImagePlacementSpec;
+}
+
+/** An image the page draws, with the box it is drawn in. */
+export interface ImagePlacementSpec {
+  /** Pixels of a solid-colour picture. */
+  pixels?: { width: number; height: number };
+  /** Where it goes, in PDF units. */
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Written into the content stream instead of the default `cm`. */
+  matrix?: [number, number, number, number, number, number];
 }
 
 /** A font resource beyond the Helvetica every fixture already has. */
@@ -89,6 +104,29 @@ function latin1(text: string): Buffer {
 /** Escapes a string for a PDF literal. */
 function pdfString(value: string): string {
   return `(${value.replace(/([\\()])/g, '\\$1')})`;
+}
+
+/** Writes a solid-colour image XObject, with its samples uncompressed. */
+function addImage(add: (body: string | Buffer) => number, image: ImagePlacementSpec): number {
+  const width = image.pixels?.width ?? 4;
+  const height = image.pixels?.height ?? 4;
+  const samples = Buffer.alloc(width * height * 3);
+  for (let index = 0; index < samples.length; index += 3) {
+    samples[index] = 200;
+    samples[index + 1] = 40;
+    samples[index + 2] = 40;
+  }
+
+  return add(
+    Buffer.concat([
+      latin1(
+        `<< /Type /XObject /Subtype /Image /Width ${width} /Height ${height} ` +
+          `/ColorSpace /DeviceRGB /BitsPerComponent 8 /Length ${samples.length} >>\nstream\n`,
+      ),
+      samples,
+      latin1('\nendstream'),
+    ]),
+  );
 }
 
 /** Writes a font dictionary, with whatever the spec asked it to carry. */
@@ -180,12 +218,27 @@ export function buildPdf(spec: PdfSpec): Buffer {
 
   const pageNumbers: number[] = [];
   for (const page of spec.pages) {
+    const imageNumber = page.image === undefined ? undefined : addImage(add, page.image);
     const width = page.width ?? LETTER.width;
     const height = page.height ?? LETTER.height;
     const text = page.text ?? '';
     const layerNumber = page.layer === undefined ? undefined : layerNumbers.get(page.layer);
+    const picture =
+      page.image === undefined
+        ? ''
+        : `q ${(
+            page.image.matrix ?? [
+              page.image.width,
+              0,
+              0,
+              page.image.height,
+              page.image.x,
+              page.image.y,
+            ]
+          ).join(' ')} cm /Im0 Do Q\n`;
     const drawing =
-      page.content ?? `BT /F1 24 Tf 1 0 0 1 60 ${height - 80} Tm ${pdfString(text)} Tj ET\n`;
+      picture +
+      (page.content ?? `BT /F1 24 Tf 1 0 0 1 60 ${height - 80} Tm ${pdfString(text)} Tj ET\n`);
     // Marked content ties the drawing to an optional content group.
     const content = layerNumber === undefined ? drawing : `/OC /MC0 BDC\n${drawing}EMC\n`;
     const contentNumber = add(`<< /Length ${content.length} >>\nstream\n${content}endstream`);
@@ -195,7 +248,9 @@ export function buildPdf(spec: PdfSpec): Buffer {
       add(
         `<< /Type /Page /Parent ${pagesNumber} 0 R /MediaBox [0 0 ${width} ${height}]` +
           `${page.rotate === undefined ? '' : ` /Rotate ${page.rotate}`}` +
-          ` /Resources << /Font << /F1 ${fontNumber} 0 R${[...extraFonts]
+          ` /Resources << ${
+            imageNumber === undefined ? '' : `/XObject << /Im0 ${imageNumber} 0 R >> `
+          }/Font << /F1 ${fontNumber} 0 R${[...extraFonts]
             .map(([name, number]) => ` /${name} ${number} 0 R`)
             .join('')} >>${properties} >>` +
           ` /Contents ${contentNumber} 0 R >>`,

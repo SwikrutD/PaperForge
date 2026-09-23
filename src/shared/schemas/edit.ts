@@ -148,6 +148,54 @@ export const addTextOperationSchema = z.strictObject({
   style: textStyleSchema,
 });
 
+const coordinate = z.number().finite().min(-1_000_000).max(1_000_000);
+
+/** Where an image sits on the page, as the reader sees it. */
+export const imagePlacementSchema = z.strictObject({
+  x: coordinate,
+  y: coordinate,
+  width: z.number().finite().min(1).max(1_000_000),
+  height: z.number().finite().min(1).max(1_000_000),
+  /** Clockwise, in degrees. */
+  rotation: z.number().finite().min(-360).max(360),
+  flipX: z.boolean(),
+  flipY: z.boolean(),
+});
+export type ImagePlacementInput = z.infer<typeof imagePlacementSchema>;
+
+/** The part of an image to show, where the whole image is the unit square. */
+export const imageCropSchema = z.strictObject({
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  width: z.number().min(0.001).max(1),
+  height: z.number().min(0.001).max(1),
+});
+
+/** Moves, resizes, turns, crops or replaces an image the page already draws. */
+export const placeImageOperationSchema = z.strictObject({
+  kind: z.literal('placeImage'),
+  page: z.number().int().min(1).max(100_000),
+  imageId: z.string().min(1).max(64),
+  placement: imagePlacementSchema,
+  crop: imageCropSchema.nullable(),
+  /** A staged image to draw in its place, or null to keep the one there. */
+  token: z.string().min(1).max(200).nullable(),
+});
+
+export const deleteImageOperationSchema = z.strictObject({
+  kind: z.literal('deleteImage'),
+  page: z.number().int().min(1).max(100_000),
+  imageId: z.string().min(1).max(64),
+});
+
+/** Draws a staged image on a page, over what is already there. */
+export const addImageOperationSchema = z.strictObject({
+  kind: z.literal('addImage'),
+  page: z.number().int().min(1).max(100_000),
+  token: z.string().min(1).max(200),
+  placement: imagePlacementSchema,
+});
+
 export const editOperationSchema = z.discriminatedUnion('kind', [
   rotatePagesOperationSchema,
   deletePagesOperationSchema,
@@ -161,6 +209,9 @@ export const editOperationSchema = z.discriminatedUnion('kind', [
   editTextOperationSchema,
   replaceTextOperationSchema,
   addTextOperationSchema,
+  placeImageOperationSchema,
+  deleteImageOperationSchema,
+  addImageOperationSchema,
   addAnnotationsOperationSchema,
   updateAnnotationsOperationSchema,
   deleteAnnotationsOperationSchema,

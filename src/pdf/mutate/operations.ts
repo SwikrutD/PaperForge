@@ -147,6 +147,12 @@ export function describeOperation(operation: EditOperation): string {
       return operation.text === '' ? 'Delete text' : 'Replace text';
     case 'addText':
       return 'Add text';
+    case 'placeImage':
+      return operation.token === null ? 'Move image' : 'Replace image';
+    case 'deleteImage':
+      return 'Delete image';
+    case 'addImage':
+      return 'Add image';
   }
 }
 
