@@ -269,6 +269,34 @@ main process writes it through the same mutation engine every other change goes 
 comments panel lists what the file contains — including annotations another application wrote.
 `docs/ANNOTATIONS.md` has the subtypes, the entries and the limits.
 
+## Organizing pages
+
+The Organize Pages workspace (`renderer/components/organize`) replaces the reading view with a grid
+of every page. It is a different way of working on the same document: the same loaded PDF, the same
+undo history, the same save. Three parts keep it small:
+
+- `organizeSelection.ts` is pure arithmetic — what a click with a modifier means, where a drop
+  lands, what stays chosen after pages are deleted, and how a split divides a document. It is
+  tested on its own.
+- `useOrganizeActions.ts` composes each toolbar action into a transaction and hands it to the
+  document store. Nothing else in the workspace builds one, so every action is a single undoable
+  step.
+- `organizeStore.ts` holds what is chosen, the page boxes read from the current revision, and which
+  dialog is open.
+
+The structural operations themselves live in `src/pdf/mutate/pages.ts`, behind the same
+`PdfMutationEngine` every other change goes through. They work on a running list of page objects
+rather than on indices asked of pdf-lib, which does not invalidate its page cache when a page is
+removed.
+
+Two things are deliberately not document changes. **Extract** and **split** write new files:
+`main/services/documents/pageExport.ts` copies the chosen pages into a fresh document and publishes
+each file through the same atomic write, reopen and qpdf check a save uses, and reports honestly how
+many files were written if one fails. **Insertion sources** — another PDF, an image, or another open
+document — are staged in the main process by `stagedAssets.ts`; the renderer refers to a token and
+never sees the bytes or a path. A name the renderer suggests for a written file is reduced to a bare
+file name before it is joined onto the folder the reader chose.
+
 ## Error model
 
 `shared/errors/appError.ts` defines a closed set of error codes covering the categories in

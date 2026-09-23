@@ -200,3 +200,53 @@ Run in both light and dark themes:
       and nothing in the UI claims history that is no longer there.
 - [ ] Kill PaperForge with unsaved changes, restart: the recovery screen offers the document, and
       the file on disk is untouched.
+
+## Segment 7 — organizing pages
+
+- [ ] `Ctrl+Shift+P`, the Tools menu and the Organize Pages card all open the same page grid, and
+      the card is clearly disabled with a reason while no document is open.
+- [ ] The grid shows every page, in order, with its position and — where the document numbers its
+      own pages — the number it prints.
+- [ ] A long document scrolls smoothly: pages are drawn as they come into view, and the grid of a
+      thousand-page document does not stall the window.
+- [ ] Click chooses one page; `Ctrl`-click adds and removes; `Shift`-click takes a range and keeps
+      its anchor when the range is grown again; `Ctrl+A` chooses everything; `Escape` chooses none.
+- [ ] Arrow keys move the chosen page a column or a row at a time, `Shift` extends, and the focus
+      ring stays visible throughout.
+- [ ] Dragging a page shows an indicator in the gap it would land in, and dropping it there moves
+      it. Dropping it back where it was changes nothing and adds no undo step.
+- [ ] Dragging a multi-page selection moves all of them, keeping their order among themselves.
+- [ ] Rotate left/right, Duplicate and Delete act on every chosen page as one undoable step; the
+      grid redraws to match, and the tab gains the unsaved marker.
+- [ ] Delete is disabled, with a reason, when it would empty the document.
+- [ ] Insert → Blank page adds a page after the chosen one, the size of its neighbour.
+- [ ] Insert → Pages from a PDF… inserts the whole of the chosen document; the source file is not
+      modified.
+- [ ] Insert → Image as a page… centres the image on a page of its own.
+- [ ] Insert → Replace this page from a PDF… is available only with one page chosen, and replaces
+      exactly that page.
+- [ ] An encrypted PDF is refused as an insertion source, in plain words.
+- [ ] Extract… writes the chosen pages to a file the reader names, leaves this document unchanged,
+      and only removes the pages afterwards if that was asked for — never leaving nothing behind.
+- [ ] Extract → one document per page writes one file per page into the chosen folder, with names
+      that do not collide.
+- [ ] Split… lists the pieces before writing: every N pages, explicit ranges, and top-level
+      bookmarks. The bookmark option explains itself when the document has none.
+- [ ] A split into a folder writes exactly the listed files, and the document it came from is
+      unchanged and still clean.
+- [ ] Move pages to another document is offered only when another document is open; the pages
+      arrive at the end of that document and leave this one, each document keeping its own undo.
+- [ ] Crop… insets the chosen pages by the margins given, pages of different sizes included; the
+      properties panel shows the new size; Reset crop puts the whole page back.
+- [ ] Crop → "Change the page size as well" says what it discards before it is used.
+- [ ] Page numbering… renumbers from the chosen page on, keeps numbering already set further on,
+      and the grid shows the printed number beside the position.
+- [ ] The properties panel names the boxes the chosen page really declares, and says "Not set"
+      rather than repeating the media box.
+- [ ] Saving writes exactly the order, rotation, cropping and numbering the grid showed; reopening
+      the file — in PaperForge and in another reader — shows the same.
+- [ ] Nothing in the grid touches the file on disk before a save: the file's modified time stays put
+      through every operation above.
+- [ ] Done goes back to reading the same document, at the page that was being read.
+- [ ] Double-clicking a page leaves the grid and shows that page.
+- [ ] The grid and its dialogs are correct in light and dark, at 125% and 150% Windows scaling.

@@ -4,6 +4,7 @@ import type { PageBoxes, PageBoxRect, PageLabelStyle, SplitPart } from '@shared/
 import { describeOperation } from '@pdf/mutate/operations';
 import { useOrganizeStore } from '../../stores/organizeStore';
 import { formatPageRange } from '@shared/utils/pageRange';
+import { allPages, orderAfterMove } from './organizeSelection';
 
 /** What the organize toolbar and its dialogs can ask for. */
 export interface OrganizeActions {
@@ -128,7 +129,14 @@ export function useOrganizeActions(pageCount: number, baseName: string): Organiz
       },
 
       move: (moving, toIndex) => {
-        one({ kind: 'movePages', pages: moving, toIndex });
+        const operation = { kind: 'movePages' as const, pages: moving, toIndex };
+        // The pages stay chosen where they land, so they can be picked up again.
+        const landed = orderAfterMove(allPages(pageCount), moving, toIndex);
+        const chosen = moving.map((page) => landed.indexOf(page) + 1).sort((a, b) => a - b);
+        void (async (): Promise<void> => {
+          await store.getState().apply(describeOperation(operation), [operation]);
+          store.getState().setSelection({ pages: chosen, anchor: chosen[0] ?? null });
+        })();
       },
 
       insertBlank: () => {

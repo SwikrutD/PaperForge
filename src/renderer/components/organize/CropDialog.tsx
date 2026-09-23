@@ -130,7 +130,7 @@ export function CropDialog({ actions, pageCount, onClose }: CropDialogProps): Re
               <span className={styles.hint}>
                 {actions.pages.length === 0
                   ? 'No page is chosen.'
-                  : `Pages ${formatPageRange(actions.pages)}.`}
+                  : `Page${actions.pages.length === 1 ? '' : 's'} ${formatPageRange(actions.pages)}.`}
               </span>
             </span>
           </label>
@@ -143,18 +143,20 @@ export function CropDialog({ actions, pageCount, onClose }: CropDialogProps): Re
             />
             <span className={styles.choiceText}>{`All ${String(pageCount)} pages`}</span>
           </label>
-          <label className={styles.choice}>
-            <input
-              type="radio"
-              name="crop-scope"
-              checked={scope === 'range'}
-              onChange={() => setScope('range')}
-            />
-            <span className={styles.choiceText}>
+          <div className={styles.block}>
+            <label className={styles.choice}>
+              <input
+                type="radio"
+                name="crop-scope"
+                checked={scope === 'range'}
+                onChange={() => setScope('range')}
+              />
               A page range
+            </label>
+            <div className={styles.blockBody}>
               <input
                 type="text"
-                className={`${styles.input} ${styles.grow}`}
+                className={styles.input}
                 placeholder="1-4, 9"
                 value={rangeText}
                 aria-label="Pages to crop"
@@ -163,8 +165,8 @@ export function CropDialog({ actions, pageCount, onClose }: CropDialogProps): Re
                   setRangeText(event.target.value);
                 }}
               />
-            </span>
-          </label>
+            </div>
+          </div>
         </fieldset>
 
         <label className={styles.choice}>

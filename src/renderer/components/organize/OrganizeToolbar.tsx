@@ -1,4 +1,4 @@
-import { useState, type MouseEvent, type ReactElement } from 'react';
+import { useMemo, useState, type MouseEvent, type ReactElement } from 'react';
 import {
   Check,
   Copy,
@@ -9,10 +9,14 @@ import {
   MoveRight,
   RotateCcwSquare,
   RotateCwSquare,
+  Redo2,
+  Save,
   Scissors,
   Trash,
+  Undo2,
 } from 'lucide-react';
 import { Button } from '../controls/Button';
+import { CommandIconButton } from '../controls/CommandIconButton';
 import { ContextMenu, type ContextMenuItem } from '../controls/ContextMenu';
 import { IconButton } from '../controls/IconButton';
 import { useDocumentStore } from '../../stores/documentStore';
@@ -48,8 +52,12 @@ export function OrganizeToolbar({
   const clearSelection = useOrganizeStore((state) => state.clearSelection);
   const setActive = useOrganizeStore((state) => state.setActive);
   const busy = useOrganizeStore((state) => state.busy);
-  const others = useDocumentStore((state) =>
-    state.tabs.filter((tab) => tab.session.id !== sessionId),
+  // The selector has to return what the store holds: filtering inside one
+  // makes a new array on every render, which React reads as a new snapshot.
+  const tabs = useDocumentStore((state) => state.tabs);
+  const others = useMemo(
+    () => tabs.filter((tab) => tab.session.id !== sessionId),
+    [tabs, sessionId],
   );
   const [menu, setMenu] = useState<MenuAt>(null);
 
@@ -90,117 +98,123 @@ export function OrganizeToolbar({
           : `${String(chosen)} of ${String(pageCount)} selected`}
       </p>
 
-      <div className={styles.group}>
-        <Button onClick={() => chooseAll(pageCount)} disabled={off}>
-          Select all
-        </Button>
-        <Button onClick={clearSelection} disabled={off || chosen === 0}>
-          Clear
-        </Button>
-      </div>
+      <div className={styles.tools}>
+        <div className={styles.group}>
+          <Button onClick={() => chooseAll(pageCount)} disabled={off}>
+            Select all
+          </Button>
+          <Button onClick={clearSelection} disabled={off || chosen === 0}>
+            Clear
+          </Button>
+        </div>
 
-      <span className={styles.divider} aria-hidden="true" />
+        <span className={styles.divider} aria-hidden="true" />
 
-      <div className={styles.group}>
-        <IconButton
-          icon={RotateCcwSquare}
-          label="Rotate left"
-          tooltip="Rotate the chosen pages a quarter anticlockwise"
-          disabled={off || chosen === 0}
-          disabledReason={nothingChosen}
-          onClick={() => actions.rotate(-1)}
-        />
-        <IconButton
-          icon={RotateCwSquare}
-          label="Rotate right"
-          tooltip="Rotate the chosen pages a quarter clockwise"
-          disabled={off || chosen === 0}
-          disabledReason={nothingChosen}
-          onClick={() => actions.rotate(1)}
-        />
-        <IconButton
-          icon={Copy}
-          label="Duplicate pages"
-          tooltip="Copy each chosen page, directly after itself"
-          disabled={off || chosen === 0}
-          disabledReason={nothingChosen}
-          onClick={actions.duplicate}
-        />
-        <IconButton
-          icon={Trash}
-          label="Delete pages"
-          tooltip="Remove the chosen pages. Undo brings them back."
-          disabled={off || chosen === 0 || chosen >= pageCount}
-          disabledReason={nothingChosen ?? wouldEmpty}
-          onClick={actions.remove}
-        />
-      </div>
+        <div className={styles.group}>
+          <IconButton
+            icon={RotateCcwSquare}
+            label="Rotate left"
+            tooltip="Rotate the chosen pages a quarter anticlockwise"
+            disabled={off || chosen === 0}
+            disabledReason={nothingChosen}
+            onClick={() => actions.rotate(-1)}
+          />
+          <IconButton
+            icon={RotateCwSquare}
+            label="Rotate right"
+            tooltip="Rotate the chosen pages a quarter clockwise"
+            disabled={off || chosen === 0}
+            disabledReason={nothingChosen}
+            onClick={() => actions.rotate(1)}
+          />
+          <IconButton
+            icon={Copy}
+            label="Duplicate pages"
+            tooltip="Copy each chosen page, directly after itself"
+            disabled={off || chosen === 0}
+            disabledReason={nothingChosen}
+            onClick={actions.duplicate}
+          />
+          <IconButton
+            icon={Trash}
+            label="Delete pages"
+            tooltip="Remove the chosen pages. Undo brings them back."
+            disabled={off || chosen === 0 || chosen >= pageCount}
+            disabledReason={nothingChosen ?? wouldEmpty}
+            onClick={actions.remove}
+          />
+        </div>
 
-      <span className={styles.divider} aria-hidden="true" />
+        <span className={styles.divider} aria-hidden="true" />
 
-      <div className={styles.group}>
-        <IconButton
-          icon={FilePlus2}
-          label="Insert pages"
-          tooltip={
-            chosen === 0
-              ? 'Insert pages at the end of the document'
-              : `Insert pages after page ${String(actions.insertIndex)}`
-          }
-          disabled={off}
-          pressed={menu?.kind === 'insert'}
-          onClick={(event) => openMenu('insert', event)}
-        />
-        <IconButton
-          icon={FileOutput}
-          label="Extract pages"
-          tooltip="Write the chosen pages out as a new document"
-          disabled={off || chosen === 0}
-          disabledReason={nothingChosen}
-          onClick={() => openDialog('extract')}
-        />
-        <IconButton
-          icon={Scissors}
-          label="Split document"
-          tooltip="Write this document out in several pieces"
-          disabled={off}
-          onClick={() => openDialog('split')}
-        />
-        <IconButton
-          icon={MoveRight}
-          label="Move pages to another document"
-          tooltip="Move the chosen pages into another open document"
-          disabled={off || chosen === 0 || chosen >= pageCount || others.length === 0}
-          disabledReason={
-            others.length === 0 ? 'No other document is open.' : (nothingChosen ?? wouldEmpty)
-          }
-          pressed={menu?.kind === 'move'}
-          onClick={(event) => openMenu('move', event)}
-        />
-      </div>
+        <div className={styles.group}>
+          <IconButton
+            icon={FilePlus2}
+            label="Insert pages"
+            tooltip={
+              chosen === 0
+                ? 'Insert pages at the end of the document'
+                : `Insert pages after page ${String(actions.insertIndex)}`
+            }
+            disabled={off}
+            pressed={menu?.kind === 'insert'}
+            onClick={(event) => openMenu('insert', event)}
+          />
+          <IconButton
+            icon={FileOutput}
+            label="Extract pages"
+            tooltip="Write the chosen pages out as a new document"
+            disabled={off || chosen === 0}
+            disabledReason={nothingChosen}
+            onClick={() => openDialog('extract')}
+          />
+          <IconButton
+            icon={Scissors}
+            label="Split document"
+            tooltip="Write this document out in several pieces"
+            disabled={off}
+            onClick={() => openDialog('split')}
+          />
+          <IconButton
+            icon={MoveRight}
+            label="Move pages to another document"
+            tooltip="Move the chosen pages into another open document"
+            disabled={off || chosen === 0 || chosen >= pageCount || others.length === 0}
+            disabledReason={
+              others.length === 0 ? 'No other document is open.' : (nothingChosen ?? wouldEmpty)
+            }
+            pressed={menu?.kind === 'move'}
+            onClick={(event) => openMenu('move', event)}
+          />
+        </div>
 
-      <span className={styles.divider} aria-hidden="true" />
+        <span className={styles.divider} aria-hidden="true" />
 
-      <div className={styles.group}>
-        <IconButton
-          icon={Crop}
-          label="Crop pages"
-          tooltip="Change what the chosen pages show"
-          disabled={off || chosen === 0}
-          disabledReason={nothingChosen}
-          onClick={() => openDialog('crop')}
-        />
-        <IconButton
-          icon={Hash}
-          label="Page numbering"
-          tooltip="Change the numbers this document prints on its pages"
-          disabled={off || chosen === 0}
-          disabledReason={nothingChosen}
-          onClick={() => openDialog('labels')}
-        />
+        <div className={styles.group}>
+          <IconButton
+            icon={Crop}
+            label="Crop pages"
+            tooltip="Change what the chosen pages show"
+            disabled={off || chosen === 0}
+            disabledReason={nothingChosen}
+            onClick={() => openDialog('crop')}
+          />
+          <IconButton
+            icon={Hash}
+            label="Page numbering"
+            tooltip="Change the numbers this document prints on its pages"
+            disabled={off || chosen === 0}
+            disabledReason={nothingChosen}
+            onClick={() => openDialog('labels')}
+          />
+        </div>
       </div>
 
       <div className={styles.end}>
+        <CommandIconButton id="edit.undo" icon={Undo2} disabled={busy} />
+        <CommandIconButton id="edit.redo" icon={Redo2} disabled={busy} />
+        <CommandIconButton id="file.save" icon={Save} disabled={busy} />
+        <span className={styles.divider} aria-hidden="true" />
         <Button appearance="primary" icon={Check} onClick={() => setActive(false)}>
           Done
         </Button>

@@ -69,45 +69,47 @@ export function SplitDialog({
         <fieldset className={styles.group}>
           <legend className={styles.legend}>Split by</legend>
 
-          <label className={styles.choice}>
-            <input
-              type="radio"
-              name="split-mode"
-              checked={mode === 'everyN'}
-              onChange={() => setMode('everyN')}
-            />
-            <span className={styles.choiceText}>
+          <div className={styles.block}>
+            <label className={styles.choice}>
+              <input
+                type="radio"
+                name="split-mode"
+                checked={mode === 'everyN'}
+                onChange={() => setMode('everyN')}
+              />
               A number of pages
-              <span className={styles.row}>
-                <input
-                  type="number"
-                  className={`${styles.input} ${styles.number}`}
-                  min={1}
-                  max={Math.max(1, pageCount)}
-                  value={size}
-                  aria-label="Pages in each document"
-                  onChange={(event) => {
-                    setMode('everyN');
-                    setSize(Math.max(1, Math.trunc(Number(event.target.value) || 1)));
-                  }}
-                />
-                <span className={styles.hint}>pages in each document</span>
-              </span>
-            </span>
-          </label>
+            </label>
+            <div className={styles.blockRow}>
+              <input
+                type="number"
+                className={`${styles.input} ${styles.number}`}
+                min={1}
+                max={Math.max(1, pageCount)}
+                value={size}
+                aria-label="Pages in each document"
+                onChange={(event) => {
+                  setMode('everyN');
+                  setSize(Math.max(1, Math.trunc(Number(event.target.value) || 1)));
+                }}
+              />
+              <span className={styles.hint}>pages in each document</span>
+            </div>
+          </div>
 
-          <label className={styles.choice}>
-            <input
-              type="radio"
-              name="split-mode"
-              checked={mode === 'ranges'}
-              onChange={() => setMode('ranges')}
-            />
-            <span className={styles.choiceText}>
+          <div className={styles.block}>
+            <label className={styles.choice}>
+              <input
+                type="radio"
+                name="split-mode"
+                checked={mode === 'ranges'}
+                onChange={() => setMode('ranges')}
+              />
               Page ranges
+            </label>
+            <div className={styles.blockBody}>
               <input
                 type="text"
-                className={`${styles.input} ${styles.grow}`}
+                className={styles.input}
                 placeholder="1-4, 5-9, 10-"
                 value={rangeText}
                 aria-label="Page ranges, one document each"
@@ -117,8 +119,8 @@ export function SplitDialog({
                 }}
               />
               <span className={styles.hint}>Each range becomes one document.</span>
-            </span>
-          </label>
+            </div>
+          </div>
 
           <label className={styles.choice}>
             <input

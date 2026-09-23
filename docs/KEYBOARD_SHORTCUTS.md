@@ -28,6 +28,7 @@ refuses to start if two commands claim the same one.
 | `F3`           | Find Next       | Wraps around; works while the find field has focus                           |
 | `Shift+F3`     | Find Previous   |                                                                              |
 | `Ctrl+M`       | Comment         | Show or hide the comment tools                                               |
+| `Ctrl+Shift+P` | Organize Pages  | Show or hide the page grid                                                   |
 | `Ctrl+Shift+R` | Reading Mode    | Only the title bar and the document; `Esc` leaves it                         |
 | `F4`           | Tools Panel     | Show or hide the right panel                                                 |
 | `F6`           | Next Region     | Cycle command bar → rail → left panel → workspace → tools panel → status bar |
@@ -47,6 +48,10 @@ Shell behaviour that needs no chord:
 | `Home` / `End`            | On a panel divider: minimum and maximum width                                                    |
 | `Enter` / `Space`         | Activate the focused control                                                                     |
 | `Escape`                  | Close the palette, a menu, a dialog, the find bar or reading mode, or go back to the select tool |
+| `Ctrl+A` in the page grid | Choose every page; `Escape` chooses none                                                         |
+| `Delete` in the page grid | Remove the chosen pages                                                                          |
+| `Arrow keys` in the grid  | Move the chosen page; with `Shift`, extend the selection                                         |
+| Double-click a page       | Leave the grid and read that page                                                                |
 | `Enter` in the find field | Next match; `Shift+Enter` for the previous one                                                   |
 
 Bare printable keys are suppressed while the focus is in a text field. Function keys are not:
@@ -57,12 +62,12 @@ type nothing either. Chords with `Ctrl` or `Alt` always work, which is what Wind
 
 Taken from `CLAUDE.md` section 7; each lands with the segment that implements the command.
 
-| Keys                           | Command                           | Segment  |
-| ------------------------------ | --------------------------------- | -------- |
-| `Ctrl+Shift+O`                 | Open recent / open options        | later    |
-| `Ctrl+P`                       | Print                             | 18       |
-| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / Cut / Paste in context     | 6 onward |
-| `Ctrl+A`                       | Select all in the current context | 6 onward |
+| Keys                           | Command                       | Segment  |
+| ------------------------------ | ----------------------------- | -------- |
+| `Ctrl+Shift+O`                 | Open recent / open options    | later    |
+| `Ctrl+P`                       | Print                         | 18       |
+| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / Cut / Paste in context | 6 onward |
+| `Ctrl+A`                       | Select all text or comments   | later    |
 
 In a continuously scrolling column, `Page Up`, `Page Down`, `Home` and `End` scroll the document,
 which is what those keys do in every Windows reader. Explicit page navigation — next page, previous

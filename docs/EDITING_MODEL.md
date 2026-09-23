@@ -125,9 +125,15 @@ so reverting is itself undoable — a reader who reverts by mistake has not lost
 - **Encrypted documents cannot be changed.** pdf-lib cannot decrypt, and PaperForge will not write
   a file it has not really understood. The password the viewer holds lives in the renderer and is
   never sent to the main process. Decryption belongs with the qpdf-based security tools.
-- **Page rotation and deletion** are the only operations. They are the ones the Organize workspace
-  needs, and they exercise the whole pipeline; text, images and annotations follow in their own
+- **The operations are structural and annotation-level so far**: rotate, delete, move, duplicate,
+  insert blank pages, insert pages from another document, insert an image as a page, crop, page
+  numbering, and adding, changing or removing comments. Text and image editing follow in their own
   segments.
+- **Every change rewrites the whole file.** That is what makes a revision a plain PDF that can be
+  reopened and checked, and it is why an annotation carries `/NM` to keep its identity across the
+  rewrite. Byte-level incremental update is not used, and PaperForge does not claim it.
+- **Page labels split into `/Kids`** — which only a very long document has — are replaced rather
+  than merged when numbering is changed.
 - **A change is not written to disk until saved.** The working copies in the session directory are
   what a crash leaves behind for the recovery screen; recovering _unsaved changes_ from them is not
   implemented yet — the journal records that a document was dirty, and reopening it reopens the

@@ -28,6 +28,29 @@
   font-size: var(--pf-font-size-300);
 }
 
+/* A choice with controls of its own: the label names only the radio, so a
+   screen reader does not read the whole field group as the radio's name. */
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-050);
+}
+
+.blockBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-050);
+  padding-left: calc(var(--pf-space-200) + var(--pf-space-050));
+}
+
+/* The same indent, for controls that sit side by side. */
+.blockRow {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-space-100);
+  padding-left: calc(var(--pf-space-200) + var(--pf-space-050));
+}
+
 .choiceText {
   display: flex;
   flex-direction: column;

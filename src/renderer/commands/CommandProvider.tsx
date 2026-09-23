@@ -157,8 +157,14 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         const next = !organize().active;
         organize().setActive(next);
         // The page grid is its own way of working: comment tools would have
-        // nothing to act on there.
-        if (next) ui().setCommenting(false);
+        // nothing to act on there, and the properties panel becomes the place
+        // where a page says what it is.
+        if (next) {
+          ui().setCommenting(false);
+          void app().patchSettings({
+            layout: { activeRightPanel: 'properties', rightPanel: { visible: true } },
+          });
+        }
       },
       setAnnotationTool: (tool) => {
         ui().setCommenting(true);

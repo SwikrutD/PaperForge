@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactElement } from 'react';
 import type { LoadedPdfDocument } from '@pdf/render/types';
 import { useDocumentStore } from '../../stores/documentStore';
+import { useOrganizeStore } from '../../stores/organizeStore';
 import { cx } from '../../utils/classNames';
 import { PageThumbnail } from '../pages/PageThumbnail';
 import styles from './PagesPanel.module.css';
@@ -16,6 +17,8 @@ interface PagesPanelProps {
 /** Page thumbnails. Clicking one takes the reader there. */
 export function PagesPanel({ document, sessionId, currentPage }: PagesPanelProps): ReactElement {
   const updateView = useDocumentStore((state) => state.updateView);
+  const organizing = useOrganizeStore((state) => state.active);
+  const setOrganizing = useOrganizeStore((state) => state.setActive);
   const listRef = useRef<HTMLUListElement>(null);
 
   // Keep the current page in sight as the reader scrolls the document.
@@ -33,7 +36,11 @@ export function PagesPanel({ document, sessionId, currentPage }: PagesPanelProps
             type="button"
             className={cx(styles.item, page.pageNumber === currentPage && styles.current)}
             aria-current={page.pageNumber === currentPage ? 'true' : undefined}
-            onClick={() => updateView(sessionId, { pendingPage: page.pageNumber })}
+            onClick={() => {
+              updateView(sessionId, { pendingPage: page.pageNumber });
+              // Going to a page means reading it, which the page grid is not.
+              if (organizing) setOrganizing(false);
+            }}
           >
             <PageThumbnail document={document} page={page} width={THUMBNAIL_WIDTH} />
             <span className={styles.label}>{page.label ?? page.pageNumber}</span>

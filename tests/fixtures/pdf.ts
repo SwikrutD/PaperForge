@@ -413,3 +413,23 @@ export function navigationDocument(): Buffer {
     ],
   });
 }
+
+/**
+ * A five-page document whose pages are told apart by their text, with two
+ * top-level bookmarks so that splitting by bookmark has somewhere to cut.
+ */
+export function organizeDocument(): Buffer {
+  return buildPdf({
+    pages: [
+      { text: 'Organize page one' },
+      { text: 'Organize page two' },
+      { text: 'Organize page three' },
+      { text: 'Organize page four' },
+      { text: 'Organize page five' },
+    ],
+    outline: [
+      { title: 'Beginning', page: 1 },
+      { title: 'Middle', page: 3 },
+    ],
+  });
+}

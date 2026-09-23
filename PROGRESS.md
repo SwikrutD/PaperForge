@@ -2,10 +2,10 @@
 
 ## Current status
 
-- Last completed segment: **6 — Comments and annotations**
-- Next segment: **7 — Organize Pages**
+- Last completed segment: **7 — Organize Pages**
+- Next segment: **8 — Create PDF and Combine Files**
 - Build status: `npm run package` succeeds; packaged app launches and closes cleanly on Windows 11 x64
-- Test status: 368 unit tests (36 files) and 39 Playwright end-to-end tests passing; typecheck, lint and format clean
+- Test status: 410 unit tests (39 files) and 53 Playwright end-to-end tests passing; typecheck, lint and format clean
 
 ## Completed segments
 
@@ -16,7 +16,7 @@
 - [x] 4 Navigation panels and search
 - [x] 5 Mutation engine, save pipeline, undo/redo
 - [x] 6 Comments and annotations
-- [ ] 7 Organize Pages
+- [x] 7 Organize Pages
 - [ ] 8 Create PDF and Combine Files
 - [ ] 9 Edit PDF: content model and text editing
 - [ ] 10 Edit PDF: images, links, layout content
@@ -255,6 +255,44 @@ cross IPC, only a token and the size to place the stamp at.
 | Renderer | `renderer/stores/annotationStore.ts`, `renderer/components/annotations/*`                                             |
 | Tests    | `tests/unit/shared/annotation*.test.ts`, `tests/unit/renderer/annotationDrawing.test.ts`, `tests/e2e/comments.e2e.ts` |
 
+## Segment 7 — what landed
+
+**The page grid.** `Ctrl+Shift+P`, the Tools menu or the Organize Pages card replaces the reading
+view with every page of the document, drawn as it comes into view. Pages are chosen with a click,
+`Ctrl`-click, `Shift`-click, `Ctrl+A` and the arrow keys, and moved by dragging, with an indicator
+in the gap the block would land in. A drop that would change nothing adds no undo step.
+
+**The operations.** Rotate, delete, duplicate, move, insert a blank page, insert the pages of
+another PDF, insert an image as a page, replace a page, crop, and page numbering — each composed in
+one place (`useOrganizeActions.ts`) into a single undoable transaction, and applied by
+`src/pdf/mutate/pages.ts` behind the mutation engine. They work on a running list of page objects,
+because pdf-lib does not invalidate its page cache when a page is removed.
+
+**Extract and split write files, they do not change the document.** `pageExport.ts` copies the
+chosen pages into a fresh document and publishes each file through the same atomic write, reopen and
+qpdf check a save uses; if one of several fails, it says how many were written rather than pretending.
+Extraction can remove the pages afterwards, but only after the files exist, and never when that
+would leave the document empty. Split offers every N pages, explicit ranges, and top-level
+bookmarks, and lists the pieces before writing any.
+
+**Pages between documents.** Moving pages into another open tab stages this document's bytes in the
+main process, inserts the chosen pages there and removes them here — two transactions, because undo
+belongs to the document it changed.
+
+**Page boxes.** `pages:boxes` reads what each page declares — media, crop, bleed, trim, art,
+rotation and the number the document prints — and the properties panel shows them while the grid is
+open, saying "Not set" rather than repeating the media box. Cropping insets what each page shows by
+margins, so pages of different sizes crop together; changing the page size itself is a separate
+choice that says what it discards.
+
+| Area     | Key files                                                                                                                                                      |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Model    | `src/shared/schemas/pages.ts`, page operations in `src/shared/schemas/edit.ts`                                                                                 |
+| Engine   | `src/pdf/mutate/pages.ts`, `src/pdf/mutate/extract.ts`, `src/shared/utils/pageLabels.ts`                                                                       |
+| Main     | `main/services/documents/{pageExport,stagedAssets}.ts`, `main/ipc/handlers/organizeHandlers.ts`                                                                |
+| Renderer | `renderer/stores/organizeStore.ts`, `renderer/components/organize/*`, `renderer/components/pages/*`                                                            |
+| Tests    | `tests/unit/shared/pageOperations.test.ts`, `tests/unit/renderer/organizeSelection.test.ts`, `tests/unit/main/pageExport.test.ts`, `tests/e2e/organize.e2e.ts` |
+
 ## Architecture decisions
 
 1. **Channel allowlist separate from schemas**, so the preload carries no validation library and
@@ -374,6 +412,25 @@ cross IPC, only a token and the size to place the stamp at.
 51. **An annotation PaperForge cannot redraw is listed, not hidden.** Its text and status can still
     be changed and it can be deleted; its appearance cannot, because redrawing it would mean
     replacing a mark PaperForge does not understand.
+52. **Organizing pages is a workspace, not a panel.** The grid replaces the reading view and shares
+    the document, the undo history and the save with it, rather than being a second view of a second
+    copy. The navigation panel keeps its thumbnails for reading.
+53. **Extract and split are file-producing services, not document changes.** They copy pages into a
+    new document in the main process and publish each file the way a save does. Nothing about the
+    document the pages came from changes, so neither belongs in its undo history.
+54. **The renderer decides which pages a split contains; the main process decides what a file is
+    called.** Ranges, every-N and bookmark boundaries are the renderer's arithmetic, so "split by
+    bookmark" reuses the outline PDF.js has already read; a suggested name is reduced to a bare file
+    name before it is joined onto the folder the reader chose.
+55. **Pages arrive by token, never as bytes.** Another PDF, an image, or another open document is
+    staged in the main process and referred to by a token, so no document content crosses IPC and the
+    renderer never learns a path.
+56. **Cropping is expressed as margins.** One rectangle cannot crop pages of different sizes
+    sensibly; margins can, and they are measured from what each page currently shows. Pages that end
+    up with the same rectangle share one operation.
+57. **A zustand selector must return what the store holds.** Filtering or mapping inside one makes a
+    new array on every render, which React reads as a new snapshot and renders again — the toolbar's
+    list of other open documents hit exactly that and is now derived with `useMemo`.
 
 ## Known limitations
 
@@ -394,8 +451,18 @@ cross IPC, only a token and the size to place the stamp at.
 - Form fields are drawn from their appearance streams but are not interactive; that is Segment 11.
 - The encryption marker shown in the properties panel is still a trailer scan. The viewer knows the
   truth once a document is open, and the two are not yet reconciled.
-- Editing is page rotation, page deletion and commenting. The Organize workspace (Segment 7) and
-  the content editors build on the same pipeline.
+- Editing is structural and comment-level: rotate, delete, move, duplicate, insert, replace, crop
+  and renumber pages, plus annotations. The content editors (text and images) build on the same
+  pipeline in Segments 9 and 10.
+- Bookmarks are not rewritten when pages move. A destination follows its page through a reorder,
+  because it points at the page object; a bookmark whose page is deleted is left pointing at
+  nothing. Editing the outline is Segment 17.
+- Extracted and split documents carry the pages, the title and the author — not the outline,
+  attachments or form. Carrying bookmarks across is part of Combine in Segment 8.
+- Cropping is numeric. Dragging a crop frame on the page, and editing the bleed, trim and art
+  boxes, belong with the crop and page-box tools in Segment 16.
+- Inserting from another PDF takes the whole of it. Choosing which of its pages to take is what the
+  Combine workspace is for, in Segment 8.
 - A comment can be moved but not resized by handle: changing a shape's size means drawing it
   again. Text markup and ink are deliberately not resizable — one belongs to the words it marks,
   the other to the movement of the hand.
@@ -414,8 +481,8 @@ cross IPC, only a token and the size to place the stamp at.
   the honest description is "PaperForge knows a document had unsaved changes, not what they were".
 - PaperForge does not claim byte-level incremental saving: pdf-lib rewrites the file. The internal
   recovery journal is the "incremental" of `CLAUDE.md` section 9.
-- Thirteen of the fifteen home-screen tool cards are disabled because their capability is not
-  built; a card whose tool exists but needs a document open now says that instead.
+- Twelve of the fifteen home-screen tool cards are disabled because their capability is not built;
+  a card whose tool exists but needs a document open says that instead.
 - Tabs reorder by dragging or the context menu; there is no keyboard chord for reordering yet.
 - The encryption marker is a trailer scan, not a parse. The viewer will confirm it properly.
 - File watching uses `fs.watch`, which reports a change but not who made it; a file replaced by a
@@ -442,19 +509,19 @@ Nothing is downloaded at runtime, then or now.
 
 Run on Windows 11 x64, Node 24.19.0, npm 11.17.0:
 
-| Command                     | Result                                                                                                                |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                                        |
-| `npm run typecheck`         | Pass — four projects, no errors                                                                                       |
-| `npm run lint`              | Pass — no errors, no warnings                                                                                         |
-| `npm test`                  | Pass — 368 tests in 36 files                                                                                          |
-| `npm run test:e2e`          | Pass — 39 Playwright tests against the built application                                                              |
-| `npm run format:check`      | Pass — Prettier clean                                                                                                 |
-| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                                             |
-| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                                      |
-| Packaged launch/close smoke | Pass — window ready in ~400 ms, closes cleanly, and `%TEMP%/PaperForge/sessions` is empty afterwards                  |
-| Settings upgrade            | Pass — a settings file without the new `session` section is repaired in place                                         |
-| Appearance                  | Checked in light and dark by screenshotting the real application: find bar with results, each panel, and reading mode |
+| Command                     | Result                                                                                                                                                                          |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                                                                                                  |
+| `npm run typecheck`         | Pass — four projects, no errors                                                                                                                                                 |
+| `npm run lint`              | Pass — no errors, no warnings                                                                                                                                                   |
+| `npm test`                  | Pass — 410 tests in 39 files                                                                                                                                                    |
+| `npm run test:e2e`          | Pass — 53 Playwright tests against the built application                                                                                                                        |
+| `npm run format:check`      | Pass — Prettier clean                                                                                                                                                           |
+| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                                                                                                       |
+| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                                                                                                |
+| Packaged launch/close smoke | Pass — window ready in ~400 ms, closes cleanly, and `%TEMP%/PaperForge/sessions` is empty afterwards                                                                            |
+| Settings upgrade            | Pass — a settings file without the new `session` section is repaired in place                                                                                                   |
+| Appearance                  | Checked in light and dark by screenshotting the real application: the page grid, a selection with the page-box inspector, a drag in progress, and each of the four page dialogs |
 
 ## Manual setup required
 

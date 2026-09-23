@@ -73,6 +73,7 @@ export function App(): ReactElement {
   const confirmation = useUiStore((state) => state.confirmation);
 
   const organizing = useOrganizeStore((state) => state.active);
+  const setOrganizing = useOrganizeStore((state) => state.setActive);
 
   const [recovery, setRecovery] = useState<RecoveryEntry[] | null>(null);
 
@@ -96,6 +97,13 @@ export function App(): ReactElement {
       cancelled = true;
     };
   }, [initializeDocuments, restoreSession]);
+
+  // Organizing pages is a way of working on a document; with none open there is
+  // nothing to organize, so the grid closes rather than waiting behind the home
+  // screen for the next document.
+  useEffect(() => {
+    if (activeId === null && organizing) setOrganizing(false);
+  }, [activeId, organizing, setOrganizing]);
 
   const resolvedTheme = theme?.resolved ?? null;
   useEffect(() => {
