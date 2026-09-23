@@ -193,12 +193,20 @@ export function selectedAnnotation(state: {
   return state.annotations.find((annotation) => annotation.id === state.selectedId) ?? null;
 }
 
-/** The annotations of one document, or nothing while another one is loading. */
+/**
+ * The annotations of one document, or nothing while another one is loading.
+ *
+ * The empty case is a shared constant rather than a fresh array: this is read
+ * through a store selector, and a new array every time would be a new value
+ * every render.
+ */
+const NO_ANNOTATIONS: readonly Annotation[] = Object.freeze([]);
+
 export function annotationsForSession(
   state: { annotations: readonly Annotation[]; loadedFor: { sessionId: string } | null },
   sessionId: string,
 ): readonly Annotation[] {
-  return state.loadedFor?.sessionId === sessionId ? state.annotations : [];
+  return state.loadedFor?.sessionId === sessionId ? state.annotations : NO_ANNOTATIONS;
 }
 
 /** Annotations of one page, in the order they were added. */

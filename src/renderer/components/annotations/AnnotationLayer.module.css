@@ -9,7 +9,7 @@
   pointer-events: none;
 }
 
-.layer[data-drawing='true'] {
+.layer[data-mode='draw'] {
   pointer-events: auto;
   cursor: crosshair;
 }
@@ -28,8 +28,19 @@
   cursor: pointer;
 }
 
-.layer[data-drawing='true'] .hit {
+/* While drawing, a mark underneath must not swallow the gesture. */
+.layer[data-mode='draw'] .hit {
   pointer-events: none;
+}
+
+/* The eraser works on the marks, so they stay the thing being pointed at. */
+.layer[data-mode='erase'] .hit {
+  cursor: crosshair;
+}
+
+.layer[data-mode='erase'] .hit:hover {
+  border-color: var(--pf-color-danger);
+  background-color: color-mix(in srgb, var(--pf-color-danger) 12%, transparent);
 }
 
 .hit:hover {

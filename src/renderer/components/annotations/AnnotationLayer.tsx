@@ -164,7 +164,9 @@ export function AnnotationLayer({
       className={styles.layer}
       ref={layerRef}
       data-annotation-layer={geometry.pageNumber}
-      data-drawing={drawing || erasing ? 'true' : undefined}
+      // Drawing needs the pointer on the layer; erasing and selecting need it
+      // on the annotations themselves.
+      data-mode={drawing ? 'draw' : erasing ? 'erase' : 'select'}
       onPointerDown={startDraw}
       onPointerMove={continueDraw}
       onPointerUp={finishDraw}

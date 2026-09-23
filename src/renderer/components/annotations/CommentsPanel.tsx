@@ -139,7 +139,7 @@ export function CommentsPanel(): ReactElement {
       {shown.length === 0 ? (
         <p className={styles.loading}>No comment matches this filter.</p>
       ) : (
-        <ul className={styles.list}>
+        <ul className={styles.list} aria-label="Comments">
           {shown.map((annotation) => (
             <CommentRow
               key={annotation.id}
