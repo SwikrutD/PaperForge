@@ -1,8 +1,18 @@
-import { PDFDocument, degrees, type PDFPage } from 'pdf-lib';
+import { PDFDocument, degrees, type PDFImage, type PDFPage } from 'pdf-lib';
 import { AppError } from '@shared/errors/appError';
+import type { Annotation, AnnotationInput, AnnotationPatch } from '@shared/schemas/annotation';
 import type { EditOperation } from '@shared/schemas/edit';
+import { readAnnotations, type AnnotationRecord } from './annotations/read';
+import {
+  embedAppearanceFont,
+  removeAnnotations,
+  rewriteAnnotation,
+  setResolved,
+  writeAnnotation,
+  type WriteContext,
+} from './annotations/write';
 import { normalizePages, rotationAfter } from './operations';
-import type { DocumentFacts, MutationResult, PdfMutationEngine } from './types';
+import type { DocumentFacts, MutationResult, PdfMutationEngine, StampImageBytes } from './types';
 
 /**
  * The write engine, and the only file that imports pdf-lib.
@@ -28,7 +38,20 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
     }
   }
 
-  async apply(bytes: Uint8Array, operations: readonly EditOperation[]): Promise<MutationResult> {
+  async readAnnotations(bytes: Uint8Array): Promise<Annotation[]> {
+    const document = await load(bytes);
+    try {
+      return readAnnotations(document).map((record) => record.annotation);
+    } catch (error) {
+      throw toMutationError(error);
+    }
+  }
+
+  async apply(
+    bytes: Uint8Array,
+    operations: readonly EditOperation[],
+    images: ReadonlyMap<string, StampImageBytes> = new Map(),
+  ): Promise<MutationResult> {
     const document = await load(bytes);
 
     try {
@@ -36,25 +59,76 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
       // pages are held by identity and the running order is kept here rather
       // than asked for again.
       let order: PDFPage[] = document.getPages().slice();
+      let annotations: AnnotationContext | null = null;
+      // Reading the annotations that are already there is only worth doing
+      // once, and only for the operations that need it.
+      const annotationContext = async (): Promise<AnnotationContext> => {
+        annotations ??= await createContext(document, images);
+        return annotations;
+      };
 
       for (const operation of operations) {
-        const targets = normalizePages(operation.pages, order.length).map(
-          (pageNumber) => order[pageNumber - 1] as PDFPage,
-        );
-
-        if (operation.kind === 'rotatePages') {
-          for (const page of targets) {
-            page.setRotation(degrees(rotationAfter(page.getRotation().angle, operation.degrees)));
+        switch (operation.kind) {
+          case 'rotatePages': {
+            for (const page of pagesFor(order, operation.pages)) {
+              page.setRotation(degrees(rotationAfter(page.getRotation().angle, operation.degrees)));
+            }
+            break;
           }
-          continue;
-        }
 
-        // Highest index first, so each removal leaves the lower ones alone.
-        const doomed = new Set(targets);
-        for (let index = order.length - 1; index >= 0; index -= 1) {
-          if (doomed.has(order[index] as PDFPage)) document.removePage(index);
+          case 'deletePages': {
+            const doomed = new Set(pagesFor(order, operation.pages));
+            // Highest index first, so each removal leaves the lower ones alone.
+            for (let index = order.length - 1; index >= 0; index -= 1) {
+              if (doomed.has(order[index] as PDFPage)) document.removePage(index);
+            }
+            order = order.filter((page) => !doomed.has(page));
+            annotations = null;
+            break;
+          }
+
+          case 'addAnnotations': {
+            const context = await annotationContext();
+            for (const input of operation.annotations) {
+              const page = order[input.pageNumber - 1];
+              if (page === undefined) continue;
+              const now = new Date();
+              writeAnnotation(context.write, page, input, nextAnnotationId(), {
+                createdAt: now,
+                modifiedAt: now,
+              });
+            }
+            break;
+          }
+
+          case 'updateAnnotations': {
+            applyUpdates(await annotationContext(), operation.updates);
+            // The records now describe the file as it was before the update.
+            annotations = null;
+            break;
+          }
+
+          case 'deleteAnnotations': {
+            const context = await annotationContext();
+            const byId = new Map(context.records.map((record) => [record.annotation.id, record]));
+            const byPage = new Map<number, Set<string>>();
+
+            for (const id of operation.ids) {
+              const record = byId.get(id);
+              if (record === undefined) continue;
+              const refs = byPage.get(record.pageIndex) ?? new Set<string>();
+              refs.add(record.ref);
+              byPage.set(record.pageIndex, refs);
+            }
+
+            for (const [pageIndex, refs] of byPage) {
+              const page = order[pageIndex];
+              if (page !== undefined) removeAnnotations(page, refs);
+            }
+            annotations = null;
+            break;
+          }
         }
-        order = order.filter((page) => !doomed.has(page));
       }
 
       return { bytes: await save(document), pageCount: document.getPageCount() };
@@ -62,6 +136,106 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
       throw toMutationError(error);
     }
   }
+}
+
+interface AnnotationContext {
+  write: WriteContext;
+  records: AnnotationRecord[];
+}
+
+/** Embeds what appearances need, once, and reads what is already there. */
+async function createContext(
+  document: PDFDocument,
+  images: ReadonlyMap<string, StampImageBytes>,
+): Promise<AnnotationContext> {
+  const embedded = new Map<string, PDFImage>();
+  for (const [token, image] of images) {
+    embedded.set(
+      token,
+      image.format === 'png'
+        ? await document.embedPng(image.bytes)
+        : await document.embedJpg(image.bytes),
+    );
+  }
+
+  return {
+    write: { document, font: embedAppearanceFont(document), images: embedded },
+    records: readAnnotations(document),
+  };
+}
+
+/** Applies patches to annotations that are already in the document. */
+function applyUpdates(
+  context: AnnotationContext,
+  updates: readonly { id: string; patch: AnnotationPatch }[],
+): void {
+  const byId = new Map(context.records.map((record) => [record.annotation.id, record]));
+
+  for (const update of updates) {
+    const record = byId.get(update.id);
+    if (record === undefined) continue;
+
+    const { patch } = update;
+    const current = record.annotation;
+    const resolved = patch.resolved ?? current.resolved;
+
+    // A resolved flag on its own does not need the annotation redrawn.
+    const onlyStatus =
+      patch.style === undefined &&
+      patch.geometry === undefined &&
+      patch.contents === undefined &&
+      patch.author === undefined &&
+      patch.subject === undefined;
+
+    if (onlyStatus) {
+      setResolved(record.dict, resolved);
+      continue;
+    }
+
+    if (!current.editable) {
+      // PaperForge could not read this annotation's geometry, so it cannot
+      // redraw it. Only its status and text are touched.
+      setResolved(record.dict, resolved);
+      continue;
+    }
+
+    const input: AnnotationInput = {
+      pageNumber: current.pageNumber,
+      geometry: patch.geometry ?? current.geometry,
+      style: mergeStyle(current.style, patch.style),
+      contents: patch.contents ?? current.contents,
+      author: patch.author ?? current.author,
+      subject: patch.subject ?? current.subject,
+      ...(current.stampLabel === undefined ? {} : { stampLabel: current.stampLabel }),
+    };
+
+    rewriteAnnotation(context.write, record.dict, input, { ...current, resolved }, new Date());
+  }
+}
+
+/**
+ * Applies the fields a patch actually sets. An explicit undefined means "leave
+ * this alone", which spreading would read as "clear it".
+ */
+function mergeStyle(
+  current: Annotation['style'],
+  patch: AnnotationPatch['style'],
+): Annotation['style'] {
+  if (patch === undefined) return current;
+  const merged = { ...current };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value !== undefined) Object.assign(merged, { [key]: value });
+  }
+  return merged;
+}
+
+function pagesFor(order: readonly PDFPage[], pages: readonly number[]): PDFPage[] {
+  return normalizePages(pages, order.length).map((pageNumber) => order[pageNumber - 1] as PDFPage);
+}
+
+/** Identity for a new annotation, written to its `/NM`. */
+function nextAnnotationId(): string {
+  return `pf-${globalThis.crypto.randomUUID()}`;
 }
 
 async function load(bytes: Uint8Array): Promise<PDFDocument> {

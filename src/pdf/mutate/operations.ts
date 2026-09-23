@@ -1,4 +1,5 @@
 import { AppError } from '@shared/errors/appError';
+import type { AnnotationKind } from '@shared/schemas/annotation';
 import type { EditOperation, EditTransaction } from '@shared/schemas/edit';
 
 /**
@@ -34,25 +35,42 @@ export function validateTransaction(
   const operations: EditOperation[] = [];
 
   for (const operation of transaction.operations) {
-    const targets = normalizePages(operation.pages, pages);
-    if (targets.length === 0) {
-      throw new AppError('internal/unexpected', {
-        message: 'That change does not apply to any page of this document.',
-        details: `${operation.kind}: no page of ${pages} matched ${operation.pages.join(', ')}`,
-      });
-    }
-
-    if (operation.kind === 'deletePages') {
-      if (targets.length >= pages) {
+    if (operation.kind === 'rotatePages' || operation.kind === 'deletePages') {
+      const targets = normalizePages(operation.pages, pages);
+      if (targets.length === 0) {
         throw new AppError('internal/unexpected', {
-          message: 'A PDF must keep at least one page.',
-          details: `deletePages would remove all ${pages} pages`,
+          message: 'That change does not apply to any page of this document.',
+          details: `${operation.kind}: no page of ${pages} matched ${operation.pages.join(', ')}`,
         });
       }
-      pages -= targets.length;
+
+      if (operation.kind === 'deletePages') {
+        if (targets.length >= pages) {
+          throw new AppError('internal/unexpected', {
+            message: 'A PDF must keep at least one page.',
+            details: `deletePages would remove all ${pages} pages`,
+          });
+        }
+        pages -= targets.length;
+      }
+
+      operations.push({ ...operation, pages: targets });
+      continue;
     }
 
-    operations.push({ ...operation, pages: targets });
+    if (operation.kind === 'addAnnotations') {
+      const outside = operation.annotations.filter(
+        (annotation) => annotation.pageNumber < 1 || annotation.pageNumber > pages,
+      );
+      if (outside.length > 0) {
+        throw new AppError('internal/unexpected', {
+          message: 'That comment belongs to a page this document does not have.',
+          details: `addAnnotations: ${outside.length} of ${operation.annotations.length} outside 1-${pages}`,
+        });
+      }
+    }
+
+    operations.push(operation);
   }
 
   return { operations, pageCount: pages };
@@ -60,14 +78,67 @@ export function validateTransaction(
 
 /** "Rotate page 3" / "Delete pages 2-4", for the Undo and Redo commands. */
 export function describeOperation(operation: EditOperation): string {
-  const pages = formatPageList(operation.pages);
-  const plural = operation.pages.length === 1 ? 'page' : 'pages';
-  if (operation.kind === 'rotatePages') {
-    const direction =
-      operation.degrees === 90 ? 'right' : operation.degrees === 270 ? 'left' : '180°';
-    return `Rotate ${plural} ${pages} ${direction}`;
+  switch (operation.kind) {
+    case 'rotatePages': {
+      const direction =
+        operation.degrees === 90 ? 'right' : operation.degrees === 270 ? 'left' : '180°';
+      return `Rotate ${plural(operation.pages)} ${formatPageList(operation.pages)} ${direction}`;
+    }
+    case 'deletePages':
+      return `Delete ${plural(operation.pages)} ${formatPageList(operation.pages)}`;
+    case 'addAnnotations':
+      return operation.annotations.length === 1
+        ? `Add ${describeKind(operation.annotations[0]?.geometry.kind)}`
+        : `Add ${String(operation.annotations.length)} comments`;
+    case 'updateAnnotations':
+      return operation.updates.length === 1 ? 'Change comment' : 'Change comments';
+    case 'deleteAnnotations':
+      return operation.ids.length === 1 ? 'Delete comment' : 'Delete comments';
   }
-  return `Delete ${plural} ${pages}`;
+}
+
+function plural(pages: readonly number[]): string {
+  return pages.length === 1 ? 'page' : 'pages';
+}
+
+/** The words a reader would use for an annotation kind. */
+export function describeKind(kind: AnnotationKind | undefined): string {
+  switch (kind) {
+    case 'highlight':
+      return 'highlight';
+    case 'underline':
+      return 'underline';
+    case 'strikeOut':
+      return 'strikethrough';
+    case 'squiggly':
+      return 'squiggly underline';
+    case 'note':
+      return 'sticky note';
+    case 'freeText':
+      return 'text box';
+    case 'callout':
+      return 'callout';
+    case 'square':
+      return 'rectangle';
+    case 'circle':
+      return 'ellipse';
+    case 'line':
+      return 'line';
+    case 'arrow':
+      return 'arrow';
+    case 'polygon':
+      return 'polygon';
+    case 'polyline':
+      return 'polyline';
+    case 'ink':
+      return 'drawing';
+    case 'stamp':
+      return 'stamp';
+    case 'imageStamp':
+      return 'image stamp';
+    default:
+      return 'comment';
+  }
 }
 
 /** Collapses runs of consecutive pages: [1,2,3,7] becomes "1-3, 7". */

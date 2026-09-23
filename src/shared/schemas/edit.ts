@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { annotationInputSchema, annotationPatchSchema } from './annotation';
 import { documentSessionSchema } from './document';
 
 /**
@@ -27,9 +28,31 @@ export const deletePagesOperationSchema = z.strictObject({
   pages: pageListSchema,
 });
 
+/** Adds annotations, which carry the page they belong to themselves. */
+export const addAnnotationsOperationSchema = z.strictObject({
+  kind: z.literal('addAnnotations'),
+  annotations: z.array(annotationInputSchema).min(1).max(500),
+});
+
+export const updateAnnotationsOperationSchema = z.strictObject({
+  kind: z.literal('updateAnnotations'),
+  updates: z
+    .array(z.strictObject({ id: z.string().min(1).max(120), patch: annotationPatchSchema }))
+    .min(1)
+    .max(500),
+});
+
+export const deleteAnnotationsOperationSchema = z.strictObject({
+  kind: z.literal('deleteAnnotations'),
+  ids: z.array(z.string().min(1).max(120)).min(1).max(500),
+});
+
 export const editOperationSchema = z.discriminatedUnion('kind', [
   rotatePagesOperationSchema,
   deletePagesOperationSchema,
+  addAnnotationsOperationSchema,
+  updateAnnotationsOperationSchema,
+  deleteAnnotationsOperationSchema,
 ]);
 export type EditOperation = z.infer<typeof editOperationSchema>;
 

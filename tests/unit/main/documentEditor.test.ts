@@ -311,6 +311,7 @@ describe('DocumentEditor', () => {
             : { pageCount: 3, encrypted: false },
         ),
       apply: () => Promise.resolve({ bytes: new TextEncoder().encode('not a pdf'), pageCount: 0 }),
+      readAnnotations: () => Promise.resolve([]),
     };
     const documents = makeDocuments(await makeSession(documentPath));
     const { editor } = makeEditor(documents, { engine: brokenEngine });
@@ -364,6 +365,7 @@ describe('DocumentEditor', () => {
       inspect: () => Promise.resolve({ pageCount: 0, encrypted: true }),
       apply: () =>
         Promise.reject(new AppError('internal/unexpected', { message: 'never reached' })),
+      readAnnotations: () => Promise.resolve([]),
     };
     const documents = makeDocuments(await makeSession(documentPath));
     const { editor } = makeEditor(documents, { engine: encrypted });

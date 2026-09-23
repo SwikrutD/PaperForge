@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AppError } from '../../../src/shared/errors/appError';
-import type { EditTransaction } from '../../../src/shared/schemas/edit';
+import type { EditOperation, EditTransaction } from '../../../src/shared/schemas/edit';
 import {
   describeOperation,
   formatPageList,
@@ -11,6 +11,14 @@ import {
 
 function transaction(operations: EditTransaction['operations']): EditTransaction {
   return { label: 'Test', operations };
+}
+
+/** The pages a page operation ended up targeting. */
+function pagesOf(operation: EditOperation | undefined): number[] | undefined {
+  if (operation === undefined) return undefined;
+  return operation.kind === 'rotatePages' || operation.kind === 'deletePages'
+    ? operation.pages
+    : undefined;
 }
 
 describe('normalizePages', () => {
@@ -43,7 +51,7 @@ describe('validateTransaction', () => {
       transaction([{ kind: 'rotatePages', pages: [4, 2, 2], degrees: 90 }]),
       10,
     );
-    expect(result.operations[0]?.pages).toEqual([2, 4]);
+    expect(pagesOf(result.operations[0])).toEqual([2, 4]);
     expect(result.pageCount).toBe(10);
   });
 
@@ -84,7 +92,7 @@ describe('validateTransaction', () => {
       3,
     );
     // Only page 2 of the two that remained; there is no page 3 any more.
-    expect(result.operations[1]?.pages).toEqual([2]);
+    expect(pagesOf(result.operations[1])).toEqual([2]);
     expect(result.pageCount).toBe(1);
   });
 
