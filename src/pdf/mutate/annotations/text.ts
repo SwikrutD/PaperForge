@@ -11,13 +11,20 @@ import type { PDFFont } from 'pdf-lib';
 
 const REPLACEMENT = '?';
 
-/** Keeps what Helvetica can draw and replaces the rest. */
+/**
+ * Keeps what Helvetica can draw and replaces the rest.
+ *
+ * Line breaks are kept: this maps characters, and it is `wrapText` that
+ * decides where lines end. Anything that must be a single line says so.
+ */
 export function toWinAnsi(value: string): string {
   let result = '';
   for (const character of value) {
     const code = character.codePointAt(0) ?? 0;
     if (code === 9) {
       result += '    ';
+    } else if (code === 10 || code === 13) {
+      result += character;
     } else if (code >= 32 && code <= 126) {
       result += character;
     } else if (code >= 160 && code <= 255) {
@@ -42,6 +49,13 @@ export function isDrawable(value: string): boolean {
   return toWinAnsi(value) === value;
 }
 
+/** One line of drawable text, for a label that cannot wrap. */
+export function toSingleLine(value: string): string {
+  return toWinAnsi(value)
+    .replace(/[\r\n]+/g, ' ')
+    .trim();
+}
+
 /**
  * Breaks text into lines that fit a box, keeping the author's own line breaks
  * and splitting a word that is too long for a line on its own.
@@ -64,19 +78,22 @@ export function wrapText(
     let current = '';
     for (const word of paragraph.split(/(\s+)/)) {
       if (word === '') continue;
+
       const candidate = current + word;
       if (current !== '' && widthOf(font, candidate, fontSize) > usable) {
         lines.push(current.trimEnd());
         current = word.trimStart();
-        // A single word wider than the box has to be broken somewhere.
-        while (widthOf(font, current, fontSize) > usable && current.length > 1) {
-          let cut = current.length - 1;
-          while (cut > 1 && widthOf(font, current.slice(0, cut), fontSize) > usable) cut -= 1;
-          lines.push(current.slice(0, cut));
-          current = current.slice(cut);
-        }
       } else {
         current = candidate;
+      }
+
+      // A word wider than the box has to be broken somewhere, whether it
+      // started the line or was pushed onto one of its own.
+      while (widthOf(font, current, fontSize) > usable && current.length > 1) {
+        let cut = current.length - 1;
+        while (cut > 1 && widthOf(font, current.slice(0, cut), fontSize) > usable) cut -= 1;
+        lines.push(current.slice(0, cut));
+        current = current.slice(cut);
       }
     }
     lines.push(current.trimEnd());

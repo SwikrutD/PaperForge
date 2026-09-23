@@ -22,7 +22,7 @@ import type {
 import { buildAppearance } from './appearance';
 import { boundsOf } from './geometry';
 import { toPdfDate } from './pdfDate';
-import { wrapText, toWinAnsi } from './text';
+import { wrapText, toSingleLine } from './text';
 
 /**
  * Writing annotations into a document as real PDF annotations.
@@ -101,7 +101,7 @@ function appearanceStream(
     fontName: 'Helv',
     textLines,
     ...(image === undefined ? {} : { imageName: 'Im0' }),
-    ...(input.stampLabel === undefined ? {} : { stampLabel: toWinAnsi(input.stampLabel) }),
+    ...(input.stampLabel === undefined ? {} : { stampLabel: toSingleLine(input.stampLabel) }),
   });
 
   const resources: PdfDictLiteral = {};
