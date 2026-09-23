@@ -124,6 +124,7 @@ function makeEditor(
     logger,
     workspaceDirectory: () => workspace,
     setDirty,
+    stampImages: () => new Map(),
   });
   return { editor, setDirty };
 }

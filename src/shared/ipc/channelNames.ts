@@ -28,6 +28,8 @@ export const INVOKE_CHANNEL_NAMES = [
   'edit:redo',
   'edit:revert',
   'files:save',
+  'annotations:list',
+  'annotations:stageStampImage',
   'tools:qpdfStatus',
   'tools:locateQpdf',
   'recovery:list',

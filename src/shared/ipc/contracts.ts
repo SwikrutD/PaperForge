@@ -6,6 +6,7 @@ import {
   openResultSchema,
   recoveryEntrySchema,
 } from '../schemas/document';
+import { annotationSchema, stampImageSchema } from '../schemas/annotation';
 import {
   documentEditStateSchema,
   editTransactionSchema,
@@ -113,6 +114,20 @@ export const invokeContracts = {
     }),
     response: saveOutcomeSchema,
   },
+  /** Every annotation in a document, as the file itself records them. */
+  'annotations:list': {
+    request: z.strictObject({ sessionId: z.string().min(1) }),
+    response: z.array(annotationSchema),
+  },
+  /**
+   * Stages an image for stamping and hands back a token. The bytes stay in the
+   * main process; the renderer only places the stamp.
+   */
+  'annotations:stageStampImage': {
+    request: z.strictObject({ sessionId: z.string().min(1) }),
+    response: stampImageSchema.nullable(),
+  },
+
   'tools:qpdfStatus': { request: z.void(), response: qpdfStatusSchema },
   /** Opens a picker for the qpdf executable, or clears the configured one. */
   'tools:locateQpdf': {

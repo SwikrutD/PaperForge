@@ -2,8 +2,18 @@ import {
   Activity,
   AppWindow,
   BookOpen,
+  Circle,
   Copy,
   FileDown,
+  Highlighter,
+  MessageSquare,
+  MessageSquarePlus,
+  Pencil,
+  Square as SquareIcon,
+  Stamp,
+  Strikethrough,
+  Type,
+  Underline,
   TimerReset,
   Redo2,
   RotateCcwSquare,
@@ -45,6 +55,7 @@ import {
   StickyNote,
   Sun,
 } from 'lucide-react';
+import type { AnnotationKind } from '@shared/schemas/annotation';
 import type { LeftPanelId } from '@shared/schemas/settings';
 import { CommandRegistry } from './registry';
 import type { CommandAvailability, CommandContext, CommandDefinition } from './types';
@@ -72,6 +83,43 @@ function leftPanelCommands(): CommandDefinition[] {
     isChecked: (context) =>
       context.settings.layout.leftPanel.visible && context.settings.layout.activeLeftPanel === id,
     run: (context) => context.actions.setLeftPanel(id),
+  }));
+}
+
+/** The comment tools that are worth a command of their own. */
+const ANNOTATION_TOOLS: Array<{
+  tool: AnnotationKind | 'eraser';
+  title: string;
+  icon: typeof SquareIcon;
+  keywords: string[];
+}> = [
+  { tool: 'highlight', title: 'Highlight Text', icon: Highlighter, keywords: ['mark', 'yellow'] },
+  { tool: 'underline', title: 'Underline Text', icon: Underline, keywords: ['mark'] },
+  {
+    tool: 'strikeOut',
+    title: 'Strike Through Text',
+    icon: Strikethrough,
+    keywords: ['mark', 'delete'],
+  },
+  { tool: 'note', title: 'Add Sticky Note', icon: MessageSquarePlus, keywords: ['comment'] },
+  { tool: 'freeText', title: 'Add Text Box', icon: Type, keywords: ['typewriter', 'write'] },
+  { tool: 'square', title: 'Draw Rectangle', icon: SquareIcon, keywords: ['shape', 'box'] },
+  { tool: 'circle', title: 'Draw Ellipse', icon: Circle, keywords: ['shape', 'oval'] },
+  { tool: 'ink', title: 'Draw Freehand', icon: Pencil, keywords: ['pen', 'ink', 'scribble'] },
+  { tool: 'stamp', title: 'Add Stamp', icon: Stamp, keywords: ['approved', 'draft'] },
+];
+
+function annotationToolCommands(): CommandDefinition[] {
+  return ANNOTATION_TOOLS.map(({ tool, title, icon, keywords }) => ({
+    id: `tools.annotate.${tool}`,
+    title,
+    category: 'tools' as const,
+    group: 'comment',
+    icon,
+    keywords: ['comment', 'annotation', ...keywords],
+    isChecked: (context) => context.annotationTool === tool,
+    isAvailable: documentRequired,
+    run: (context) => context.actions.setAnnotationTool(tool),
   }));
 }
 
@@ -208,6 +256,43 @@ export function buildCommands(): CommandDefinition[] {
       shortcut: 'Ctrl+Shift+W',
       keywords: ['quit', 'exit'],
       run: (context) => context.actions.closeWindow(),
+    },
+    {
+      id: 'tools.comment',
+      title: 'Comment',
+      description: 'Show the comment tools and the properties of what you mark.',
+      category: 'tools',
+      group: 'comment',
+      icon: MessageSquare,
+      shortcut: 'Ctrl+M',
+      keywords: ['annotate', 'markup', 'review', 'note'],
+      isChecked: (context) => context.commenting,
+      isAvailable: documentRequired,
+      run: (context) => context.actions.toggleCommenting(),
+    },
+    ...annotationToolCommands(),
+    {
+      id: 'edit.deleteComment',
+      title: 'Delete Comment',
+      category: 'edit',
+      group: 'comment',
+      icon: Trash,
+      keywords: ['annotation', 'remove'],
+      isAvailable: (context) =>
+        context.annotationSelected ? true : { enabled: false, reason: 'No comment is selected.' },
+      run: (context) => context.actions.deleteSelectedAnnotation(),
+    },
+    {
+      id: 'edit.resolveComment',
+      title: 'Mark Comment Done',
+      description: "PaperForge's own mark; other readers ignore it.",
+      category: 'edit',
+      group: 'comment',
+      icon: MessageSquarePlus,
+      keywords: ['resolve', 'status', 'done'],
+      isAvailable: (context) =>
+        context.annotationSelected ? true : { enabled: false, reason: 'No comment is selected.' },
+      run: (context) => context.actions.toggleSelectedAnnotationResolved(),
     },
     {
       id: 'edit.undo',

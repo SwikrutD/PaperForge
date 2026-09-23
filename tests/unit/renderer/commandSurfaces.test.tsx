@@ -130,8 +130,14 @@ describe('home screen', () => {
     expect(screen.getByLabelText('Pinned')).toBeInTheDocument();
   });
 
-  it('renders every tool as unavailable while no tool command exists', () => {
+  it('tells a tool that is not built apart from one that needs a document', () => {
     renderWithCommands(<HomeScreen recentFiles={[]} />);
+
+    // Commenting exists; on the home screen there is simply nothing to mark up.
+    const comment = screen.getByRole('button', { name: /Comment/ });
+    expect(comment).toBeDisabled();
+    expect(comment).toHaveAttribute('title', 'No document is open.');
+    expect(screen.getByText('Needs a document')).toBeInTheDocument();
 
     const editTool = screen.getByRole('button', { name: /Edit PDF/ });
     expect(editTool).toBeDisabled();

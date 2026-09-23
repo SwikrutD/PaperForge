@@ -14,6 +14,8 @@ export interface UiStore {
    * Deliberately not persisted — it is a way to read, not a preference.
    */
   readingMode: boolean;
+  /** True while the comment tools are on show. */
+  commenting: boolean;
   toasts: Toast[];
   /** Pending confirmation, shown over everything else. */
   confirmation: ConfirmationRequest | null;
@@ -22,6 +24,7 @@ export interface UiStore {
   setCommandPaletteOpen: (open: boolean) => void;
   setProgressCenterOpen: (open: boolean) => void;
   setReadingMode: (readingMode: boolean) => void;
+  setCommenting: (commenting: boolean) => void;
   showToast: (toast: ToastInput) => string;
   dismissToast: (id: string) => void;
   requestConfirmation: (request: ConfirmationRequest) => void;
@@ -33,6 +36,7 @@ export const useUiStore = create<UiStore>((set) => ({
   commandPaletteOpen: false,
   progressCenterOpen: false,
   readingMode: false,
+  commenting: false,
   toasts: [],
   confirmation: null,
 
@@ -41,6 +45,7 @@ export const useUiStore = create<UiStore>((set) => ({
   setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
   setProgressCenterOpen: (open) => set({ progressCenterOpen: open }),
   setReadingMode: (readingMode) => set({ readingMode }),
+  setCommenting: (commenting) => set({ commenting }),
 
   showToast: (input) => {
     const intent = input.intent ?? 'info';

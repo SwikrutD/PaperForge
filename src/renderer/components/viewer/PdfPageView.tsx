@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import type { LoadedPdfDocument, PdfLink } from '@pdf/render/types';
 import { cssBoxStyle, pdfRectToCss, rectFromCorners, type PdfRect } from './pageGeometry';
 import type { PageBox } from './viewerLayout';
@@ -21,6 +21,8 @@ interface PdfPageViewProps {
   /** Bumped when layer visibility changes, which requires a repaint. */
   layersVersion: number;
   highlights?: readonly PageHighlight[] | undefined;
+  /** Comment tools and hit areas, which sit over the text layer. */
+  overlay?: ReactNode;
   onFollowLink: (link: PdfLink) => void;
 }
 
@@ -37,6 +39,7 @@ export function PdfPageView({
   label,
   layersVersion,
   highlights,
+  overlay,
   onFollowLink,
 }: PdfPageViewProps): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -132,6 +135,8 @@ export function PdfPageView({
           />
         );
       })}
+
+      {overlay}
 
       {failed && (
         <div className={styles.failed} role="status">

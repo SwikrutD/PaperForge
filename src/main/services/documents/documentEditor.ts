@@ -8,8 +8,9 @@ import type {
   SaveOutcome,
 } from '@shared/schemas/edit';
 import type { DocumentSession } from '@shared/schemas/document';
+import type { Annotation } from '@shared/schemas/annotation';
 import { validateTransaction } from '@pdf/mutate/operations';
-import type { PdfMutationEngine } from '@pdf/mutate/types';
+import type { PdfMutationEngine, StampImageBytes } from '@pdf/mutate/types';
 import { writeFileAtomic } from '../filesystem/atomicWrite';
 import type { Logger } from '../logging/logger';
 import type { QpdfService } from '../qpdf/qpdfService';
@@ -38,10 +39,14 @@ export interface DocumentEditorDeps {
   workspaceDirectory: (sessionId: string) => string;
   /** Records unsaved changes in the recovery journal. */
   setDirty: (sessionId: string, dirty: boolean) => Promise<void>;
+  /** Images staged for stamping, which a mutation may need to embed. */
+  stampImages: (sessionId: string) => ReadonlyMap<string, StampImageBytes>;
 }
 
 interface EditedDocument {
   history: RevisionHistory;
+  /** Annotations of the revision being shown, read once and kept. */
+  annotations?: { revision: number; list: Annotation[] };
   /**
    * The revision whose bytes are on disk. The document is dirty exactly when
    * the current revision is a different one.
@@ -126,12 +131,38 @@ export class DocumentEditor {
 
     const { operations } = validateTransaction(transaction, facts.pageCount);
     const entry = await this.ensureStarted(sessionId, bytes);
-    const result = await this.deps.engine.apply(bytes, operations);
+    const result = await this.deps.engine.apply(
+      bytes,
+      operations,
+      this.deps.stampImages(sessionId),
+    );
 
+    delete entry.annotations;
     await entry.history.push(transaction.label, result.bytes);
     await this.markDirty(sessionId, entry);
     this.deps.logger.info('Applied a change.', session.file.displayName, transaction.label);
     return this.state(sessionId);
+  }
+
+  /**
+   * Every annotation in the document as it stands, read from the file itself.
+   *
+   * The result is kept until the revision changes, so opening the comments
+   * panel or selecting an annotation does not re-read the document.
+   */
+  async annotations(sessionId: string): Promise<Annotation[]> {
+    const session = this.requireSession(sessionId);
+    const entry = this.edited.get(sessionId);
+    const revision = entry?.history.currentRevision ?? 0;
+
+    if (entry?.annotations !== undefined && entry.annotations.revision === revision) {
+      return entry.annotations.list;
+    }
+
+    const bytes = await this.readCurrentBytes(session);
+    const list = await this.deps.engine.readAnnotations(bytes);
+    if (entry !== undefined) entry.annotations = { revision, list };
+    return list;
   }
 
   async undo(sessionId: string): Promise<DocumentEditState> {

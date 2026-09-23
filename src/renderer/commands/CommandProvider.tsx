@@ -9,6 +9,7 @@ import { focusNextRegion } from '../keyboard/focusRegions';
 import { buildShortcutTable, findShortcutCommand } from '../keyboard/shortcuts';
 import { useAppStore } from '../stores/appStore';
 import { useDocumentStore } from '../stores/documentStore';
+import { useAnnotationStore } from '../stores/annotationStore';
 import { useSearchStore } from '../stores/searchStore';
 import { useUiStore } from '../stores/uiStore';
 import { buildDiagnosticsText } from '../utils/diagnostics';
@@ -27,6 +28,9 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
   const tabs = useDocumentStore((state) => state.tabs);
   const activeTabId = useDocumentStore((state) => state.activeId);
   const readingMode = useUiStore((state) => state.readingMode);
+  const commenting = useUiStore((state) => state.commenting);
+  const annotationTool = useAnnotationStore((state) => state.tool);
+  const annotationSelected = useAnnotationStore((state) => state.selectedId !== null);
   const findOpen = useSearchStore((state) => state.open);
   const matchCount = useSearchStore((state) => state.results.hits.length);
 
@@ -37,6 +41,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     const ui = useUiStore.getState;
     const documents = useDocumentStore.getState;
     const search = useSearchStore.getState;
+    const annotations = useAnnotationStore.getState;
 
     const activeSessionId = (): string | null => documents().activeId;
 
@@ -139,6 +144,30 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         app().patchSettings({ layout: { activeRightPanel: panel, rightPanel: { visible: true } } }),
       toggleFullScreen: () => app().toggleFullScreen(),
       toggleReadingMode: () => ui().setReadingMode(!ui().readingMode),
+      toggleCommenting: () => {
+        const next = !ui().commenting;
+        ui().setCommenting(next);
+        if (!next) annotations().setTool('select');
+        else void app().patchSettings({ layout: { rightPanel: { visible: true } } });
+      },
+      setAnnotationTool: (tool) => {
+        ui().setCommenting(true);
+        annotations().setTool(tool);
+      },
+      deleteSelectedAnnotation: () => {
+        const id = annotations().selectedId;
+        if (id !== null) void annotations().remove([id]);
+      },
+      toggleSelectedAnnotationResolved: () => {
+        const state = annotations();
+        const selected = state.annotations.find((entry) => entry.id === state.selectedId);
+        if (selected === undefined) return;
+        void state.update(
+          selected.id,
+          { resolved: !selected.resolved },
+          selected.resolved ? 'Reopen comment' : 'Mark comment done',
+        );
+      },
       clearRecentFiles: () => app().clearRecentFiles(),
       openDialog: (dialog) => ui().openDialog(dialog),
       closeDialog: () => ui().closeDialog(),
@@ -169,6 +198,9 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
       openDocumentCount: tabs.length,
       fullScreen: windowState?.fullScreen ?? false,
       readingMode,
+      commenting,
+      annotationTool: annotationTool === 'select' ? null : annotationTool,
+      annotationSelected,
       findOpen,
       matchCount,
       actions,
@@ -182,6 +214,9 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     tabs,
     activeTabId,
     readingMode,
+    commenting,
+    annotationTool,
+    annotationSelected,
     findOpen,
     matchCount,
     actions,

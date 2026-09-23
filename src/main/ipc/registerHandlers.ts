@@ -6,6 +6,7 @@ import { buildAppInfo } from '../services/appInfo';
 import type { DocumentEditor } from '../services/documents/documentEditor';
 import type { DocumentService } from '../services/documents/documentService';
 import type { QpdfService } from '../services/qpdf/qpdfService';
+import type { StampImages } from '../services/documents/stampImages';
 import type { RecentFilesStore } from '../services/recentFiles/recentFilesStore';
 import type { SessionWorkspaces } from '../services/recovery/recoveryJournal';
 import type { SettingsStore } from '../services/settings/settingsStore';
@@ -21,6 +22,7 @@ export interface IpcDependencies {
   documents: DocumentService;
   editor: DocumentEditor;
   qpdf: QpdfService;
+  stampImages: StampImages;
   workspaces: SessionWorkspaces;
   theme: ThemeController;
   logger: Logger;
@@ -80,6 +82,7 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
     documents: deps.documents,
     editor: deps.editor,
     qpdf: deps.qpdf,
+    stampImages: deps.stampImages,
     settings: deps.settings,
     senderWindow,
   });

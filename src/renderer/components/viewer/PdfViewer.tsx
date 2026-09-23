@@ -1,12 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { Loader2 } from 'lucide-react';
-import type { PdfLink } from '@pdf/render/types';
+import type { PdfLink, PdfPageGeometry } from '@pdf/render/types';
 import { useDocumentStore, type DocumentTab } from '../../stores/documentStore';
 import { currentMatch, useSearchStore } from '../../stores/searchStore';
 import { useUiStore } from '../../stores/uiStore';
 import { invoke } from '../../services/ipcClient';
 import { ErrorMessageBar } from '../surfaces/MessageBar';
 import { Button } from '../controls/Button';
+import { AnnotationLayer } from '../annotations/AnnotationLayer';
+import { AnnotationToolbar } from '../annotations/AnnotationToolbar';
+import { DraftEditor } from '../annotations/DraftEditor';
+import { useAnnotationTools } from '../annotations/useAnnotationTools';
+import {
+  annotationsForSession,
+  annotationsOnPage,
+  useAnnotationStore,
+} from '../../stores/annotationStore';
 import { FindBar } from '../search/FindBar';
 import { highlightsByPage } from '../search/searchNavigation';
 import { pdfRectToCss } from './pageGeometry';
@@ -38,6 +47,12 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const findOpen = useSearchStore((store) => store.open);
   const highlightAll = useSearchStore((store) => store.highlightAll);
   const results = useSearchStore((store) => store.results);
+  const annotations = useAnnotationStore((store) => annotationsForSession(store, sessionId));
+  const selectedAnnotationId = useAnnotationStore((store) => store.selectedId);
+  const selectAnnotation = useAnnotationStore((store) => store.select);
+  const draft = useAnnotationStore((store) => store.draft);
+  const commenting = useUiStore((store) => store.commenting);
+  const toolActive = useAnnotationStore((store) => store.tool !== 'select');
   const showToast = useUiStore((store) => store.showToast);
   const requestConfirmation = useUiStore((store) => store.requestConfirmation);
 
@@ -86,6 +101,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   ]);
 
   const pageLabels = useMemo(() => pages.map((page) => page.label), [pages]);
+  const tools = useAnnotationTools(sessionId, tab.edit.revision, pages, scale, view.rotation);
   const layout = useMemo(
     () => layoutPages(pages, scale, view.rotation),
     [pages, scale, view.rotation],
@@ -251,6 +267,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
       />
 
       {findOpen && <FindBar />}
+      {(commenting || toolActive) && <AnnotationToolbar disabled={state.status !== 'ready'} />}
 
       <div className={styles.scroller} ref={scrollerRef} onScroll={onScroll} tabIndex={0}>
         {state.status === 'ready' && state.document !== null ? (
@@ -271,6 +288,36 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                   label={pages[pageNumber - 1]?.label ?? null}
                   layersVersion={state.layersVersion}
                   highlights={highlights.get(pageNumber)}
+                  overlay={
+                    state.document === null ? null : (
+                      <>
+                        <AnnotationLayer
+                          geometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}
+                          scale={scale}
+                          rotation={view.rotation}
+                          annotations={annotationsOnPage(annotations, pageNumber)}
+                          tool={tools.tool}
+                          selectedId={selectedAnnotationId}
+                          stampSize={tools.stampImage ?? undefined}
+                          draft={draft}
+                          onSelect={selectAnnotation}
+                          onCreate={tools.create}
+                          onMove={tools.move}
+                          onErase={tools.erase}
+                        />
+                        {draft !== null && draft.pageNumber === pageNumber && (
+                          <DraftEditor
+                            draft={draft}
+                            pageGeometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}
+                            scale={scale}
+                            rotation={view.rotation}
+                            onCommit={tools.commitDraft}
+                            onCancel={tools.cancelDraft}
+                          />
+                        )}
+                      </>
+                    )
+                  }
                   onFollowLink={followLink}
                 />
               );

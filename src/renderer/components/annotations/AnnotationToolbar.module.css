@@ -1,0 +1,30 @@
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-space-050);
+  flex: 0 0 auto;
+  height: 38px;
+  padding: 0 var(--pf-space-100);
+  background-color: var(--pf-color-bg-subtle);
+  border-bottom: 1px solid var(--pf-color-border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.bar::-webkit-scrollbar {
+  display: none;
+}
+
+.group {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-space-050);
+  flex: 0 0 auto;
+}
+
+.divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 var(--pf-space-050) 0 var(--pf-space-025);
+  background-color: var(--pf-color-border);
+}

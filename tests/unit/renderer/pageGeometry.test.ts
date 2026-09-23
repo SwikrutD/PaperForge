@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { PdfPageGeometry } from '../../../src/pdf/render/types';
 import {
   cssBoxStyle,
+  cssPointToPdf,
+  cssRectToPdf,
   pdfRectToCss,
   quarterTurns,
   rectFromCorners,
@@ -145,5 +147,32 @@ describe('pdfRectToCss', () => {
       width: '3px',
       height: '4px',
     });
+  });
+});
+
+describe('cssPointToPdf', () => {
+  // The inverse has to be exact, or a drawn annotation would drift a little
+  // every time it was read back and redrawn.
+  it('undoes pdfRectToCss for every rotation', () => {
+    const rect = { x: 120, y: 300, width: 40, height: 20 };
+    for (const pageRotation of [0, 90, 180, 270]) {
+      for (const viewRotation of [0, 90, 180, 270]) {
+        const geometry = page(pageRotation);
+        const box = pdfRectToCss(rect, geometry, 1.5, viewRotation);
+        expect(box).not.toBeNull();
+
+        const back = cssRectToPdf(box!, geometry, 1.5, viewRotation);
+        expect(back.x).toBeCloseTo(rect.x, 4);
+        expect(back.y).toBeCloseTo(rect.y, 4);
+        expect(back.width).toBeCloseTo(rect.width, 4);
+        expect(back.height).toBeCloseTo(rect.height, 4);
+      }
+    }
+  });
+
+  it('works from a view box that does not start at zero', () => {
+    const geometry = page(0, [20, 30, 632, 822]);
+    const point = cssPointToPdf({ x: 0, y: 0 }, geometry, 1, 0);
+    expect(point).toEqual({ x: 20, y: 822 });
   });
 });

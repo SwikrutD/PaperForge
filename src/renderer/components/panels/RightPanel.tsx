@@ -3,7 +3,11 @@ import { MousePointerSquareDashed, Wrench, X } from 'lucide-react';
 import type { RightPanelId } from '@shared/schemas/settings';
 import { useCommands } from '../../commands/useCommands';
 import { useDocumentStore } from '../../stores/documentStore';
+import { useUiStore } from '../../stores/uiStore';
 import { DocumentProperties } from '../workspace/DocumentProperties';
+import { AnnotationProperties } from '../annotations/AnnotationProperties';
+import { CommentsPanel } from '../annotations/CommentsPanel';
+import { selectedAnnotation, useAnnotationStore } from '../../stores/annotationStore';
 import { cx } from '../../utils/classNames';
 import { IconButton } from '../controls/IconButton';
 import { ToolCard } from '../home/ToolCard';
@@ -13,6 +17,7 @@ import styles from './RightPanel.module.css';
 
 const TABS: Array<{ id: RightPanelId; label: string }> = [
   { id: 'properties', label: 'Properties' },
+  { id: 'comments', label: 'Comments' },
   { id: 'tools', label: 'Tools' },
 ];
 
@@ -23,6 +28,10 @@ export function RightPanel({ panel }: { panel: RightPanelId }): ReactElement {
     const active = state.activeId;
     return state.tabs.find((tab) => tab.session.id === active) ?? null;
   });
+  const annotations = useAnnotationStore((state) => state.annotations);
+  const selectedId = useAnnotationStore((state) => state.selectedId);
+  const commenting = useUiStore((state) => state.commenting);
+  const selected = selectedAnnotation({ annotations, selectedId });
 
   const select = (id: RightPanelId): void => {
     void context?.actions.setRightPanel(id);
@@ -65,13 +74,26 @@ export function RightPanel({ panel }: { panel: RightPanelId }): ReactElement {
       </header>
 
       <div className={styles.body} role="tabpanel">
-        {panel === 'properties' ? (
+        {panel === 'comments' ? (
+          activeTab === null ? (
+            <EmptyPanelState
+              icon={MousePointerSquareDashed}
+              title="No document open"
+              description="Open a PDF to see the comments it carries."
+            />
+          ) : (
+            <CommentsPanel />
+          )
+        ) : panel === 'properties' ? (
           activeTab === null ? (
             <EmptyPanelState
               icon={MousePointerSquareDashed}
               title="Nothing selected"
               description="Open a document, then select text, an image, an annotation or a form field."
             />
+          ) : selected !== null || commenting ? (
+            // While commenting, this panel is about the mark being made.
+            <AnnotationProperties annotation={selected} />
           ) : (
             <DocumentProperties tab={activeTab} />
           )

@@ -1,0 +1,64 @@
+/*
+ * The layer sits over the page. It lets pointer events through unless a tool
+ * needs them, so text selection keeps working while the select tool is active.
+ */
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.layer[data-drawing='true'] {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+/*
+ * What an annotation is drawn as comes from the document itself. These are
+ * only the areas that can be clicked and dragged.
+ */
+.hit {
+  position: absolute;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.layer[data-drawing='true'] .hit {
+  pointer-events: none;
+}
+
+.hit:hover {
+  border-color: color-mix(in srgb, var(--pf-color-accent) 55%, transparent);
+  background-color: color-mix(in srgb, var(--pf-color-accent) 8%, transparent);
+}
+
+.hit:focus-visible {
+  outline: 2px solid var(--pf-color-focus-ring);
+  outline-offset: 1px;
+}
+
+.selected,
+.selected:hover {
+  border: 1px dashed var(--pf-color-accent);
+  background-color: color-mix(in srgb, var(--pf-color-accent) 10%, transparent);
+  cursor: move;
+}
+
+.preview {
+  position: absolute;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.previewStroke {
+  fill: none;
+  stroke: var(--pf-color-accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+}

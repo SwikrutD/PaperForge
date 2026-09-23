@@ -17,6 +17,7 @@ export const TEST_APP_INFO: AppInfo = {
   platform: 'win32',
   arch: 'x64',
   locale: 'en-US',
+  userName: 'Tester',
   versions: { electron: '44.0.0', chrome: '140.0.0', node: '22.0.0', v8: '14.0' },
   paths: { userData: 'C:/Users/Test/AppData/Roaming/PaperForge', logs: 'C:/logs', temp: 'C:/temp' },
 };

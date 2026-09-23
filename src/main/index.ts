@@ -11,6 +11,7 @@ import {
 } from './security/hardening';
 import { DocumentEditor } from './services/documents/documentEditor';
 import { DocumentService } from './services/documents/documentService';
+import { StampImages } from './services/documents/stampImages';
 import { QpdfService } from './services/qpdf/qpdfService';
 import { PdfLibMutationEngine } from '@pdf/mutate/pdfLibEngine';
 import { createLogger, parseLogLevel, type Logger } from './services/logging/logger';
@@ -84,6 +85,7 @@ async function bootstrap(): Promise<void> {
       : path.join(app.getAppPath(), 'resources'),
     configuredPath: settings.get().tools.qpdfPath,
   });
+  const stampImages = new StampImages();
   const editor = new DocumentEditor({
     documents,
     engine: new PdfLibMutationEngine(),
@@ -91,9 +93,11 @@ async function bootstrap(): Promise<void> {
     logger,
     workspaceDirectory: (sessionId) => workspaces.directoryFor(sessionId),
     setDirty: (sessionId, dirty) => documents.setDirty(sessionId, dirty),
+    stampImages: (sessionId) => stampImages.imagesFor(sessionId),
   });
   // Closing a document throws its working copies away with it.
   documents.onClosed((sessionId) => {
+    stampImages.dispose(sessionId);
     void editor.dispose(sessionId);
   });
   settings.onChange((next) => {
@@ -128,6 +132,7 @@ async function bootstrap(): Promise<void> {
     documents,
     editor,
     qpdf,
+    stampImages,
     workspaces,
     theme,
     logger,

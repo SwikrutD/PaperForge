@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import type { AppInfo } from '@shared/schemas/appInfo';
 import type { DocumentSession } from '@shared/schemas/document';
+import type { AnnotationKind } from '@shared/schemas/annotation';
 import type { DocumentEditState, SaveMode } from '@shared/schemas/edit';
 import type { RecentFileEntry } from '@shared/schemas/recentFiles';
 import type {
@@ -34,6 +35,12 @@ export interface CommandContext {
   readonly fullScreen: boolean;
   /** True while the window shows only the document. */
   readonly readingMode: boolean;
+  /** True while the comment tools are on show. */
+  readonly commenting: boolean;
+  /** The comment tool in use, or null while the select tool is. */
+  readonly annotationTool: AnnotationKind | 'eraser' | null;
+  /** True when a comment is selected. */
+  readonly annotationSelected: boolean;
   /** True while the find bar is on screen. */
   readonly findOpen: boolean;
   /** How many matches the current search found. */
@@ -70,6 +77,10 @@ export interface CommandActions {
   setRightPanel(panel: RightPanelId): Promise<void>;
   toggleFullScreen(): Promise<void>;
   toggleReadingMode(): void;
+  toggleCommenting(): void;
+  setAnnotationTool(tool: AnnotationKind | 'eraser' | 'select'): void;
+  deleteSelectedAnnotation(): void;
+  toggleSelectedAnnotationResolved(): void;
   clearRecentFiles(): Promise<void>;
   openDialog(dialog: DialogId): void;
   closeDialog(): void;

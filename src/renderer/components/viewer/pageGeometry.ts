@@ -92,3 +92,57 @@ export function cssBoxStyle(box: CssBox): {
     height: `${box.height}px`,
   };
 }
+
+/**
+ * The other direction: a point on the rendered page back into PDF user space.
+ *
+ * This is what turns a click or a drag into geometry an annotation can be
+ * written from, and it is the exact inverse of `pdfRectToCss`.
+ */
+export function cssPointToPdf(
+  point: { x: number; y: number },
+  geometry: PdfPageGeometry,
+  scale: number,
+  viewRotation: number,
+): { x: number; y: number } {
+  const [originX, originY, cornerX, cornerY] = geometry.viewBox;
+  const width = cornerX - originX;
+  const height = cornerY - originY;
+  const unit = scale * (geometry.userUnit === 0 ? 1 : geometry.userUnit);
+  const cssX = point.x / unit;
+  const cssY = point.y / unit;
+
+  switch (quarterTurns(geometry.rotation + viewRotation)) {
+    case 1:
+      return { x: cssY + originX, y: cssX + originY };
+    case 2:
+      return { x: width - cssX + originX, y: cssY + originY };
+    case 3:
+      return { x: width - cssY + originX, y: height - cssX + originY };
+    default:
+      return { x: cssX + originX, y: height - cssY + originY };
+  }
+}
+
+/** A rectangle on the rendered page, back in PDF user space. */
+export function cssRectToPdf(
+  box: { left: number; top: number; width: number; height: number },
+  geometry: PdfPageGeometry,
+  scale: number,
+  viewRotation: number,
+): PdfRect {
+  const first = cssPointToPdf({ x: box.left, y: box.top }, geometry, scale, viewRotation);
+  const second = cssPointToPdf(
+    { x: box.left + box.width, y: box.top + box.height },
+    geometry,
+    scale,
+    viewRotation,
+  );
+
+  return {
+    x: Math.min(first.x, second.x),
+    y: Math.min(first.y, second.y),
+    width: Math.abs(second.x - first.x),
+    height: Math.abs(second.y - first.y),
+  };
+}

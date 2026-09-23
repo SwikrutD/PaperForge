@@ -7,6 +7,8 @@ export const appInfoSchema = z.object({
   platform: z.string(),
   arch: z.string(),
   locale: z.string(),
+  /** Who is signed in, used as the default author of a comment. */
+  userName: z.string(),
   versions: z.object({
     electron: z.string(),
     chrome: z.string(),

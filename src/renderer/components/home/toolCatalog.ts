@@ -76,6 +76,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     title: 'Comment',
     description: 'Highlight, draw, and leave notes.',
     icon: MessageSquare,
+    commandId: 'tools.comment',
     requires: 'annotations',
   },
   {

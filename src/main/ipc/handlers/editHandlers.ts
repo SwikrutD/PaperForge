@@ -4,6 +4,7 @@ import type { SaveMode, SaveOutcome } from '@shared/schemas/edit';
 import type { DocumentEditor } from '../../services/documents/documentEditor';
 import type { DocumentService } from '../../services/documents/documentService';
 import type { QpdfService } from '../../services/qpdf/qpdfService';
+import type { StampImages } from '../../services/documents/stampImages';
 import type { SettingsStore } from '../../services/settings/settingsStore';
 import type { RegisterInvoke } from '../registry';
 
@@ -11,6 +12,7 @@ export interface EditHandlerDeps {
   documents: DocumentService;
   editor: DocumentEditor;
   qpdf: QpdfService;
+  stampImages: StampImages;
   settings: SettingsStore;
   senderWindow: (event: Electron.IpcMainInvokeEvent) => BrowserWindow;
 }
@@ -46,6 +48,25 @@ export function registerEditHandlers(registerInvoke: RegisterInvoke, deps: EditH
       ...(destination === undefined ? {} : { destination }),
       ...(force === undefined ? {} : { force }),
     });
+  });
+
+  registerInvoke('annotations:list', ({ sessionId }) => deps.editor.annotations(sessionId));
+
+  /**
+   * Stages an image for stamping. The picker is native and the bytes stay
+   * here; the renderer is handed a token and the size to place it at.
+   */
+  registerInvoke('annotations:stageStampImage', async ({ sessionId }, event) => {
+    const result = await dialog.showOpenDialog(deps.senderWindow(event), {
+      title: 'Choose an image to stamp',
+      buttonLabel: 'Use image',
+      properties: ['openFile'],
+      filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg'] }],
+    });
+
+    const chosen = result.canceled ? undefined : result.filePaths[0];
+    if (chosen === undefined) return null;
+    return deps.stampImages.stage(sessionId, chosen);
   });
 
   registerInvoke('tools:qpdfStatus', () => deps.qpdf.status());

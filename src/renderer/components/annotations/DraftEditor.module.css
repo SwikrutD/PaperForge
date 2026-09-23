@@ -1,0 +1,22 @@
+/*
+ * The draft sits exactly where the annotation will be, with the same size and
+ * colour, so typing shows what the page is about to say.
+ */
+.editor {
+  position: absolute;
+  z-index: 6;
+  margin: 0;
+  padding: 4px 6px;
+  border: 1px solid;
+  border-radius: 2px;
+  background-color: color-mix(in srgb, var(--pf-color-page) 92%, transparent);
+  font-family: inherit;
+  line-height: 1.18;
+  resize: none;
+  pointer-events: auto;
+}
+
+.editor:focus-visible {
+  outline: 2px solid var(--pf-color-focus-ring);
+  outline-offset: 1px;
+}

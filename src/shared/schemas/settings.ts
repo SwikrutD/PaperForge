@@ -24,7 +24,7 @@ export const appearanceSettingsSchema = z.object({
 export const leftPanelIdSchema = z.enum(['pages', 'bookmarks', 'attachments', 'layers']);
 export type LeftPanelId = z.infer<typeof leftPanelIdSchema>;
 
-export const rightPanelIdSchema = z.enum(['properties', 'tools']);
+export const rightPanelIdSchema = z.enum(['properties', 'comments', 'tools']);
 export type RightPanelId = z.infer<typeof rightPanelIdSchema>;
 
 export const PANEL_MIN_WIDTH = 200;
@@ -53,6 +53,15 @@ export const sessionSettingsSchema = z.object({
 });
 export type SessionSettings = z.infer<typeof sessionSettingsSchema>;
 
+export const editingSettingsSchema = z.object({
+  /**
+   * The name new comments are signed with. Empty means "whoever is signed in",
+   * which the renderer resolves from the application info.
+   */
+  annotationAuthor: z.string().max(200),
+});
+export type EditingSettings = z.infer<typeof editingSettingsSchema>;
+
 export const toolsSettingsSchema = z.object({
   /**
    * Where the local qpdf executable is, when the reader has pointed PaperForge
@@ -68,6 +77,7 @@ export const settingsSchema = z.object({
   window: windowStateSchema,
   layout: layoutSettingsSchema,
   session: sessionSettingsSchema,
+  editing: editingSettingsSchema,
   tools: toolsSettingsSchema,
 });
 export type Settings = z.infer<typeof settingsSchema>;
@@ -86,12 +96,20 @@ export const settingsPatchSchema = z.strictObject({
     })
     .optional(),
   session: sessionSettingsSchema.partial().optional(),
+  editing: editingSettingsSchema.partial().optional(),
   tools: toolsSettingsSchema.partial().optional(),
 });
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
 
 /** Top-level sections, used when repairing a partially valid settings file. */
-const SETTINGS_SECTIONS = ['appearance', 'window', 'layout', 'session', 'tools'] as const;
+const SETTINGS_SECTIONS = [
+  'appearance',
+  'window',
+  'layout',
+  'session',
+  'editing',
+  'tools',
+] as const;
 
 export const DEFAULT_SETTINGS: Settings = {
   version: SETTINGS_VERSION,
@@ -105,6 +123,7 @@ export const DEFAULT_SETTINGS: Settings = {
     commandBarVisible: true,
   },
   session: { restoreOnStartup: true, openDocuments: [] },
+  editing: { annotationAuthor: '' },
   tools: { qpdfPath: null },
 };
 
@@ -133,6 +152,7 @@ export function applySettingsPatch(current: Settings, patch: SettingsPatch): Set
       rightPanel: mergeDefined(current.layout.rightPanel, patch.layout?.rightPanel),
     },
     session: mergeDefined(current.session, patch.session),
+    editing: mergeDefined(current.editing, patch.editing),
     tools: mergeTools(current.tools, patch.tools),
   });
 }
