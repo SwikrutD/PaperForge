@@ -22,12 +22,6 @@ export interface ImageDrag {
 }
 
 export interface ImageEditStore {
-  /**
-   * True when the reader is pointing at images rather than text. Only one of
-   * the two takes the pointer, so a click on a photograph over a caption is
-   * never a guess about which of them was meant.
-   */
-  active: boolean;
   /** Keyed by `${sessionId}:${page}`. */
   pages: Map<string, LoadedImagePage>;
   selected: { page: number; id: string } | null;
@@ -37,7 +31,8 @@ export interface ImageEditStore {
   pending: StampImage | null;
   busy: boolean;
 
-  setActive: (active: boolean) => void;
+  /** Puts down whatever was being held, when the editor points elsewhere. */
+  reset: () => void;
   load: (sessionId: string, page: number, revision: number) => Promise<void>;
   select: (page: number, id: string | null) => void;
   setDrag: (drag: ImageDrag | null) => void;
@@ -84,14 +79,13 @@ function report(error: unknown): void {
  * page's content, so the page is read again afterwards rather than patched.
  */
 export const useImageEditStore = create<ImageEditStore>((set, get) => ({
-  active: false,
   pages: new Map(),
   selected: null,
   drag: null,
   pending: null,
   busy: false,
 
-  setActive: (active) => set({ active, selected: null, drag: null, pending: null }),
+  reset: () => set({ selected: null, drag: null, pending: null }),
 
   load: async (sessionId, page, revision) => {
     const key = keyOf(sessionId, page);

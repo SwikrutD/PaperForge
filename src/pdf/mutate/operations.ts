@@ -151,6 +151,12 @@ export function describeOperation(operation: EditOperation): string {
       return operation.token === null ? 'Move image' : 'Replace image';
     case 'deleteImage':
       return 'Delete image';
+    case 'addLink':
+      return 'Add link';
+    case 'updateLink':
+      return operation.target === null ? 'Move link' : 'Change where a link goes';
+    case 'deleteLink':
+      return 'Delete link';
     case 'addImage':
       return 'Add image';
   }

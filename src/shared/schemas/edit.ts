@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { linkRectSchema, linkTargetSchema } from './link';
 import { annotationInputSchema, annotationPatchSchema } from './annotation';
 import { pageBoxSchema, pageLabelStyleSchema } from './pages';
 import { textStyleSchema } from './text';
@@ -196,6 +197,29 @@ export const addImageOperationSchema = z.strictObject({
   placement: imagePlacementSchema,
 });
 
+/** Adds a link over part of a page. */
+export const addLinkOperationSchema = z.strictObject({
+  kind: z.literal('addLink'),
+  page: z.number().int().min(1).max(100_000),
+  rect: linkRectSchema,
+  target: linkTargetSchema,
+});
+
+/** Moves a link, or points it somewhere else. */
+export const updateLinkOperationSchema = z.strictObject({
+  kind: z.literal('updateLink'),
+  page: z.number().int().min(1).max(100_000),
+  linkId: z.string().min(1).max(120),
+  rect: linkRectSchema.nullable(),
+  target: linkTargetSchema.nullable(),
+});
+
+export const deleteLinkOperationSchema = z.strictObject({
+  kind: z.literal('deleteLink'),
+  page: z.number().int().min(1).max(100_000),
+  linkId: z.string().min(1).max(120),
+});
+
 export const editOperationSchema = z.discriminatedUnion('kind', [
   rotatePagesOperationSchema,
   deletePagesOperationSchema,
@@ -212,6 +236,9 @@ export const editOperationSchema = z.discriminatedUnion('kind', [
   placeImageOperationSchema,
   deleteImageOperationSchema,
   addImageOperationSchema,
+  addLinkOperationSchema,
+  updateLinkOperationSchema,
+  deleteLinkOperationSchema,
   addAnnotationsOperationSchema,
   updateAnnotationsOperationSchema,
   deleteAnnotationsOperationSchema,

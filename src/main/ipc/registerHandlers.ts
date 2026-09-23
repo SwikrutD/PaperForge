@@ -22,6 +22,7 @@ import { registerCreationHandlers } from './handlers/creationHandlers';
 import { registerOrganizeHandlers } from './handlers/organizeHandlers';
 import { registerTextHandlers } from './handlers/textHandlers';
 import { registerImageHandlers } from './handlers/imageHandlers';
+import { registerLinkHandlers } from './handlers/linkHandlers';
 import { registerFileHandlers } from './handlers/fileHandlers';
 import { createIpcRegistrar } from './registry';
 
@@ -118,6 +119,8 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
     stagedAssets: deps.stagedAssets,
     senderWindow,
   });
+
+  registerLinkHandlers(registerInvoke, { editor: deps.editor });
 
   registerCreationHandlers(registerInvoke, {
     library: deps.library,

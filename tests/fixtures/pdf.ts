@@ -24,6 +24,11 @@ export interface PageSpec {
   layer?: string;
   /** An image drawn on the page, as its own XObject. */
   image?: ImagePlacementSpec;
+  /**
+   * Annotation dictionaries, written out as given. A test that needs a link
+   * or a widget the writer does not build can state one exactly.
+   */
+  annotations?: string[];
 }
 
 /** An image the page draws, with the box it is drawn in. */
@@ -244,6 +249,11 @@ export function buildPdf(spec: PdfSpec): Buffer {
     const contentNumber = add(`<< /Length ${content.length} >>\nstream\n${content}endstream`);
     const properties =
       layerNumber === undefined ? '' : ` /Properties << /MC0 ${layerNumber} 0 R >>`;
+    const annotationNumbers = (page.annotations ?? []).map((annotation) => add(annotation));
+    const annots =
+      annotationNumbers.length === 0
+        ? ''
+        : ` /Annots [ ${annotationNumbers.map((number) => `${number} 0 R`).join(' ')} ]`;
     pageNumbers.push(
       add(
         `<< /Type /Page /Parent ${pagesNumber} 0 R /MediaBox [0 0 ${width} ${height}]` +
@@ -253,7 +263,7 @@ export function buildPdf(spec: PdfSpec): Buffer {
           }/Font << /F1 ${fontNumber} 0 R${[...extraFonts]
             .map(([name, number]) => ` /${name} ${number} 0 R`)
             .join('')} >>${properties} >>` +
-          ` /Contents ${contentNumber} 0 R >>`,
+          ` /Contents ${contentNumber} 0 R${annots} >>`,
       ),
     );
   }

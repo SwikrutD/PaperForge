@@ -1,0 +1,48 @@
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+}
+
+.link {
+  position: absolute;
+  border: 1px solid color-mix(in srgb, var(--pf-color-accent) 60%, transparent);
+  border-radius: 2px;
+  background-color: color-mix(in srgb, var(--pf-color-accent) 8%, transparent);
+  cursor: move;
+  touch-action: none;
+}
+
+.link:hover {
+  background-color: color-mix(in srgb, var(--pf-color-accent) 16%, transparent);
+}
+
+.selected,
+.selected:hover {
+  border-color: var(--pf-color-accent);
+  background-color: color-mix(in srgb, var(--pf-color-accent) 22%, transparent);
+}
+
+.handle {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -5px 0 0 -5px;
+  border: 1px solid var(--pf-color-accent);
+  border-radius: 2px;
+  background-color: var(--pf-color-bg-surface);
+  touch-action: none;
+}
+
+/* While a link is being made, the page itself is the target. */
+.drawing {
+  cursor: crosshair;
+}
+
+.sketch {
+  position: absolute;
+  border: 1px dashed var(--pf-color-accent);
+  border-radius: 2px;
+  background-color: color-mix(in srgb, var(--pf-color-accent) 12%, transparent);
+  pointer-events: none;
+}

@@ -5,7 +5,8 @@ import { useCommands } from '../../commands/useCommands';
 import { useDocumentStore } from '../../stores/documentStore';
 import { useOrganizeStore } from '../../stores/organizeStore';
 import { useTextEditStore } from '../../stores/textEditStore';
-import { useImageEditStore } from '../../stores/imageEditStore';
+import { useEditTargetStore } from '../../stores/editTargetStore';
+import { LinkProperties } from '../edit/LinkProperties';
 import { useUiStore } from '../../stores/uiStore';
 import { DocumentProperties } from '../workspace/DocumentProperties';
 import { AnnotationProperties } from '../annotations/AnnotationProperties';
@@ -39,7 +40,7 @@ export function RightPanel({ panel }: { panel: RightPanelId }): ReactElement {
   const commenting = useUiStore((state) => state.commenting);
   const organizing = useOrganizeStore((state) => state.active);
   const editingText = useTextEditStore((state) => state.active);
-  const editingImages = useImageEditStore((state) => state.active);
+  const editTarget = useEditTargetStore((state) => state.target);
   const selected = selectedAnnotation({ annotations, selectedId });
 
   const select = (id: RightPanelId): void => {
@@ -103,8 +104,10 @@ export function RightPanel({ panel }: { panel: RightPanelId }): ReactElement {
           ) : editingText ? (
             // While editing, this panel is about whatever is selected on the
             // page: the text, or the image.
-            editingImages ? (
+            editTarget === 'images' ? (
               <ImageProperties />
+            ) : editTarget === 'links' ? (
+              <LinkProperties />
             ) : (
               <TextProperties />
             )

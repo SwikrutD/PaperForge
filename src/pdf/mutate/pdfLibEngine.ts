@@ -15,6 +15,7 @@ import { normalizePages, rotationAfter } from './operations';
 import { applyPageOperation, type PageContext } from './pages';
 import { applyTextOperation } from './text';
 import { applyImageOperation } from './images';
+import { applyLinkOperation } from './links';
 import type { DocumentFacts, MutationResult, PdfMutationEngine, StagedAsset } from './types';
 
 /**
@@ -87,6 +88,7 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
         // which says nothing about its annotations.
         if (await applyTextOperation(document, operation)) continue;
         if (await applyImageOperation(document, operation, assets)) continue;
+        if (applyLinkOperation(document, operation)) continue;
 
         switch (operation.kind) {
           case 'rotatePages': {

@@ -30,6 +30,7 @@ import {
 } from '../schemas/create';
 import { pageTextModelSchema } from '../schemas/text';
 import { pageImageModelSchema } from '../schemas/image';
+import { pageLinksModelSchema } from '../schemas/link';
 import { recentFilesListSchema } from '../schemas/recentFiles';
 import { settingsPatchSchema, settingsSchema } from '../schemas/settings';
 import { themeStateSchema } from '../schemas/theme';
@@ -201,6 +202,15 @@ export const invokeContracts = {
   'images:choose': {
     request: z.strictObject({ sessionId: z.string().min(1) }),
     response: stampImageSchema.nullable(),
+  },
+
+  /** The links a page carries, with where each one goes. */
+  'links:page': {
+    request: z.strictObject({
+      sessionId: z.string().min(1),
+      page: z.number().int().min(1).max(100_000),
+    }),
+    response: pageLinksModelSchema,
   },
 
   /** Writes an image the page draws out to a file the reader chooses. */

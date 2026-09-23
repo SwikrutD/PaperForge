@@ -21,6 +21,9 @@ import { ImageEditLayer } from '../edit/ImageEditLayer';
 import { EditToolbar } from '../edit/EditToolbar';
 import { runsFor, useTextEditStore } from '../../stores/textEditStore';
 import { imagesFor, useImageEditStore } from '../../stores/imageEditStore';
+import { LinkEditLayer } from '../edit/LinkEditLayer';
+import { linksFor, useLinkEditStore } from '../../stores/linkEditStore';
+import { useEditTargetStore } from '../../stores/editTargetStore';
 import { FindBar } from '../search/FindBar';
 import { highlightsByPage } from '../search/searchNavigation';
 import { pdfRectToCss } from './pageGeometry';
@@ -65,11 +68,15 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const textDraft = useTextEditStore((store) => store.draft);
   const textPlacement = useTextEditStore((store) => store.placement);
   const textPlacing = useTextEditStore((store) => store.placing);
-  const editingImages = useImageEditStore((store) => store.active);
+  const editTarget = useEditTargetStore((store) => store.target);
   const imagePages = useImageEditStore((store) => store.pages);
   const imageSelected = useImageEditStore((store) => store.selected);
   const imageDrag = useImageEditStore((store) => store.drag);
   const imagePending = useImageEditStore((store) => store.pending);
+  const linkPages = useLinkEditStore((store) => store.pages);
+  const linkSelected = useLinkEditStore((store) => store.selected);
+  const linkDrag = useLinkEditStore((store) => store.drag);
+  const linkDrawing = useLinkEditStore((store) => store.drawing);
   const requestConfirmation = useUiStore((store) => store.requestConfirmation);
 
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -181,11 +188,15 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
     for (const pageNumber of mounted) void load(sessionId, pageNumber, tab.edit.revision);
   }, [editing, state.status, mounted, sessionId, tab.edit.revision]);
 
-  // And the images, which are read the same way and belong to the same revision.
+  // And the images and links, read the same way and from the same revision.
   useEffect(() => {
     if (!editing || state.status !== 'ready') return;
-    const load = useImageEditStore.getState().load;
-    for (const pageNumber of mounted) void load(sessionId, pageNumber, tab.edit.revision);
+    const loadImages = useImageEditStore.getState().load;
+    const loadLinks = useLinkEditStore.getState().load;
+    for (const pageNumber of mounted) {
+      void loadImages(sessionId, pageNumber, tab.edit.revision);
+      void loadLinks(sessionId, pageNumber, tab.edit.revision);
+    }
   }, [editing, state.status, mounted, sessionId, tab.edit.revision]);
 
   const highlights = useMemo(
@@ -302,6 +313,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
           disabled={state.status !== 'ready'}
           hasText={runsFor(textPages, sessionId, view.pageNumber).length > 0}
           hasImages={imagesFor(imagePages, sessionId, view.pageNumber).length > 0}
+          hasLinks={linksFor(linkPages, sessionId, view.pageNumber).length > 0}
         />
       )}
       {!editing && (commenting || toolActive) && (
@@ -328,7 +340,25 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                   layersVersion={state.layersVersion}
                   highlights={highlights.get(pageNumber)}
                   overlay={
-                    state.document === null ? null : editing && editingImages ? (
+                    state.document === null ? null : editing && editTarget === 'links' ? (
+                      <LinkEditLayer
+                        geometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}
+                        scale={scale}
+                        rotation={view.rotation}
+                        links={linksFor(linkPages, sessionId, pageNumber)}
+                        selectedId={linkSelected?.page === pageNumber ? linkSelected.id : null}
+                        drag={linkDrag?.page === pageNumber ? linkDrag : null}
+                        drawing={linkDrawing}
+                        onSelect={(id) => useLinkEditStore.getState().select(pageNumber, id)}
+                        onDrag={(id, rect) =>
+                          useLinkEditStore.getState().setDrag({ page: pageNumber, id, rect })
+                        }
+                        onDrop={(id, rect) =>
+                          void useLinkEditStore.getState().update(pageNumber, id, { rect })
+                        }
+                        onDraw={(rect) => void useLinkEditStore.getState().create(pageNumber, rect)}
+                      />
+                    ) : editing && editTarget === 'images' ? (
                       <ImageEditLayer
                         geometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}
                         scale={scale}
