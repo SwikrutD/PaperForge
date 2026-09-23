@@ -1,5 +1,11 @@
 import { z } from 'zod';
 import { linkRectSchema, linkTargetSchema } from './link';
+import {
+  backgroundSchema,
+  furnitureKindSchema,
+  headerFooterSchema,
+  watermarkSchema,
+} from './furniture';
 import { annotationInputSchema, annotationPatchSchema } from './annotation';
 import { pageBoxSchema, pageLabelStyleSchema } from './pages';
 import { textStyleSchema } from './text';
@@ -220,6 +226,32 @@ export const deleteLinkOperationSchema = z.strictObject({
   linkId: z.string().min(1).max(120),
 });
 
+/** Puts a watermark on the chosen pages, in place of any PaperForge wrote. */
+export const setWatermarkOperationSchema = z.strictObject({
+  kind: z.literal('setWatermark'),
+  pages: pageListSchema,
+  watermark: watermarkSchema,
+});
+
+export const setBackgroundOperationSchema = z.strictObject({
+  kind: z.literal('setBackground'),
+  pages: pageListSchema,
+  background: backgroundSchema,
+});
+
+export const setHeaderFooterOperationSchema = z.strictObject({
+  kind: z.literal('setHeaderFooter'),
+  pages: pageListSchema,
+  settings: headerFooterSchema,
+});
+
+/** Takes PaperForge's own furniture off the chosen pages. */
+export const removeFurnitureOperationSchema = z.strictObject({
+  kind: z.literal('removeFurniture'),
+  pages: pageListSchema,
+  kinds: z.array(furnitureKindSchema).min(1),
+});
+
 export const editOperationSchema = z.discriminatedUnion('kind', [
   rotatePagesOperationSchema,
   deletePagesOperationSchema,
@@ -239,6 +271,10 @@ export const editOperationSchema = z.discriminatedUnion('kind', [
   addLinkOperationSchema,
   updateLinkOperationSchema,
   deleteLinkOperationSchema,
+  setWatermarkOperationSchema,
+  setBackgroundOperationSchema,
+  setHeaderFooterOperationSchema,
+  removeFurnitureOperationSchema,
   addAnnotationsOperationSchema,
   updateAnnotationsOperationSchema,
   deleteAnnotationsOperationSchema,

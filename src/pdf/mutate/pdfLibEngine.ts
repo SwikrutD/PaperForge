@@ -16,6 +16,7 @@ import { applyPageOperation, type PageContext } from './pages';
 import { applyTextOperation } from './text';
 import { applyImageOperation } from './images';
 import { applyLinkOperation } from './links';
+import { applyFurnitureOperation } from './furniture';
 import type { DocumentFacts, MutationResult, PdfMutationEngine, StagedAsset } from './types';
 
 /**
@@ -89,6 +90,18 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
         if (await applyTextOperation(document, operation)) continue;
         if (await applyImageOperation(document, operation, assets)) continue;
         if (applyLinkOperation(document, operation)) continue;
+        if (
+          'pages' in operation &&
+          operation.pages !== null &&
+          (await applyFurnitureOperation(
+            document,
+            operation,
+            assets,
+            normalizePages(operation.pages, pageContext.order.length),
+          ))
+        ) {
+          continue;
+        }
 
         switch (operation.kind) {
           case 'rotatePages': {

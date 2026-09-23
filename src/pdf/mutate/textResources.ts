@@ -1,4 +1,11 @@
-import { PDFDict, PDFName, StandardFonts, type PDFDocument, type PDFPage } from 'pdf-lib';
+import {
+  PDFDict,
+  PDFName,
+  StandardFonts,
+  type PDFDocument,
+  type PDFFont,
+  type PDFPage,
+} from 'pdf-lib';
 import type { TextStyle } from '@shared/schemas/text';
 
 /**
@@ -53,6 +60,31 @@ export function resourceNameFor(style: TextStyle): string {
 }
 
 /**
+ * A standard font for a style, embedded once per document.
+ *
+ * The same font on ten pages is one object in the file, and one set of
+ * metrics for measuring text before it is drawn.
+ */
+export async function standardFont(document: PDFDocument, style: TextStyle): Promise<PDFFont> {
+  let fonts = EMBEDDED.get(document);
+  if (fonts === undefined) {
+    fonts = new Map<string, PDFFont>();
+    EMBEDDED.set(document, fonts);
+  }
+
+  const name = resourceNameFor(style);
+  const existing = fonts.get(name);
+  if (existing !== undefined) return existing;
+
+  const standard = STANDARD[style.family]?.[variantOf(style)] ?? StandardFonts.Helvetica;
+  const font = await document.embedFont(standard);
+  fonts.set(name, font);
+  return font;
+}
+
+const EMBEDDED = new WeakMap<PDFDocument, Map<string, PDFFont>>();
+
+/**
  * Makes sure a page can draw with a style, and says what to call it.
  *
  * The same style asked for twice on the same page reuses the one resource.
@@ -67,9 +99,7 @@ export async function ensureFontResource(
   const fonts = fontDictionary(document, resources);
 
   if (fonts.get(PDFName.of(name)) === undefined) {
-    const standard = STANDARD[style.family]?.[variantOf(style)] ?? StandardFonts.Helvetica;
-    const font = await document.embedFont(standard);
-    fonts.set(PDFName.of(name), font.ref);
+    fonts.set(PDFName.of(name), (await standardFont(document, style)).ref);
   }
   return name;
 }

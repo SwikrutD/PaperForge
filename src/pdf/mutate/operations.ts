@@ -151,6 +151,14 @@ export function describeOperation(operation: EditOperation): string {
       return operation.token === null ? 'Move image' : 'Replace image';
     case 'deleteImage':
       return 'Delete image';
+    case 'setWatermark':
+      return 'Watermark';
+    case 'setBackground':
+      return 'Background';
+    case 'setHeaderFooter':
+      return 'Header and footer';
+    case 'removeFurniture':
+      return 'Remove watermark, background, header or footer';
     case 'addLink':
       return 'Add link';
     case 'updateLink':
