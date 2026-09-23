@@ -42,7 +42,7 @@ export class PageExport {
         const target =
           job.destination.kind === 'file'
             ? job.destination.path
-            : path.join(job.destination.path, uniqueName(part.name, written));
+            : path.join(job.destination.path, uniqueName(safeFileName(part.name), written));
 
         const bytes = await extractPages(job.bytes, part.pages);
         await writeFileAtomic(target, bytes, {
@@ -113,9 +113,26 @@ function uniqueName(name: string, written: readonly string[]): string {
   return candidate;
 }
 
-/** A file name made from a document's name and a page range. */
-export function partName(sourceName: string, label: string): string {
-  const stem = sourceName.replace(/\.pdf$/i, '');
-  const safe = label.replace(/[\\/:*?"<>|]/g, '-').trim();
-  return `${stem} ${safe === '' ? 'pages' : safe}.pdf`;
+/**
+ * A name suggested by the renderer, reduced to something safe to join onto a
+ * folder the reader chose.
+ *
+ * Only a file name survives: no directory parts, none of the characters
+ * Windows forbids, and always a `.pdf` extension.
+ */
+export function safeFileName(name: string): string {
+  // The last segment only: anything that looks like a folder is dropped
+  // rather than flattened, so a suggestion cannot climb out of the folder
+  // the reader chose.
+  const last = name.split(/[\\/]/).pop() ?? '';
+  const stem = last
+    .replace(/\.pdf$/i, '')
+    // Everything Windows forbids in a file name, plus control characters.
+    .replace(/[<>:"|?*]|\p{Cc}/gu, '-')
+    .replace(/^[.\s]+/, '')
+    .replace(/[.\s]+$/, '')
+    .slice(0, 120)
+    .trim();
+
+  return `${stem === '' ? 'pages' : stem}.pdf`;
 }

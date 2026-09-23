@@ -9,6 +9,7 @@ import {
 } from 'pdf-lib';
 import { AppError } from '@shared/errors/appError';
 import type { PageBoxes } from '@shared/schemas/pages';
+import { toLetters, toRoman } from '@shared/utils/pageLabels';
 
 /**
  * Taking pages out of a document, and reading what each page says about its
@@ -156,39 +157,4 @@ function numberIn(style: string | null, value: number): string {
       // A range with no style is a prefix on its own, which is legal.
       return '';
   }
-}
-
-const ROMAN: Array<[number, string]> = [
-  [1000, 'M'],
-  [900, 'CM'],
-  [500, 'D'],
-  [400, 'CD'],
-  [100, 'C'],
-  [90, 'XC'],
-  [50, 'L'],
-  [40, 'XL'],
-  [10, 'X'],
-  [9, 'IX'],
-  [5, 'V'],
-  [4, 'IV'],
-  [1, 'I'],
-];
-
-export function toRoman(value: number): string {
-  let left = Math.max(1, Math.trunc(value));
-  let result = '';
-  for (const [amount, numeral] of ROMAN) {
-    while (left >= amount) {
-      result += numeral;
-      left -= amount;
-    }
-  }
-  return result;
-}
-
-/** A, B … Z, AA, AB …, which is how PDF letters its pages. */
-export function toLetters(value: number): string {
-  const position = Math.max(1, Math.trunc(value));
-  const letter = String.fromCharCode(65 + ((position - 1) % 26));
-  return letter.repeat(Math.floor((position - 1) / 26) + 1);
 }

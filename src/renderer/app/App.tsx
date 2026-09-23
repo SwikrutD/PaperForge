@@ -17,10 +17,12 @@ import { AppShell } from '../components/shell/AppShell';
 import { SearchRunner } from '../components/search/SearchRunner';
 import { PdfDocumentProvider } from '../components/viewer/PdfDocumentContext';
 import { PdfViewer } from '../components/viewer/PdfViewer';
+import { OrganizeWorkspace } from '../components/organize/OrganizeWorkspace';
 import { ErrorMessageBar } from '../components/surfaces/MessageBar';
 import { invoke } from '../services/ipcClient';
 import { useAppStore } from '../stores/appStore';
 import { useDocumentStore, type DocumentViewState } from '../stores/documentStore';
+import { useOrganizeStore } from '../stores/organizeStore';
 import { useUiStore } from '../stores/uiStore';
 import { AppErrorBoundary } from './AppErrorBoundary';
 import styles from './App.module.css';
@@ -69,6 +71,8 @@ export function App(): ReactElement {
   const paletteOpen = useUiStore((state) => state.commandPaletteOpen);
   const progressOpen = useUiStore((state) => state.progressCenterOpen);
   const confirmation = useUiStore((state) => state.confirmation);
+
+  const organizing = useOrganizeStore((state) => state.active);
 
   const [recovery, setRecovery] = useState<RecoveryEntry[] | null>(null);
 
@@ -148,6 +152,8 @@ export function App(): ReactElement {
           )}
           {activeTab === null ? (
             <HomeScreen recentFiles={recentFiles} />
+          ) : organizing ? (
+            <OrganizeWorkspace key={activeTab.session.id} tab={activeTab} />
           ) : (
             <PdfViewer key={activeTab.session.id} tab={activeTab} />
           )}

@@ -1,0 +1,94 @@
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: var(--pf-space-150);
+  margin: 0;
+  padding: var(--pf-space-200);
+  list-style: none;
+  outline-offset: -2px;
+}
+
+.item {
+  position: relative;
+  display: flex;
+}
+
+/* The drop indicator sits in the gap, so it never covers a page. */
+.item::before,
+.item::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: var(--pf-radius-sm);
+  background-color: var(--pf-color-accent);
+  opacity: 0;
+}
+
+.item::before {
+  left: calc(var(--pf-space-150) / -2 - 1px);
+}
+
+.item::after {
+  right: calc(var(--pf-space-150) / -2 - 1px);
+}
+
+.dropBefore::before,
+.dropAfter::after {
+  opacity: 1;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pf-space-050);
+  padding: var(--pf-space-100);
+  border: 1px solid transparent;
+  border-radius: var(--pf-radius-md);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.page:hover {
+  background-color: var(--pf-color-bg-hover);
+}
+
+.chosen {
+  background-color: var(--pf-color-bg-selected);
+  border-color: var(--pf-color-accent);
+}
+
+.lifted {
+  opacity: 0.45;
+}
+
+.caption {
+  display: flex;
+  align-items: baseline;
+  gap: var(--pf-space-050);
+  font-size: var(--pf-font-size-200);
+  color: var(--pf-color-text-secondary);
+}
+
+.chosen .caption {
+  color: var(--pf-color-accent-text);
+  font-weight: var(--pf-font-weight-medium);
+}
+
+.label {
+  color: var(--pf-color-text-secondary);
+}
+
+.chosen .label {
+  color: var(--pf-color-accent-text);
+}
+
+.number {
+  font-variant-numeric: tabular-nums;
+}

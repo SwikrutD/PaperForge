@@ -29,20 +29,6 @@
   border-color: var(--pf-color-accent);
 }
 
-.frame {
-  display: block;
-  background-color: var(--pf-color-page);
-  border: 1px solid var(--pf-color-border);
-  box-shadow: var(--pf-shadow-2);
-  overflow: hidden;
-}
-
-.canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
 .label {
   color: var(--pf-color-text-secondary);
   font-size: var(--pf-font-size-200);

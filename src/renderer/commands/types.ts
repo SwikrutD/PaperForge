@@ -37,6 +37,8 @@ export interface CommandContext {
   readonly readingMode: boolean;
   /** True while the comment tools are on show. */
   readonly commenting: boolean;
+  /** True while the page grid has taken the workspace. */
+  readonly organizing: boolean;
   /** The comment tool in use, or null while the select tool is. */
   readonly annotationTool: AnnotationKind | 'eraser' | null;
   /** True when a comment is selected. */
@@ -78,6 +80,7 @@ export interface CommandActions {
   toggleFullScreen(): Promise<void>;
   toggleReadingMode(): void;
   toggleCommenting(): void;
+  toggleOrganizing(): void;
   setAnnotationTool(tool: AnnotationKind | 'eraser' | 'select'): void;
   deleteSelectedAnnotation(): void;
   toggleSelectedAnnotationResolved(): void;

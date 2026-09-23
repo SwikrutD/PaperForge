@@ -10,6 +10,7 @@ import { buildShortcutTable, findShortcutCommand } from '../keyboard/shortcuts';
 import { useAppStore } from '../stores/appStore';
 import { useDocumentStore } from '../stores/documentStore';
 import { useAnnotationStore } from '../stores/annotationStore';
+import { useOrganizeStore } from '../stores/organizeStore';
 import { useSearchStore } from '../stores/searchStore';
 import { useUiStore } from '../stores/uiStore';
 import { buildDiagnosticsText } from '../utils/diagnostics';
@@ -29,6 +30,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
   const activeTabId = useDocumentStore((state) => state.activeId);
   const readingMode = useUiStore((state) => state.readingMode);
   const commenting = useUiStore((state) => state.commenting);
+  const organizing = useOrganizeStore((state) => state.active);
   const annotationTool = useAnnotationStore((state) => state.tool);
   const annotationSelected = useAnnotationStore((state) => state.selectedId !== null);
   const findOpen = useSearchStore((state) => state.open);
@@ -42,6 +44,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     const documents = useDocumentStore.getState;
     const search = useSearchStore.getState;
     const annotations = useAnnotationStore.getState;
+    const organize = useOrganizeStore.getState;
 
     const activeSessionId = (): string | null => documents().activeId;
 
@@ -150,6 +153,13 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         if (!next) annotations().setTool('select');
         else void app().patchSettings({ layout: { rightPanel: { visible: true } } });
       },
+      toggleOrganizing: () => {
+        const next = !organize().active;
+        organize().setActive(next);
+        // The page grid is its own way of working: comment tools would have
+        // nothing to act on there.
+        if (next) ui().setCommenting(false);
+      },
       setAnnotationTool: (tool) => {
         ui().setCommenting(true);
         annotations().setTool(tool);
@@ -199,6 +209,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
       fullScreen: windowState?.fullScreen ?? false,
       readingMode,
       commenting,
+      organizing,
       annotationTool: annotationTool === 'select' ? null : annotationTool,
       annotationSelected,
       findOpen,
@@ -215,6 +226,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     activeTabId,
     readingMode,
     commenting,
+    organizing,
     annotationTool,
     annotationSelected,
     findOpen,

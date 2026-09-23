@@ -1,0 +1,49 @@
+.workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.scroller {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  background-color: var(--pf-color-workspace);
+}
+
+.centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pf-space-150);
+  height: 100%;
+  padding: var(--pf-space-400);
+}
+
+.message {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-150);
+  align-items: flex-start;
+  max-width: 560px;
+}
+
+.spinner {
+  width: 26px;
+  height: 26px;
+  color: var(--pf-color-text-secondary);
+  animation: pf-spin 1s linear infinite;
+}
+
+.loadingText {
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-300);
+}
+
+@keyframes pf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

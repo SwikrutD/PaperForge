@@ -69,6 +69,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     title: 'Organize Pages',
     description: 'Reorder, rotate, extract, split and insert pages.',
     icon: LayoutGrid,
+    commandId: 'tools.organize',
     requires: 'page organisation',
   },
   {

@@ -137,7 +137,11 @@ describe('home screen', () => {
     const comment = screen.getByRole('button', { name: /Comment/ });
     expect(comment).toBeDisabled();
     expect(comment).toHaveAttribute('title', 'No document is open.');
-    expect(screen.getByText('Needs a document')).toBeInTheDocument();
+    // Organizing pages is built too, and needs a document for the same reason.
+    const organize = screen.getByRole('button', { name: /Organize Pages/ });
+    expect(organize).toBeDisabled();
+    expect(organize).toHaveAttribute('title', 'No document is open.');
+    expect(screen.getAllByText('Needs a document')).toHaveLength(2);
 
     const editTool = screen.getByRole('button', { name: /Edit PDF/ });
     expect(editTool).toBeDisabled();

@@ -1,0 +1,39 @@
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-space-100);
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: var(--pf-space-050) var(--pf-space-150);
+  background-color: var(--pf-color-bg-subtle);
+  border-bottom: 1px solid var(--pf-color-border);
+  flex-wrap: wrap;
+}
+
+.count {
+  margin: 0;
+  min-width: 120px;
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+  font-variant-numeric: tabular-nums;
+}
+
+.group {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-space-050);
+  flex: 0 0 auto;
+}
+
+.divider {
+  width: 1px;
+  height: 20px;
+  background-color: var(--pf-color-border);
+}
+
+.end {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-space-050);
+  margin-left: auto;
+}
