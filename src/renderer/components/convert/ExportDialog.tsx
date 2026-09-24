@@ -3,6 +3,7 @@ import {
   EXPORT_DESCRIPTIONS,
   EXPORT_DPI_CHOICES,
   exportNeedsImage,
+  exportNeedsText,
   type ExportMode,
 } from '@shared/schemas/convert';
 import { parsePageRange } from '@shared/utils/pageRange';
@@ -11,6 +12,7 @@ import { Dialog } from '../overlays/Dialog';
 import { cx } from '../../utils/classNames';
 import { useDocumentStore } from '../../stores/documentStore';
 import { useExportStore } from '../../stores/exportStore';
+import { useUiStore } from '../../stores/uiStore';
 import { usePdfDocumentContext } from '../viewer/pdfDocumentContextValue';
 import styles from '../overlays/dialogForm.module.css';
 import own from './export.module.css';
@@ -48,10 +50,39 @@ export function ExportDialog({ onClose }: { onClose: () => void }): ReactElement
 
   const [scope, setScope] = useState<Scope>('all');
   const [rangeText, setRangeText] = useState('');
+  /** True when the pages carry no text at all — most likely a scan. */
+  const [noText, setNoText] = useState(false);
 
   useEffect(() => {
     useExportStore.getState().forgetOutcome();
   }, []);
+
+  /**
+   * An export of the words is worth nothing on a scan that has not been read,
+   * so the first few pages are looked at before anything is offered.
+   */
+  useEffect(() => {
+    if (document === null || !exportNeedsText(options.mode)) return;
+
+    let cancelled = false;
+    const look = async (): Promise<void> => {
+      const sample = [1, 2, 3].filter((page) => page <= document.pages.length);
+      for (const page of sample) {
+        const text = await document.getPageText(page);
+        if (cancelled) return;
+        if (text.text.trim() !== '') {
+          setNoText(false);
+          return;
+        }
+      }
+      if (!cancelled) setNoText(sample.length > 0);
+    };
+
+    void look();
+    return () => {
+      cancelled = true;
+    };
+  }, [document, options.mode]);
 
   const pageCount = tab?.pageCount ?? 0;
   const currentPage = tab?.view.pageNumber ?? 1;
@@ -65,6 +96,8 @@ export function ExportDialog({ onClose }: { onClose: () => void }): ReactElement
           ? [...range.pages]
           : [];
 
+  // Only an export of the words needs the offer, whatever was last looked at.
+  const offerOcr = noText && exportNeedsText(options.mode);
   const pictures = options.mode === 'png' || options.mode === 'jpeg' || options.mode === 'webp';
   const lossy = options.mode === 'jpeg' || options.mode === 'webp';
   const needsImage = exportNeedsImage(options);
@@ -335,6 +368,20 @@ export function ExportDialog({ onClose }: { onClose: () => void }): ReactElement
               </span>
             </label>
           </fieldset>
+        )}
+
+        {offerOcr && (
+          <div className={styles.block}>
+            <p className={styles.summary}>
+              These pages carry no text, so an export of the words would come out empty. They are
+              most likely a scan — Recognize Text reads them on this computer first.
+            </p>
+            <div className={styles.blockBody}>
+              <Button onClick={() => useUiStore.getState().openDialog('ocr')}>
+                Recognize Text
+              </Button>
+            </div>
+          </div>
         )}
 
         {problem !== null && !busy && <p className={styles.problem}>{problem}</p>}

@@ -118,6 +118,22 @@ test('searching a scan that has not been read offers to read it', async () => {
   await page.keyboard.press('Escape');
 });
 
+test('exporting the words of an unread scan offers to read it first', async () => {
+  await page.getByRole('menuitem', { name: 'Tools' }).click();
+  await page.getByRole('menuitem', { name: /Export PDF/ }).click();
+  await expect(dialog()).toBeVisible();
+
+  await dialog().getByRole('radio', { name: 'Text' }).click();
+  await expect(dialog()).toContainText('would come out empty');
+  await expect(dialog().getByRole('button', { name: 'Recognize Text' })).toBeVisible();
+
+  // Pictures of the pages carry the scan itself, so nothing is said there.
+  await dialog().getByRole('radio', { name: 'PNG images' }).click();
+  await expect(dialog()).not.toContainText('would come out empty');
+
+  await dialog().getByRole('button', { name: 'Close', exact: true }).last().click();
+});
+
 test('the dialog says where Tesseract is and what it can read', async () => {
   await openOcr();
 
