@@ -76,6 +76,36 @@ export const formModelSchema = z.strictObject({
 });
 export type FormModel = z.infer<typeof formModelSchema>;
 
+/** What a field is and what it will accept, when one is being authored. */
+export const formFieldPropertiesSchema = z.strictObject({
+  tooltip: z.string().max(1000).nullable(),
+  required: z.boolean(),
+  readOnly: z.boolean(),
+  multiline: z.boolean(),
+  password: z.boolean(),
+  maxLength: z.number().int().min(1).max(100_000).nullable(),
+  alignment: z.enum(['left', 'center', 'right']),
+  fontSize: z.number().min(0).max(1000).nullable(),
+  /** What the field holds to begin with. */
+  defaultValue: formValueSchema.nullable(),
+  /** The words on a push button. */
+  label: z.string().max(200).nullable(),
+});
+export type FormFieldProperties = z.infer<typeof formFieldPropertiesSchema>;
+
+export const DEFAULT_FIELD_PROPERTIES: FormFieldProperties = {
+  tooltip: null,
+  required: false,
+  readOnly: false,
+  multiline: false,
+  password: false,
+  maxLength: null,
+  alignment: 'left',
+  fontSize: null,
+  defaultValue: null,
+  label: null,
+};
+
 /** One field's new value, as the window sends it. */
 export const formValueChangeSchema = z.strictObject({
   name: z.string().min(1).max(500),

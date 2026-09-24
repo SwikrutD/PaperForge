@@ -49,6 +49,8 @@ export interface CommandContext {
   readonly annotationSelected: boolean;
   /** True while Fill & Sign is on. */
   readonly filling: boolean;
+  /** True while the form is being made rather than filled in. */
+  readonly preparingForm: boolean;
   /** True while the find bar is on screen. */
   readonly findOpen: boolean;
   /** How many matches the current search found. */
@@ -89,6 +91,7 @@ export interface CommandActions {
   toggleOrganizing(): void;
   toggleTextEditing(): void;
   toggleFilling(): void;
+  togglePreparingForm(): void;
   openCreateWorkspace(intent: 'create' | 'combine'): void;
   closeCreateWorkspace(): void;
   setAnnotationTool(tool: AnnotationKind | 'eraser' | 'select'): void;

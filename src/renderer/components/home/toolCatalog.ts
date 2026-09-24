@@ -131,6 +131,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     title: 'Prepare Form',
     description: 'Add fields, checkboxes and buttons.',
     icon: TextCursorInput,
+    commandId: 'tools.prepareForm',
     requires: 'form authoring',
   },
   {

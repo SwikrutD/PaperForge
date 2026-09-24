@@ -1,6 +1,7 @@
 import {
   Activity,
   AppWindow,
+  ClipboardList,
   Signature,
   Droplets,
   PaintBucket,
@@ -733,6 +734,18 @@ export function buildCommands(): CommandDefinition[] {
       isChecked: (context) => context.filling,
       isAvailable: documentRequired,
       run: (context) => context.actions.toggleFilling(),
+    },
+    {
+      id: 'tools.prepareForm',
+      title: 'Prepare Form',
+      description: 'Add fields, checkboxes and buttons to a document.',
+      category: 'tools',
+      group: 'forms',
+      icon: ClipboardList,
+      keywords: ['form', 'field', 'checkbox', 'author', 'design'],
+      isChecked: (context) => context.preparingForm,
+      isAvailable: documentRequired,
+      run: (context) => context.actions.togglePreparingForm(),
     },
     {
       id: 'tools.watermark',

@@ -18,6 +18,7 @@ import { applyImageOperation } from './images';
 import { applyLinkOperation } from './links';
 import { applyFurnitureOperation } from './furniture';
 import { applyFormOperation } from '../forms/write';
+import { applyAuthoringOperation } from '../forms/author';
 import type { DocumentFacts, MutationResult, PdfMutationEngine, StagedAsset } from './types';
 
 /**
@@ -92,6 +93,7 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
         if (await applyImageOperation(document, operation, assets)) continue;
         if (applyLinkOperation(document, operation)) continue;
         if (await applyFormOperation(document, operation)) continue;
+        if (await applyAuthoringOperation(document, operation)) continue;
         if (
           'pages' in operation &&
           operation.pages !== null &&

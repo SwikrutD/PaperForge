@@ -1,6 +1,13 @@
 import { create } from 'zustand';
 import { AppError } from '@shared/errors/appError';
-import type { FormFieldModel, FormModel, FormValue } from '@shared/schemas/form';
+import {
+  DEFAULT_FIELD_PROPERTIES,
+  type FormFieldModel,
+  type FormFieldProperties,
+  type FormFieldType,
+  type FormModel,
+  type FormValue,
+} from '@shared/schemas/form';
 import { invoke } from '../services/ipcClient';
 import { useDocumentStore } from './documentStore';
 import { useUiStore } from './uiStore';
@@ -15,6 +22,12 @@ export interface LoadedForm {
 export interface FormStore {
   /** True while Fill & Sign is on. */
   active: boolean;
+  /** True while the form is being made rather than filled in. */
+  preparing: boolean;
+  /** The kind of field the next drag draws, when one has been chosen. */
+  fieldTool: FormFieldType | null;
+  /** Where the field being dragged is now, before it is written. */
+  drag: { name: string; rect: FieldRect } | null;
   /** Keyed by session id. */
   forms: Map<string, LoadedForm>;
   /** Draws a tint behind every field, so they can be found at a glance. */
@@ -26,6 +39,24 @@ export interface FormStore {
   busy: boolean;
 
   setActive: (active: boolean) => void;
+  setPreparing: (preparing: boolean) => void;
+  setFieldTool: (fieldTool: FormFieldType | null) => void;
+  setDrag: (drag: { name: string; rect: FieldRect } | null) => void;
+  /** Draws a new field of the chosen kind on a page. */
+  addField: (page: number, rect: FieldRect) => Promise<void>;
+  /** Changes a field: what it is called, what it accepts, where it sits. */
+  updateField: (
+    name: string,
+    change: {
+      newName?: string;
+      rect?: FieldRect;
+      options?: string[];
+      properties: FormFieldProperties;
+    },
+  ) => Promise<void>;
+  /** Moves or resizes a field, keeping everything else about it. */
+  moveField: (name: string, rect: FieldRect) => Promise<void>;
+  deleteField: (name: string) => Promise<void>;
   setHighlight: (highlight: boolean) => void;
   load: (sessionId: string, revision: number) => Promise<void>;
   select: (name: string | null) => void;
@@ -57,13 +88,86 @@ function report(error: unknown): void {
  */
 export const useFormStore = create<FormStore>((set, get) => ({
   active: false,
+  preparing: false,
+  fieldTool: null,
+  drag: null,
   forms: new Map(),
   highlight: true,
   selected: null,
   drafts: new Map(),
   busy: false,
 
-  setActive: (active) => set({ active, selected: null, drafts: new Map() }),
+  setActive: (active) =>
+    set({ active, selected: null, drafts: new Map(), ...(active ? {} : { preparing: false }) }),
+  setPreparing: (preparing) => set({ preparing, selected: null, fieldTool: null, drag: null }),
+  setFieldTool: (fieldTool) => set({ fieldTool, selected: fieldTool === null ? null : null }),
+  setDrag: (drag) => set({ drag }),
+
+  addField: async (page, rect) => {
+    const sessionId = useDocumentStore.getState().activeId;
+    const kind = get().fieldTool;
+    if (sessionId === null || kind === null) return;
+
+    const name = nextFieldName(fieldsOf(get(), sessionId), kind);
+    await run(sessionId, {
+      label: `Add ${name}`,
+      operations: [
+        {
+          kind: 'addFormField',
+          page,
+          name,
+          fieldType: kind,
+          rect,
+          options:
+            kind === 'radio' || kind === 'dropdown' || kind === 'optionList'
+              ? ['Option 1', 'Option 2']
+              : null,
+          properties: DEFAULT_FIELD_PROPERTIES,
+        },
+      ],
+    });
+    set({ selected: name, fieldTool: null });
+  },
+
+  updateField: async (name, change) => {
+    const sessionId = useDocumentStore.getState().activeId;
+    if (sessionId === null) return;
+
+    await run(sessionId, {
+      label: `Change ${name}`,
+      operations: [
+        {
+          kind: 'updateFormField',
+          name,
+          newName: change.newName ?? null,
+          rect: change.rect ?? null,
+          options: change.options ?? null,
+          properties: change.properties,
+        },
+      ],
+    });
+    set({ selected: change.newName ?? name });
+  },
+
+  moveField: async (name, rect) => {
+    const sessionId = useDocumentStore.getState().activeId;
+    if (sessionId === null) return;
+    const field = fieldOf(get(), sessionId, name);
+    if (field === undefined) return;
+
+    await get().updateField(name, { rect, properties: propertiesOf(field) });
+  },
+
+  deleteField: async (name) => {
+    const sessionId = useDocumentStore.getState().activeId;
+    if (sessionId === null) return;
+
+    await run(sessionId, {
+      label: `Delete ${name}`,
+      operations: [{ kind: 'deleteFormField', name }],
+    });
+    set({ selected: null });
+  },
   setHighlight: (highlight) => set({ highlight }),
 
   load: async (sessionId, revision) => {
@@ -160,6 +264,38 @@ export const useFormStore = create<FormStore>((set, get) => ({
     });
   },
 }));
+
+/** A box a field is drawn in, in PDF user space. */
+export interface FieldRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** A name no field has yet, of the form `text1`, `checkbox2`… */
+function nextFieldName(fields: readonly FormFieldModel[], kind: FormFieldType): string {
+  const used = new Set(fields.map((field) => field.name));
+  let index = 1;
+  while (used.has(`${kind}${String(index)}`)) index += 1;
+  return `${kind}${String(index)}`;
+}
+
+/** What a field would hold if nothing else were said. */
+export function propertiesOf(field: FormFieldModel): FormFieldProperties {
+  return {
+    tooltip: field.tooltip,
+    required: field.required,
+    readOnly: field.readOnly,
+    multiline: field.multiline,
+    password: field.password,
+    maxLength: field.maxLength,
+    alignment: field.alignment ?? 'left',
+    fontSize: field.fontSize,
+    defaultValue: null,
+    label: null,
+  };
+}
 
 function clearDraft(name: string): void {
   useFormStore.setState((state) => {

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { PDFDocument } from 'pdf-lib';
 import { PdfLibMutationEngine } from '../../../src/pdf/mutate/pdfLibEngine';
 import { hasDocumentScript, needsAppearances, readFormFields } from '../../../src/pdf/forms/read';
-import type { FormFieldModel } from '../../../src/shared/schemas/form';
+import { DEFAULT_FIELD_PROPERTIES, type FormFieldModel } from '../../../src/shared/schemas/form';
 import { readAnnotations } from '../../../src/pdf/mutate/annotations/read';
 import { contentBytes } from '../../../src/pdf/content/pageContent';
 import { DEFAULT_ANNOTATION_STYLE, type Annotation } from '../../../src/shared/schemas/annotation';
@@ -338,5 +338,133 @@ describe('flattening', () => {
     const document = await PDFDocument.load(flattened.bytes, { updateMetadata: false });
     const content = new TextDecoder('latin1').decode(contentBytes(document, document.getPage(0)));
     expect(content).toMatch(/\/PFFlat[\w-]+ Do/);
+  });
+});
+
+describe('preparing a form', () => {
+  const properties = { ...DEFAULT_FIELD_PROPERTIES };
+
+  it('adds a field of each kind, where it was asked for', async () => {
+    const made = await engine.apply(await buildFormPdf(), [
+      {
+        kind: 'addFormField',
+        page: 1,
+        name: 'extra.note',
+        fieldType: 'text',
+        rect: { x: 250, y: 300, width: 120, height: 20 },
+        options: null,
+        properties: { ...properties, tooltip: 'Anything else?', required: true },
+      },
+      {
+        kind: 'addFormField',
+        page: 1,
+        name: 'extra.agree',
+        fieldType: 'checkbox',
+        rect: { x: 250, y: 260, width: 16, height: 16 },
+        options: null,
+        properties,
+      },
+      {
+        kind: 'addFormField',
+        page: 1,
+        name: 'extra.size',
+        fieldType: 'dropdown',
+        rect: { x: 250, y: 200, width: 120, height: 22 },
+        options: ['Small', 'Large'],
+        properties,
+      },
+    ]);
+
+    const fields = await fieldsOf(made.bytes);
+    const note = byName(fields, 'extra.note');
+    expect(note?.type).toBe('text');
+    expect(note?.required).toBe(true);
+    expect(note?.tooltip).toBe('Anything else?');
+    expect(note?.widgets[0]?.rect.x).toBeCloseTo(250, -0.5);
+    expect(byName(fields, 'extra.agree')?.type).toBe('checkbox');
+    expect(byName(fields, 'extra.size')?.options).toEqual(['Small', 'Large']);
+  });
+
+  it('gives a radio group one place to click for each option', async () => {
+    const made = await engine.apply(await buildFormPdf(), [
+      {
+        kind: 'addFormField',
+        page: 1,
+        name: 'extra.pick',
+        fieldType: 'radio',
+        rect: { x: 250, y: 120, width: 20, height: 60 },
+        options: ['One', 'Two', 'Three'],
+        properties,
+      },
+    ]);
+
+    const field = byName(await fieldsOf(made.bytes), 'extra.pick');
+    expect(field?.options).toEqual(['One', 'Two', 'Three']);
+    expect(field?.widgets).toHaveLength(3);
+  });
+
+  it('refuses a name the form already uses', async () => {
+    await expect(
+      engine.apply(await buildFormPdf(), [
+        {
+          kind: 'addFormField',
+          page: 1,
+          name: 'person.name',
+          fieldType: 'text',
+          rect: { x: 250, y: 300, width: 120, height: 20 },
+          options: null,
+          properties,
+        },
+      ]),
+    ).rejects.toThrow(/already in this document/i);
+  });
+
+  it('changes what a field is and where it sits', async () => {
+    const changed = await engine.apply(await buildFormPdf(), [
+      {
+        kind: 'updateFormField',
+        name: 'person.name',
+        newName: 'person.fullName',
+        rect: { x: 100, y: 100, width: 150, height: 30 },
+        options: null,
+        properties: { ...properties, required: true, maxLength: 12, alignment: 'center' },
+      },
+    ]);
+
+    const fields = await fieldsOf(changed.bytes);
+    const field = byName(fields, 'person.fullName');
+    expect(field).toBeDefined();
+    expect(byName(fields, 'person.name')).toBeUndefined();
+    expect(field?.required).toBe(true);
+    expect(field?.maxLength).toBe(12);
+    expect(field?.alignment).toBe('center');
+    expect(field?.widgets[0]?.rect.x).toBeCloseTo(100, -0.5);
+    expect(field?.widgets[0]?.rect.height).toBeCloseTo(30, -0.5);
+  });
+
+  it('takes a field away', async () => {
+    const removed = await engine.apply(await buildFormPdf(), [
+      { kind: 'deleteFormField', name: 'person.notes' },
+    ]);
+
+    expect(byName(await fieldsOf(removed.bytes), 'person.notes')).toBeUndefined();
+    expect(byName(await fieldsOf(removed.bytes), 'person.name')).toBeDefined();
+  });
+
+  it('writes a signature field as something no reader will take for a certificate', async () => {
+    const made = await engine.apply(await buildFormPdf(), [
+      {
+        kind: 'addFormField',
+        page: 1,
+        name: 'extra.signHere',
+        fieldType: 'signature',
+        rect: { x: 250, y: 60, width: 140, height: 40 },
+        options: null,
+        properties,
+      },
+    ]);
+
+    const field = byName(await fieldsOf(made.bytes), 'extra.signHere');
+    expect(field?.readOnly).toBe(true);
   });
 });

@@ -33,6 +33,8 @@ import {
   useFormStore,
 } from '../../stores/formStore';
 import { useSignatureStore } from '../../stores/signatureStore';
+import { FieldDesignLayer } from '../forms/FieldDesignLayer';
+import { PrepareToolbar } from '../forms/PrepareToolbar';
 import { FindBar } from '../search/FindBar';
 import { highlightsByPage } from '../search/searchNavigation';
 import { pdfRectToCss } from './pageGeometry';
@@ -92,6 +94,9 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const formSelected = useFormStore((store) => store.selected);
   const formHighlight = useFormStore((store) => store.highlight);
   const stagedSignature = useSignatureStore((store) => store.staged);
+  const preparing = useFormStore((store) => store.preparing);
+  const fieldTool = useFormStore((store) => store.fieldTool);
+  const fieldDrag = useFormStore((store) => store.drag);
   const requestConfirmation = useUiStore((store) => store.requestConfirmation);
 
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -344,7 +349,8 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
           hasLinks={linksFor(linkPages, sessionId, view.pageNumber).length > 0}
         />
       )}
-      {filling && <FillSignToolbar disabled={state.status !== 'ready'} />}
+      {filling && preparing && <PrepareToolbar disabled={state.status !== 'ready'} />}
+      {filling && !preparing && <FillSignToolbar disabled={state.status !== 'ready'} />}
       {!editing && !filling && (commenting || toolActive) && (
         <AnnotationToolbar disabled={state.status !== 'ready'} />
       )}
@@ -370,7 +376,21 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                   hideFormFields={filling}
                   highlights={highlights.get(pageNumber)}
                   overlay={
-                    state.document === null ? null : filling ? (
+                    state.document === null ? null : filling && preparing ? (
+                      <FieldDesignLayer
+                        geometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}
+                        scale={scale}
+                        rotation={view.rotation}
+                        widgets={fieldsOnPage(formFieldsFor(forms, sessionId), pageNumber)}
+                        selected={formSelected}
+                        drag={fieldDrag}
+                        tool={fieldTool}
+                        onSelect={(name) => useFormStore.getState().select(name)}
+                        onDrag={(name, rect) => useFormStore.getState().setDrag({ name, rect })}
+                        onDrop={(name, rect) => void useFormStore.getState().moveField(name, rect)}
+                        onDraw={(rect) => void useFormStore.getState().addField(pageNumber, rect)}
+                      />
+                    ) : filling ? (
                       <>
                         {/* A signature is an annotation, so the layer that
                             places a stamp places one. The fields sit over it,

@@ -1,0 +1,64 @@
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+}
+
+.field {
+  position: absolute;
+  display: flex;
+  align-items: flex-start;
+  border: 1px solid var(--pf-color-accent);
+  border-radius: 2px;
+  background-color: color-mix(in srgb, var(--pf-color-accent) 12%, transparent);
+  cursor: move;
+  touch-action: none;
+  overflow: visible;
+}
+
+.field:hover {
+  background-color: color-mix(in srgb, var(--pf-color-accent) 20%, transparent);
+}
+
+.selected,
+.selected:hover {
+  border-width: 2px;
+  background-color: color-mix(in srgb, var(--pf-color-accent) 26%, transparent);
+}
+
+/* The name a field is addressed by, which is what a form is built out of. */
+.name {
+  padding: 0 3px;
+  max-width: 100%;
+  color: var(--pf-color-text-primary);
+  font-size: var(--pf-font-size-100);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.handle {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -5px 0 0 -5px;
+  border: 1px solid var(--pf-color-accent);
+  border-radius: 2px;
+  background-color: var(--pf-color-bg-surface);
+  touch-action: none;
+}
+
+/* While a field is being drawn, the page itself is the target. */
+.drawing {
+  cursor: crosshair;
+}
+
+.sketch {
+  position: absolute;
+  border: 1px dashed var(--pf-color-accent);
+  border-radius: 2px;
+  background-color: color-mix(in srgb, var(--pf-color-accent) 14%, transparent);
+  pointer-events: none;
+}

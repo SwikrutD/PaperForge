@@ -151,6 +151,12 @@ export function describeOperation(operation: EditOperation): string {
       return operation.token === null ? 'Move image' : 'Replace image';
     case 'deleteImage':
       return 'Delete image';
+    case 'addFormField':
+      return `Add ${operation.name}`;
+    case 'updateFormField':
+      return `Change ${operation.name}`;
+    case 'deleteFormField':
+      return `Delete ${operation.name}`;
     case 'flattenFields':
       return operation.names === null ? 'Flatten the form' : 'Flatten fields';
     case 'flattenAnnotations':

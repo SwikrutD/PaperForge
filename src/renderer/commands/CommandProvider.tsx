@@ -37,6 +37,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
   const creating = useCreateStore((state) => state.open);
   const editingText = useTextEditStore((state) => state.active);
   const filling = useFormStore((state) => state.active);
+  const preparingForm = useFormStore((state) => state.preparing);
   const annotationTool = useAnnotationStore((state) => state.tool);
   const annotationSelected = useAnnotationStore((state) => state.selectedId !== null);
   const findOpen = useSearchStore((state) => state.open);
@@ -206,6 +207,20 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         }
         forms().setActive(next);
       },
+      togglePreparingForm: () => {
+        const next = !forms().preparing;
+        if (next) {
+          ui().setCommenting(false);
+          annotations().setTool('select');
+          organize().setActive(false);
+          textEditor().setActive(false);
+          void app().patchSettings({
+            layout: { activeRightPanel: 'properties', rightPanel: { visible: true } },
+          });
+          forms().setActive(true);
+        }
+        forms().setPreparing(next);
+      },
       openCreateWorkspace: (intent) => {
         // Making a document is its own workspace: the page grid has nothing to
         // act on while it is open.
@@ -266,6 +281,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
       creating,
       editingText,
       filling,
+      preparingForm,
       annotationTool: annotationTool === 'select' ? null : annotationTool,
       annotationSelected,
       findOpen,
@@ -286,6 +302,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     creating,
     editingText,
     filling,
+    preparingForm,
     annotationTool,
     annotationSelected,
     findOpen,

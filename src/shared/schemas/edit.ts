@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { linkRectSchema, linkTargetSchema } from './link';
-import { formValueChangeSchema } from './form';
+import { formFieldPropertiesSchema, formFieldTypeSchema, formValueChangeSchema } from './form';
 import {
   backgroundSchema,
   furnitureKindSchema,
@@ -276,6 +276,39 @@ export const flattenAnnotationsOperationSchema = z.strictObject({
   ids: z.array(z.string().min(1).max(120)).max(5000).nullable(),
 });
 
+const fieldRectSchema = z.strictObject({
+  x: z.number().finite().min(-1_000_000).max(1_000_000),
+  y: z.number().finite().min(-1_000_000).max(1_000_000),
+  width: z.number().finite().min(1).max(1_000_000),
+  height: z.number().finite().min(1).max(1_000_000),
+});
+
+/** Puts a new field on a page. */
+export const addFormFieldOperationSchema = z.strictObject({
+  kind: z.literal('addFormField'),
+  page: z.number().int().min(1).max(100_000),
+  name: z.string().min(1).max(500),
+  fieldType: formFieldTypeSchema,
+  rect: fieldRectSchema,
+  options: z.array(z.string().max(500)).max(500).nullable(),
+  properties: formFieldPropertiesSchema,
+});
+
+/** Changes what a field is, what it will accept, or where it sits. */
+export const updateFormFieldOperationSchema = z.strictObject({
+  kind: z.literal('updateFormField'),
+  name: z.string().min(1).max(500),
+  newName: z.string().min(1).max(500).nullable(),
+  rect: fieldRectSchema.nullable(),
+  options: z.array(z.string().max(500)).max(500).nullable(),
+  properties: formFieldPropertiesSchema,
+});
+
+export const deleteFormFieldOperationSchema = z.strictObject({
+  kind: z.literal('deleteFormField'),
+  name: z.string().min(1).max(500),
+});
+
 export const editOperationSchema = z.discriminatedUnion('kind', [
   rotatePagesOperationSchema,
   deletePagesOperationSchema,
@@ -302,6 +335,9 @@ export const editOperationSchema = z.discriminatedUnion('kind', [
   setFieldValuesOperationSchema,
   flattenFieldsOperationSchema,
   flattenAnnotationsOperationSchema,
+  addFormFieldOperationSchema,
+  updateFormFieldOperationSchema,
+  deleteFormFieldOperationSchema,
   addAnnotationsOperationSchema,
   updateAnnotationsOperationSchema,
   deleteAnnotationsOperationSchema,
