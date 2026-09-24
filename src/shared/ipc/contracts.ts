@@ -33,6 +33,7 @@ import { pageImageModelSchema } from '../schemas/image';
 import { pageLinksModelSchema } from '../schemas/link';
 import { formModelSchema } from '../schemas/form';
 import { ocrOptionsSchema, ocrPageResultSchema, ocrStatusSchema } from '../schemas/ocr';
+import { exportOptionsSchema, exportPagePayloadSchema } from '../schemas/convert';
 import { savedSignatureSchema, stageSignatureSchema } from '../schemas/signature';
 import { recentFilesListSchema } from '../schemas/recentFiles';
 import { settingsPatchSchema, settingsSchema } from '../schemas/settings';
@@ -277,6 +278,32 @@ export const invokeContracts = {
       sessionId: z.string().min(1),
       text: z.string().max(40_000_000),
     }),
+    response: exportResultSchema,
+  },
+
+  /**
+   * Starts an export: the reader chooses where it goes, and the window then
+   * sends the pages one at a time.
+   */
+  'convert:start': {
+    request: z.strictObject({
+      sessionId: z.string().min(1),
+      options: exportOptionsSchema,
+    }),
+    response: z.strictObject({ exportId: z.string().max(64).nullable() }),
+  },
+
+  /** One page of an export, as the window rendered and read it. */
+  'convert:page': { request: exportPagePayloadSchema, response: z.null() },
+
+  /** Writes whatever the export gathered, and says what it wrote. */
+  'convert:finish': {
+    request: z.strictObject({ exportId: z.string().min(1).max(64) }),
+    response: exportResultSchema,
+  },
+
+  'convert:cancel': {
+    request: z.strictObject({ exportId: z.string().min(1).max(64) }),
     response: exportResultSchema,
   },
 

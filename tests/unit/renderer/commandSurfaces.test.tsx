@@ -152,12 +152,12 @@ describe('home screen', () => {
     const prepareTool = screen.getByRole('button', { name: /Prepare Form/ });
     expect(prepareTool).toBeDisabled();
     // Recognise Text needs one too, now that it is built.
-    expect(screen.getAllByText('Needs a document')).toHaveLength(6);
+    expect(screen.getAllByText('Needs a document')).toHaveLength(7);
 
     // A tool whose capability is not built says something different.
     const protectTool = screen.getByRole('button', { name: /Protect PDF/ });
     expect(protectTool).toBeDisabled();
     expect(protectTool).toHaveAttribute('title', expect.stringContaining('Not available yet'));
-    expect(screen.getAllByText('Not yet available').length).toBeGreaterThan(4);
+    expect(screen.getAllByText('Not yet available').length).toBeGreaterThan(3);
   });
 });

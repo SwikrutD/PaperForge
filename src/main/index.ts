@@ -20,6 +20,7 @@ import { imageProvider, pdfProvider, textProvider } from '@conversion/providers/
 import { StagedAssets } from './services/documents/stagedAssets';
 import { SignatureLibrary } from './services/signatures/signatureLibrary';
 import { TesseractService } from './services/tesseract/tesseractService';
+import { ExportSessions } from './services/conversion/exportSession';
 import { QpdfService } from './services/qpdf/qpdfService';
 import { PdfLibMutationEngine } from '@pdf/mutate/pdfLibEngine';
 import { createLogger, parseLogLevel, type Logger } from './services/logging/logger';
@@ -101,6 +102,7 @@ async function bootstrap(): Promise<void> {
     configuredPath: settings.get().tools.tesseractPath,
     configuredTessdata: settings.get().tools.tessdataPath,
   });
+  const exports = new ExportSessions(logger);
   const stagedAssets = new StagedAssets();
   const signatures = new SignatureLibrary(app.getPath('userData'), logger);
   const engine = new PdfLibMutationEngine();
@@ -176,6 +178,7 @@ async function bootstrap(): Promise<void> {
     stagedAssets,
     signatures,
     tesseract,
+    exports,
     pageExport,
     engine,
     library,

@@ -57,6 +57,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     title: 'Export PDF',
     description: 'Save as images, text, Word, Excel or PowerPoint.',
     icon: FileOutput,
+    commandId: 'tools.export',
     requires: 'the conversion centre',
   },
   {

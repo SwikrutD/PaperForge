@@ -1,0 +1,27 @@
+/* The formats, as a row of choices rather than a dropdown: a reader picking
+   an export should see what there is. */
+.modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pf-space-050);
+}
+
+.mode {
+  padding: var(--pf-space-050) var(--pf-space-150);
+  border: 1px solid var(--pf-color-border-strong);
+  border-radius: var(--pf-radius-sm);
+  background-color: var(--pf-color-bg-surface);
+  color: var(--pf-color-text-primary);
+  font-family: inherit;
+  font-size: var(--pf-font-size-300);
+  cursor: pointer;
+}
+
+.mode:hover {
+  border-color: var(--pf-color-accent);
+}
+
+.modeOn {
+  border-color: var(--pf-color-accent);
+  background-color: color-mix(in srgb, var(--pf-color-accent) 18%, transparent);
+}
