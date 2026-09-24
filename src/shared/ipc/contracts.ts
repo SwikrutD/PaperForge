@@ -32,6 +32,7 @@ import { pageTextModelSchema } from '../schemas/text';
 import { pageImageModelSchema } from '../schemas/image';
 import { pageLinksModelSchema } from '../schemas/link';
 import { formModelSchema } from '../schemas/form';
+import { ocrOptionsSchema, ocrPageResultSchema, ocrStatusSchema } from '../schemas/ocr';
 import { savedSignatureSchema, stageSignatureSchema } from '../schemas/signature';
 import { recentFilesListSchema } from '../schemas/recentFiles';
 import { settingsPatchSchema, settingsSchema } from '../schemas/settings';
@@ -234,6 +235,50 @@ export const invokeContracts = {
 
   /** Forgets every saved signature, from Settings → Privacy. */
   'signatures:clear': { request: z.void(), response: z.null() },
+
+  /** Where PaperForge found Tesseract, and the languages it can read. */
+  'ocr:status': { request: z.void(), response: ocrStatusSchema },
+
+  /** Points PaperForge at a Tesseract program, or forgets the one it has. */
+  'ocr:locate': {
+    request: z.strictObject({ clear: z.boolean().optional() }),
+    response: ocrStatusSchema,
+  },
+
+  /** Points PaperForge at a folder of language data, or forgets it. */
+  'ocr:locateLanguages': {
+    request: z.strictObject({ clear: z.boolean().optional() }),
+    response: ocrStatusSchema,
+  },
+
+  /**
+   * Reads one page that the window has rendered. The picture crosses as
+   * base64 because that is the only shape a validated payload can take.
+   */
+  'ocr:recognisePage': {
+    request: z.strictObject({
+      sessionId: z.string().min(1),
+      page: z.number().int().min(1).max(100_000),
+      image: z.string().min(1).max(64_000_000),
+      options: ocrOptionsSchema,
+    }),
+    response: ocrPageResultSchema,
+  },
+
+  /** Stops the run in flight for a document. */
+  'ocr:cancel': {
+    request: z.strictObject({ sessionId: z.string().min(1) }),
+    response: z.null(),
+  },
+
+  /** Writes what was read to a text file the reader chooses. */
+  'ocr:writeText': {
+    request: z.strictObject({
+      sessionId: z.string().min(1),
+      text: z.string().max(40_000_000),
+    }),
+    response: exportResultSchema,
+  },
 
   /** Writes an image the page draws out to a file the reader chooses. */
   'images:export': {

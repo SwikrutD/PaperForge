@@ -68,8 +68,23 @@ export const toolsSettingsSchema = z.object({
    * at one. Null means "look for it in the usual places".
    */
   qpdfPath: z.string().max(4096).nullable(),
+  /** Where the local Tesseract executable is, when one has been chosen. */
+  tesseractPath: z.string().max(4096).nullable(),
+  /** A folder of Tesseract language data, when one has been chosen. */
+  tessdataPath: z.string().max(4096).nullable(),
 });
 export type ToolsSettings = z.infer<typeof toolsSettingsSchema>;
+
+/** How PaperForge reads a scan, unless the dialog says otherwise. */
+export const ocrSettingsSchema = z.object({
+  /** Tesseract language codes, in the order it should try them. */
+  languages: z.array(z.string().min(1).max(32)).max(8),
+  /** How finely a page is rendered before it is read. */
+  dpi: z.number().int().min(72).max(1200),
+  /** Greys the picture and lifts its contrast before reading it. */
+  preprocess: z.boolean(),
+});
+export type OcrSettings = z.infer<typeof ocrSettingsSchema>;
 
 export const settingsSchema = z.object({
   version: z.literal(SETTINGS_VERSION),
@@ -79,6 +94,7 @@ export const settingsSchema = z.object({
   session: sessionSettingsSchema,
   editing: editingSettingsSchema,
   tools: toolsSettingsSchema,
+  ocr: ocrSettingsSchema,
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
@@ -98,6 +114,7 @@ export const settingsPatchSchema = z.strictObject({
   session: sessionSettingsSchema.partial().optional(),
   editing: editingSettingsSchema.partial().optional(),
   tools: toolsSettingsSchema.partial().optional(),
+  ocr: ocrSettingsSchema.partial().optional(),
 });
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
 
@@ -109,6 +126,7 @@ const SETTINGS_SECTIONS = [
   'session',
   'editing',
   'tools',
+  'ocr',
 ] as const;
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -124,7 +142,8 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   session: { restoreOnStartup: true, openDocuments: [] },
   editing: { annotationAuthor: '' },
-  tools: { qpdfPath: null },
+  tools: { qpdfPath: null, tesseractPath: null, tessdataPath: null },
+  ocr: { languages: ['eng'], dpi: 300, preprocess: false },
 };
 
 /**
@@ -154,6 +173,7 @@ export function applySettingsPatch(current: Settings, patch: SettingsPatch): Set
     session: mergeDefined(current.session, patch.session),
     editing: mergeDefined(current.editing, patch.editing),
     tools: mergeTools(current.tools, patch.tools),
+    ocr: mergeDefined(current.ocr, patch.ocr),
   });
 }
 
@@ -163,10 +183,15 @@ export function applySettingsPatch(current: Settings, patch: SettingsPatch): Set
  */
 function mergeTools(
   current: ToolsSettings,
-  patch: { qpdfPath?: string | null | undefined } | undefined,
+  patch: { [K in keyof ToolsSettings]?: ToolsSettings[K] | undefined } | undefined,
 ): ToolsSettings {
-  if (patch === undefined || !('qpdfPath' in patch)) return current;
-  return { ...current, qpdfPath: patch.qpdfPath ?? null };
+  if (patch === undefined) return current;
+
+  const merged: ToolsSettings = { ...current };
+  for (const key of ['qpdfPath', 'tesseractPath', 'tessdataPath'] as const) {
+    if (key in patch) merged[key] = patch[key] ?? null;
+  }
+  return merged;
 }
 
 /**

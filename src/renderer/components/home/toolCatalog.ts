@@ -96,6 +96,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     title: 'Recognize Text',
     description: 'Make a scanned document searchable, entirely on this computer.',
     icon: ScanText,
+    commandId: 'tools.ocr',
     requires: 'local OCR',
   },
   {

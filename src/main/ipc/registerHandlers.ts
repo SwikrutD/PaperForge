@@ -8,6 +8,7 @@ import type { DocumentService } from '../services/documents/documentService';
 import type { QpdfService } from '../services/qpdf/qpdfService';
 import type { StagedAssets } from '../services/documents/stagedAssets';
 import type { SignatureLibrary } from '../services/signatures/signatureLibrary';
+import type { TesseractService } from '../services/tesseract/tesseractService';
 import type { RecentFilesStore } from '../services/recentFiles/recentFilesStore';
 import type { SessionWorkspaces } from '../services/recovery/recoveryJournal';
 import type { SettingsStore } from '../services/settings/settingsStore';
@@ -26,6 +27,7 @@ import { registerImageHandlers } from './handlers/imageHandlers';
 import { registerLinkHandlers } from './handlers/linkHandlers';
 import { registerFormHandlers } from './handlers/formHandlers';
 import { registerSignatureHandlers } from './handlers/signatureHandlers';
+import { registerOcrHandlers } from './handlers/ocrHandlers';
 import { registerFileHandlers } from './handlers/fileHandlers';
 import { createIpcRegistrar } from './registry';
 
@@ -37,6 +39,7 @@ export interface IpcDependencies {
   qpdf: QpdfService;
   stagedAssets: StagedAssets;
   signatures: SignatureLibrary;
+  tesseract: TesseractService;
   pageExport: PageExport;
   engine: PdfMutationEngine;
   library: SourceLibrary;
@@ -131,6 +134,13 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
   registerSignatureHandlers(registerInvoke, {
     signatures: deps.signatures,
     stagedAssets: deps.stagedAssets,
+  });
+
+  registerOcrHandlers(registerInvoke, {
+    documents: deps.documents,
+    settings: deps.settings,
+    tesseract: deps.tesseract,
+    senderWindow,
   });
 
   registerCreationHandlers(registerInvoke, {

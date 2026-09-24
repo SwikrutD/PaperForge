@@ -28,6 +28,7 @@ import { useOrganizeStore } from '../stores/organizeStore';
 import { useTextEditStore } from '../stores/textEditStore';
 import { SignatureDialog } from '../components/forms/SignatureDialog';
 import { FlattenDialog } from '../components/forms/FlattenDialog';
+import { OcrDialog } from '../components/ocr/OcrDialog';
 import { useSignatureStore } from '../stores/signatureStore';
 import { useFormStore } from '../stores/formStore';
 import { WatermarkDialog } from '../components/edit/furniture/WatermarkDialog';
@@ -161,6 +162,7 @@ export function App(): ReactElement {
             {dialog === 'about' && <AboutDialog appInfo={appInfo} />}
             {signatureDialog !== null && <SignatureDialog kind={signatureDialog} />}
             {dialog === 'flatten' && <FlattenDialog onClose={closeDialog} />}
+            {dialog === 'ocr' && <OcrDialog onClose={closeDialog} />}
             {dialog === 'watermark' && <WatermarkDialog onClose={closeDialog} />}
             {dialog === 'background' && <BackgroundDialog onClose={closeDialog} />}
             {dialog === 'headerFooter' && <HeaderFooterDialog onClose={closeDialog} />}

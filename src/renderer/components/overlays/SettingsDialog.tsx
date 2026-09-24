@@ -9,6 +9,7 @@ import { ThemeSwitcher } from '../controls/ThemeSwitcher';
 import { Toggle } from '../controls/Toggle';
 import { Dialog } from './Dialog';
 import { QpdfSetting } from './QpdfSetting';
+import { OcrSetting } from './OcrSetting';
 import styles from './SettingsDialog.module.css';
 
 interface SettingRowProps {
@@ -124,6 +125,11 @@ export function SettingsDialog({ settings }: { settings: Settings }): ReactEleme
           PaperForge collects no telemetry and sends nothing anywhere. Logs stay in the local log
           folder and passwords are never written to them.
         </p>
+      </section>
+
+      <section className={styles.section} aria-label="Text recognition">
+        <h3 className={styles.sectionTitle}>Text recognition</h3>
+        <OcrSetting />
       </section>
 
       <section className={styles.section} aria-label="Local tools">
