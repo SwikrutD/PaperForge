@@ -473,3 +473,44 @@ Run in both light and dark themes:
       behaves the same.
 - [ ] The dialog is correct in light and dark, at 125% and 150% Windows scaling, and every control
       has a label.
+
+## Segment 13 — the conversion centre
+
+### Exporting
+
+- [ ] Export offers eight formats, and each one says what it carries and what it loses before it is
+      chosen.
+- [ ] Pictures are written one a page, into the folder chosen, with the names the template asks
+      for; {name}, {page} and {n} all do what they say.
+- [ ] JPEG and WebP take a quality; PNG and WebP can keep the page's own transparency.
+- [ ] The resolution chosen is the resolution written: a 300 dpi page is twice the size of a 150
+      dpi one.
+- [ ] Text carries the words, and "keep the lines where they sit" keeps a column of figures in a
+      column.
+- [ ] A web page opens with the pages in order, the words selectable over each picture, and fetches
+      nothing from anywhere.
+- [ ] Word opens in Word, LibreOffice and Google Docs, with headings as headings and paragraphs as
+      paragraphs.
+- [ ] Excel opens with a sheet a page, a table's rows where there was a table, and numbers as
+      numbers.
+- [ ] PowerPoint writes a slide a page in both modes; layout mode looks exactly like the page and
+      editing mode has text boxes that can be edited.
+- [ ] Every export says where it wrote and can open the folder.
+- [ ] A long export shows its progress in the dialog and in the progress centre, and Stop keeps
+      whatever had already been written.
+- [ ] Dismissing the file dialog writes nothing and says nothing.
+- [ ] The document is never touched: no unsaved marker appears after any export.
+- [ ] Exporting the words of a scan nobody has read offers Recognize Text instead of writing an
+      empty file.
+
+### Office documents
+
+- [ ] With LibreOffice missing, adding an Office file to Combine is refused with a reason naming
+      LibreOffice and saying nothing would be uploaded.
+- [ ] With LibreOffice installed, .docx, .xlsx and .pptx files become pages and combine like any
+      other file.
+- [ ] Settings → Local tools says which LibreOffice was found, and can be pointed at another.
+- [ ] A LibreOffice the reader has open keeps working while PaperForge converts, and their settings
+      are untouched afterwards.
+- [ ] The export dialog is correct in light and dark, at 125% and 150% Windows scaling, and every
+      control has a label.

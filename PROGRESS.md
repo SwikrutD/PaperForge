@@ -2,10 +2,10 @@
 
 ## Current status
 
-- Last completed segment: **12 — OCR**
-- Next segment: **13 — Conversion center**
+- Last completed segment: **13 — Conversion centre**
+- Next segment: **14 — Protect, metadata, sanitize, attachments**
 - Build status: `npm run package` succeeds; packaged app launches and closes cleanly on Windows 11 x64
-- Test status: 609 unit tests (52 files) and 126 Playwright end-to-end tests passing; typecheck, lint and format clean
+- Test status: 629 unit tests (54 files) and 138 Playwright end-to-end tests passing; typecheck, lint and format clean
 
 ## Completed segments
 
@@ -22,7 +22,7 @@
 - [x] 10 Edit PDF: images, links, layout content
 - [x] 11 Forms and Fill & Sign
 - [x] 12 OCR
-- [ ] 13 Conversion center
+- [x] 13 Conversion centre
 - [ ] 14 Protect, metadata, sanitize, attachments
 - [ ] 15 True redaction
 - [ ] 16 Compare, optimize, repair, crop
@@ -484,6 +484,34 @@ running it again finishes the rest.
 | Renderer | `renderer/stores/ocrStore.ts`, `renderer/services/ocrRender.ts`, `renderer/components/ocr` |
 | Tests    | `tests/unit/shared/ocr.test.ts`, `tests/e2e/ocr.e2e.ts`, `tests/fixtures/scans.ts`         |
 
+## Segment 13 — what landed
+
+**Exporting.** Eight formats: PNG, JPEG and WebP pictures; text; a web page; Word; Excel;
+PowerPoint. It runs the way OCR does — the window draws and reads a page at a time, the main
+process writes the files — so only one page is ever in flight and a three-hundred-page document
+costs no more memory than a one-page one. The reader chooses the destination first, so a dismissed
+dialog costs nothing, and a stopped run keeps the pictures already written.
+
+**Every mode says what it carries.** A picture keeps the page and none of its words; a document
+export keeps the words and lays them out again from a reading of where they sat. That reading —
+lines from shared baselines, paragraphs from the gaps, tables only where several rows break at the
+same places — is its own module with tests that say where it should refuse rather than guess.
+
+**Office documents** convert through a local LibreOffice, run headlessly with a profile of its own
+so a copy the reader has open keeps working. Without it, an Office file is refused with a reason
+that also says nothing would have been uploaded.
+
+**Honest about scans.** Exporting the words of a document whose first pages carry none offers
+Recognize Text rather than writing an empty file.
+
+| Area     | Files                                                                                                      |
+| -------- | ---------------------------------------------------------------------------------------------------------- |
+| Analysis | `src/conversion/analysis/layout.ts`                                                                        |
+| Main     | `main/services/conversion/{writers,exportSession,libreOffice}.ts`, `main/ipc/handlers/convertHandlers.ts`  |
+| Shared   | `src/shared/schemas/convert.ts`, the `tools.libreOfficePath` setting                                       |
+| Renderer | `renderer/stores/exportStore.ts`, `renderer/services/exportRender.ts`, `renderer/components/convert`       |
+| Tests    | `tests/unit/shared/exportLayout.test.ts`, `tests/unit/main/libreOffice.test.ts`, `tests/e2e/export.e2e.ts` |
+
 ## Architecture decisions
 
 1. **Channel allowlist separate from schemas**, so the preload carries no validation library and
@@ -719,6 +747,20 @@ running it again finishes the rest.
 95. **Tesseract is not bundled.** It is a separate Apache-2.0 program; PaperForge finds it, says
     where it is, and says plainly when it is missing.
 
+96. **An export streams a page at a time.** The window renders and reads; the main process writes.
+    Gathering a whole document first would cost hundreds of megabytes for no gain.
+97. **The destination is chosen before the first page is drawn**, so dismissing the dialog costs
+    nothing and a picture export can keep what it has already written.
+98. **A document export is a reading of the geometry, and says so.** There are no paragraphs in a
+    PDF and no tables; every mode states what it carries before the reader picks it.
+99. **A table is reported only where several rows break at the same places.** A wrong table is
+    worse than no table, so a page of prose returns none.
+100. **Excel writes no formulas.** PaperForge will not invent one from a total it has only read.
+101. **LibreOffice is run, never bundled or modified.** It is a separate MPL-2.0 program the reader
+     installs; PaperForge uses a profile of its own so their copy and settings are untouched.
+102. **jszip, reached through the Office writers, is taken under its MIT option**, which is why no
+     GPL package appears in the notices.
+
 ## Known limitations
 
 - The viewer is continuous scrolling only. Single page, two-page spread, cover page, the hand and
@@ -735,6 +777,13 @@ running it again finishes the rest.
 - Search highlights are placed from text-run geometry, so on a run with unusual per-glyph spacing a
   highlight can be a fraction of a character out. It never affects what is found, only what is
   drawn.
+- Word export writes paragraphs, headings and tab-separated table rows — not real Word tables,
+  columns, or headers and footers.
+- Excel export writes what looks like a table and a line a row where nothing does, with no
+  formulas.
+- PowerPoint's editable mode places text boxes where the words sat; complex layouts change.
+- A web page export is a picture of each page with its words over it, not a reflowing rendering.
+- Office conversion needs a local LibreOffice; without one those files are refused with a reason.
 - Recognised words are drawn with the standard fourteen fonts, which cover Latin-1: a language
   whose script needs other characters is read but searchable only as far as that encoding reaches.
 - PaperForge does not deskew or despeckle a scan. The optional cleanup is greyscale and contrast,
@@ -842,7 +891,9 @@ running it again finishes the rest.
 - Tesseract: optional, and needed for Recognize Text. PaperForge looks in the usual Windows
   locations and on the PATH; Settings → Text recognition says what was found and can point at
   another copy or another tessdata folder. Nothing is downloaded.
-- LibreOffice: not required yet — optional, integrated in Segment 13
+- LibreOffice: optional, and needed only for Office documents. PaperForge looks in the usual
+  Windows locations and on the PATH; Settings → Local tools says what was found and can point at
+  another copy. Nothing is downloaded.
 
 Nothing is downloaded at runtime, then or now.
 
@@ -850,19 +901,19 @@ Nothing is downloaded at runtime, then or now.
 
 Run on Windows 11 x64, Node 24.19.0, npm 11.17.0:
 
-| Command                     | Result                                                                                               |
-| --------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                       |
-| `npm run typecheck`         | Pass — four projects, no errors                                                                      |
-| `npm run lint`              | Pass — no errors, no warnings                                                                        |
-| `npm test`                  | Pass — 609 tests in 52 files                                                                         |
-| `npm run test:e2e`          | Pass — 126 Playwright tests against the built application                                            |
-| `npm run format:check`      | Pass — Prettier clean                                                                                |
-| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                            |
-| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                     |
-| Packaged launch/close smoke | Pass — window ready in ~400 ms, closes cleanly, and `%TEMP%/PaperForge/sessions` is empty afterwards |
-| Settings upgrade            | Pass — a settings file without the new `session` section is repaired in place                        |
-| Appearance                  | Checked by driving the real application: Recognize Text before and after reading a scanned page      |
+| Command                     | Result                                                                                                  |
+| --------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                          |
+| `npm run typecheck`         | Pass — four projects, no errors                                                                         |
+| `npm run lint`              | Pass — no errors, no warnings                                                                           |
+| `npm test`                  | Pass — 629 tests in 54 files                                                                            |
+| `npm run test:e2e`          | Pass — 138 Playwright tests against the built application                                               |
+| `npm run format:check`      | Pass — Prettier clean                                                                                   |
+| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                               |
+| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                        |
+| Packaged launch/close smoke | Pass — window ready in ~400 ms, closes cleanly, and `%TEMP%/PaperForge/sessions` is empty afterwards    |
+| Settings upgrade            | Pass — a settings file without the new `session` section is repaired in place                           |
+| Appearance                  | Checked by driving the real application: the export dialog with each format and what it says it carries |
 
 ## Manual setup required
 

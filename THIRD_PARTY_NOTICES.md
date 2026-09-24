@@ -19,6 +19,14 @@ These end up inside the packaged application.
 | lucide-react        | 1.47.0  | ISC        | Generic icon set; no third-party product icons are used                                                                                        |
 | pdfjs-dist (PDF.js) | 6.3.289 | Apache-2.0 | The rendering engine. Its worker, character maps, standard fonts and colour profiles are copied into the renderer bundle at build time.        |
 | pdf-lib             | 1.17.1  | MIT        | The write engine, used in the main process. Brings @pdf-lib/standard-fonts (MIT), @pdf-lib/upng (MIT), pako (MIT AND Zlib) and tslib (0BSD).   |
+| docx                | 9.7.2   | MIT        | Writes the Word export. Brings jszip, nanoid, xml, xml-js and hash.js (all MIT).                                                               |
+| exceljs             | 4.4.0   | MIT        | Writes the Excel export. Brings archiver, dayjs, fast-csv, readable-stream, tmp, unzipper and uuid (MIT) and saxes (ISC).                      |
+| pptxgenjs           | 4.0.1   | MIT        | Writes the PowerPoint export. Brings image-size and jszip (MIT) and https (ISC).                                                               |
+
+### A note on jszip
+
+`jszip`, reached through both `docx` and `pptxgenjs`, is offered under **MIT OR GPL-3.0-or-later**.
+PaperForge takes it under the MIT terms, which is why a GPL package appears nowhere in this file.
 
 ## Development only
 

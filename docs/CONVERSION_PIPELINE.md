@@ -29,8 +29,14 @@ The providers a running PaperForge has:
 | `text`   | txt, text, log, md, csv | text set in Courier, wrapped to the page    |
 | `html`   | html, htm               | Chromium's own printing (main process)      |
 
-Local Office conversion joins this list in Segment 13, as a provider whose `availability()` reports
-whether a local LibreOffice was found. Nothing else about the pipeline changes when it does.
+| `libreoffice` | doc, docx, odt, rtf, xls, xlsx, ods, ppt, pptx, odp | a local LibreOffice, run headlessly |
+
+The LibreOffice provider is the honest part made visible: it says whether it can run, and when it
+cannot, an Office file is refused with a reason that also says nothing would have been uploaded
+either way. When it can, LibreOffice is asked to convert into a folder of PaperForge's own, with a
+user profile of its own so a copy the reader has open keeps working and their settings are
+untouched. What comes back is what LibreOffice produced — PaperForge claims no fidelity of its own
+over it.
 
 ## Staging, not uploading
 
@@ -83,12 +89,60 @@ anything. The same rule as a save, and the same one extraction and splitting fol
 
 The reader chooses where it goes in a native save dialog, and PaperForge opens what it wrote.
 
+## Exporting: out of PDF again
+
+Export is the other direction, and it runs the same way OCR does: the window draws and reads a page
+at a time, because that is where PDF.js is, and the main process writes the files. Only one page is
+ever in flight, so a three-hundred-page document costs no more memory than a one-page one.
+
+| Mode          | What it carries                                                          |
+| ------------- | ------------------------------------------------------------------------ |
+| PNG/JPEG/WebP | The page exactly as it looks, and none of its words                      |
+| Text          | The words, and nothing else — optionally spaced as the page spaces them  |
+| Web page      | The words where they sit, over a picture of each page, in a local folder |
+| Word          | Paragraphs and headings, read from the geometry                          |
+| Excel         | Rows and columns where PaperForge can see them, a sheet to a page        |
+| PowerPoint    | A slide a page: the page as a picture, or its words as text boxes        |
+
+An export never touches the document. The reader chooses the destination first — a folder for
+pictures, a file for anything else — so a dismissed dialog costs nothing, and a stopped run keeps
+the pictures it had already written.
+
+### Reading the geometry
+
+There are no paragraphs in a PDF and no tables: `src/conversion/analysis/layout.ts` reads them out
+of where the words sit.
+
+- **Lines** are the pieces of text that share a baseline, within half the text's own height, so a
+  superscript stays on its line. A gap wider than a fifth of the text's height becomes a space.
+- **Paragraphs** break where the gap between lines grows past one and a half lines, where the left
+  edge steps in or out, or where the text changes size. A block set noticeably larger than the
+  page's usual text, and no more than three lines long, is called a heading.
+- **Tables** are found only where most candidate lines break at the same places across the page,
+  and never from fewer than three rows. A page of prose returns nothing, deliberately: a wrong
+  table is worse than no table.
+
+Every one of those readings can be wrong, which is why each mode says what it carries before the
+reader picks it, and why the Word and Excel exports say that complex layouts will change.
+
+### Honest about text
+
+An export of the words is worth nothing on a scan nobody has read, so the dialog looks at the first
+few pages and offers Recognize Text when it finds none. Exporting pictures of the pages says
+nothing, because that carries the scan itself.
+
 ## Limits today
 
-- **Office documents cannot be converted yet.** The provider interface is here and the file dialog
-  offers only what really works; local LibreOffice lands in Segment 13.
-- **PaperForge converts _into_ PDF here.** Exporting a PDF to images, text, Word, Excel or
-  PowerPoint is the conversion centre, also Segment 13.
+- **A picture export carries no words, and a word export carries no pictures except where it says
+  so.** That is the trade the format makes, not a limitation PaperForge hides.
+- **Word export writes paragraphs, headings and tab-separated table rows.** It does not write real
+  Word tables, columns, headers and footers, or styles beyond a heading level.
+- **Excel export writes what looks like a table, and a line a row where nothing does.** It writes
+  no formulas: PaperForge will not invent one from a total it has only read.
+- **PowerPoint's editable mode places text boxes where the words sat.** Complex layouts change, and
+  it says so.
+- **A web page is a page picture with the words over it.** It is not a reflowing HTML rendering of
+  the document.
 - **A source is converted once, when it is added.** A file changed on disk afterwards is combined as
   it was when it was added; remove it and add it again to pick up the change.
 - **Text is set in Courier**, a standard PDF font, so a text file converts with no font embedding

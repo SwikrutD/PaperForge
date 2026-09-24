@@ -14,6 +14,9 @@ each one is here and what would have to happen to remove it.
 | lucide-react     | Generic icon set (ISC). Deliberately generic — no product-specific or third-party branded icons.                                                                                                                                                                               |
 | pdfjs-dist       | The PDF rendering engine (Apache-2.0), used behind the engine contract in `src/pdf/render`. Its worker, character maps, standard fonts and colour profiles ship with the application.                                                                                          |
 | pdf-lib          | The PDF write engine (MIT), used behind `PdfMutationEngine` in `src/pdf/mutate` and only from the main process. Pure JavaScript, so it needs no native build; it rewrites a whole file rather than appending an incremental update, which is what makes a revision a snapshot. |
+| docx             | Writes the Word export (MIT). Pure JavaScript, runs in the main process, and produces an ordinary .docx that Word, LibreOffice and Google Docs all open.                                                                                                                       |
+| exceljs          | Writes the Excel export (MIT). Chosen over lighter writers because it produces a real workbook with typed cells, so a number PaperForge read as a number can be totalled.                                                                                                      |
+| pptxgenjs        | Writes the PowerPoint export (MIT). Takes slide geometry in inches, which maps directly onto a PDF page measured in points.                                                                                                                                                    |
 
 Electron itself is a development dependency that becomes the runtime: Forge packages it into the
 application.
@@ -64,18 +67,34 @@ application.
 
 ## Known advisories
 
-`npm audit --omit=dev` reports **0 vulnerabilities**: the runtime dependency set is intentionally
-tiny. The full audit reports findings in the Electron Forge packaging chain only — `tar` and
-`extract-zip`, reached through `@electron/get` and `@electron/packager`. Those run on the developer
-machine during download and packaging and are not shipped in the application. They are re-checked
-whenever Forge is upgraded; `npm audit fix --force` is not run, because it would downgrade Forge.
+The Electron Forge packaging chain reports findings in `tar` and `extract-zip`, reached through
+`@electron/get` and `@electron/packager`. Those run on the developer machine during download and
+packaging and are not shipped in the application. They are re-checked whenever Forge is upgraded;
+`npm audit fix --force` is not run, because it would downgrade Forge.
+
+Two advisories sit in the export libraries added for the conversion centre. Both are recorded
+here rather than fixed, because the fix is a major downgrade and neither is reachable from what
+PaperForge does:
+
+| Advisory                                     | Reached through | Why it is not reachable here                                                                                                                           |
+| -------------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `image-size` — loops on ICNS, JXL, HEIF      | `pptxgenjs`     | PaperForge hands pptxgenjs only PNG pictures it has just rendered itself, with their sizes stated; no file a reader supplies ever reaches that parser. |
+| `uuid` — bounds check when `buf` is supplied | `exceljs`       | exceljs generates v4 identifiers without a buffer argument, which is not the affected path.                                                            |
+
+Both are re-checked whenever those libraries are upgraded.
 
 ## Local programs PaperForge can use
 
 Neither is bundled and neither is downloaded; PaperForge finds what is installed and says plainly
 when it is not there.
 
-| Program   | Licence    | What it is for                                                |
-| --------- | ---------- | ------------------------------------------------------------- |
-| qpdf      | Apache-2.0 | A second opinion on a file PaperForge has just written        |
-| Tesseract | Apache-2.0 | Reading the words on a scanned page, with local language data |
+| Program     | Licence    | What it is for                                                |
+| ----------- | ---------- | ------------------------------------------------------------- |
+| qpdf        | Apache-2.0 | A second opinion on a file PaperForge has just written        |
+| Tesseract   | Apache-2.0 | Reading the words on a scanned page, with local language data |
+| LibreOffice | MPL-2.0    | Turning an Office document into a PDF, run headlessly         |
+
+LibreOffice is Mozilla Public Licence 2.0, a weak copyleft that covers its own files. PaperForge
+neither bundles nor modifies it: it runs whatever the reader has installed, as a separate program,
+which is the same relationship any script has with it. Bundling it would be a separate decision,
+with its own review.
