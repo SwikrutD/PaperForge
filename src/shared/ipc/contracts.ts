@@ -31,6 +31,7 @@ import {
 import { pageTextModelSchema } from '../schemas/text';
 import { pageImageModelSchema } from '../schemas/image';
 import { pageLinksModelSchema } from '../schemas/link';
+import { formModelSchema } from '../schemas/form';
 import { recentFilesListSchema } from '../schemas/recentFiles';
 import { settingsPatchSchema, settingsSchema } from '../schemas/settings';
 import { themeStateSchema } from '../schemas/theme';
@@ -211,6 +212,12 @@ export const invokeContracts = {
       page: z.number().int().min(1).max(100_000),
     }),
     response: pageLinksModelSchema,
+  },
+
+  /** The whole form a document carries, with what each field holds. */
+  'forms:model': {
+    request: z.strictObject({ sessionId: z.string().min(1) }),
+    response: formModelSchema,
   },
 
   /** Writes an image the page draws out to a file the reader chooses. */

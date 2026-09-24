@@ -24,6 +24,14 @@ import { imagesFor, useImageEditStore } from '../../stores/imageEditStore';
 import { LinkEditLayer } from '../edit/LinkEditLayer';
 import { linksFor, useLinkEditStore } from '../../stores/linkEditStore';
 import { useEditTargetStore } from '../../stores/editTargetStore';
+import { FormLayer } from '../forms/FormLayer';
+import { FillSignToolbar } from '../forms/FillSignToolbar';
+import {
+  fieldsOnPage,
+  formFieldsFor,
+  valueOf as formValueOf,
+  useFormStore,
+} from '../../stores/formStore';
 import { FindBar } from '../search/FindBar';
 import { highlightsByPage } from '../search/searchNavigation';
 import { pdfRectToCss } from './pageGeometry';
@@ -77,6 +85,11 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const linkSelected = useLinkEditStore((store) => store.selected);
   const linkDrag = useLinkEditStore((store) => store.drag);
   const linkDrawing = useLinkEditStore((store) => store.drawing);
+  const filling = useFormStore((store) => store.active);
+  const forms = useFormStore((store) => store.forms);
+  const formDrafts = useFormStore((store) => store.drafts);
+  const formSelected = useFormStore((store) => store.selected);
+  const formHighlight = useFormStore((store) => store.highlight);
   const requestConfirmation = useUiStore((store) => store.requestConfirmation);
 
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -187,6 +200,12 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
     const load = useTextEditStore.getState().load;
     for (const pageNumber of mounted) void load(sessionId, pageNumber, tab.edit.revision);
   }, [editing, state.status, mounted, sessionId, tab.edit.revision]);
+
+  // The form is read whole, because a field can be drawn on several pages.
+  useEffect(() => {
+    if (!filling || state.status !== 'ready') return;
+    void useFormStore.getState().load(sessionId, tab.edit.revision);
+  }, [filling, state.status, sessionId, tab.edit.revision]);
 
   // And the images and links, read the same way and from the same revision.
   useEffect(() => {
@@ -316,7 +335,8 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
           hasLinks={linksFor(linkPages, sessionId, view.pageNumber).length > 0}
         />
       )}
-      {!editing && (commenting || toolActive) && (
+      {filling && <FillSignToolbar disabled={state.status !== 'ready'} />}
+      {!editing && !filling && (commenting || toolActive) && (
         <AnnotationToolbar disabled={state.status !== 'ready'} />
       )}
 
@@ -338,9 +358,23 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                   rotation={view.rotation}
                   label={pages[pageNumber - 1]?.label ?? null}
                   layersVersion={state.layersVersion}
+                  hideFormFields={filling}
                   highlights={highlights.get(pageNumber)}
                   overlay={
-                    state.document === null ? null : editing && editTarget === 'links' ? (
+                    state.document === null ? null : filling ? (
+                      <FormLayer
+                        geometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}
+                        scale={scale}
+                        rotation={view.rotation}
+                        widgets={fieldsOnPage(formFieldsFor(forms, sessionId), pageNumber)}
+                        valueOf={(field) => formValueOf(formDrafts, field)}
+                        selected={formSelected}
+                        highlight={formHighlight}
+                        onSelect={(name) => useFormStore.getState().select(name)}
+                        onDraft={(name, value) => useFormStore.getState().setDraft(name, value)}
+                        onCommit={(name, value) => void useFormStore.getState().commit(name, value)}
+                      />
+                    ) : editing && editTarget === 'links' ? (
                       <LinkEditLayer
                         geometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}
                         scale={scale}

@@ -1,6 +1,7 @@
 import {
   Activity,
   AppWindow,
+  Signature,
   Droplets,
   PaintBucket,
   BookOpen,
@@ -719,6 +720,19 @@ export function buildCommands(): CommandDefinition[] {
       keywords: ['search', 'run', 'actions'],
       hiddenInPalette: true,
       run: (context) => context.actions.setCommandPaletteOpen(true),
+    },
+    {
+      id: 'tools.fillSign',
+      title: 'Fill & Sign',
+      description: 'Complete form fields and add a simple signature.',
+      category: 'tools',
+      group: 'forms',
+      icon: Signature,
+      shortcut: 'Ctrl+Shift+F',
+      keywords: ['form', 'field', 'sign', 'signature', 'fill in'],
+      isChecked: (context) => context.filling,
+      isAvailable: documentRequired,
+      run: (context) => context.actions.toggleFilling(),
     },
     {
       id: 'tools.watermark',

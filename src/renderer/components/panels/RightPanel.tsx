@@ -7,6 +7,8 @@ import { useOrganizeStore } from '../../stores/organizeStore';
 import { useTextEditStore } from '../../stores/textEditStore';
 import { useEditTargetStore } from '../../stores/editTargetStore';
 import { LinkProperties } from '../edit/LinkProperties';
+import { FieldProperties } from '../forms/FieldProperties';
+import { useFormStore } from '../../stores/formStore';
 import { useUiStore } from '../../stores/uiStore';
 import { DocumentProperties } from '../workspace/DocumentProperties';
 import { AnnotationProperties } from '../annotations/AnnotationProperties';
@@ -41,6 +43,7 @@ export function RightPanel({ panel }: { panel: RightPanelId }): ReactElement {
   const organizing = useOrganizeStore((state) => state.active);
   const editingText = useTextEditStore((state) => state.active);
   const editTarget = useEditTargetStore((state) => state.target);
+  const filling = useFormStore((state) => state.active);
   const selected = selectedAnnotation({ annotations, selectedId });
 
   const select = (id: RightPanelId): void => {
@@ -101,6 +104,9 @@ export function RightPanel({ panel }: { panel: RightPanelId }): ReactElement {
               title="Nothing selected"
               description="Open a document, then select text, an image, an annotation or a form field."
             />
+          ) : filling ? (
+            // While filling in, this panel is about the field being filled.
+            <FieldProperties />
           ) : editingText ? (
             // While editing, this panel is about whatever is selected on the
             // page: the text, or the image.

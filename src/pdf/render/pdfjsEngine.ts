@@ -1,4 +1,5 @@
 import {
+  AnnotationMode,
   getDocument,
   GlobalWorkerOptions,
   PasswordResponses,
@@ -167,6 +168,9 @@ class PdfjsDocument implements LoadedPdfDocument {
     const task = page.render({
       canvas,
       viewport,
+      // `ENABLE_FORMS` draws everything except the widgets a form layer draws
+      // itself, which is exactly what filling a form in needs.
+      ...(options.hideFormFields === true ? { annotationMode: AnnotationMode.ENABLE_FORMS } : {}),
       ...(this.optionalContent === null
         ? {}
         : { optionalContentConfigPromise: Promise.resolve(this.optionalContent) }),

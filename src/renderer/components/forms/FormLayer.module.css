@@ -1,0 +1,101 @@
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+}
+
+.widget {
+  position: absolute;
+  display: flex;
+  align-items: stretch;
+}
+
+/* The tint that says "this is a field", the way readers have always drawn it. */
+.highlight {
+  background-color: color-mix(in srgb, var(--pf-color-accent) 14%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--pf-color-accent) 45%, transparent);
+  outline-offset: -1px;
+}
+
+.highlight.required {
+  outline-color: color-mix(in srgb, var(--pf-color-danger) 65%, transparent);
+}
+
+.selected {
+  outline: 2px solid var(--pf-color-accent);
+  outline-offset: -1px;
+}
+
+.disabled {
+  background-color: color-mix(in srgb, var(--pf-color-text-secondary) 12%, transparent);
+}
+
+.input,
+.textarea,
+.select {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  padding: 0 2px;
+  border: none;
+  background: none;
+  color: var(--pf-color-text-on-page, #111111);
+  font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  line-height: 1.1;
+}
+
+.textarea {
+  padding: 2px;
+  resize: none;
+}
+
+.input:focus,
+.textarea:focus,
+.select:focus {
+  outline: 2px solid var(--pf-color-accent);
+  outline-offset: -2px;
+}
+
+/*
+ * Ticks and dots are drawn rather than left to the platform: a native control
+ * stretched to the size of a widget on a page zoomed to 200% is a heavy black
+ * square, and this stays crisp at any size.
+ */
+.tick {
+  appearance: none;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  border: 1px solid color-mix(in srgb, var(--pf-color-accent) 70%, transparent);
+  border-radius: 2px;
+  background-color: color-mix(in srgb, #ffffff 70%, transparent);
+}
+
+.tick[type='radio'] {
+  border-radius: 50%;
+}
+
+.tick:checked::after {
+  content: '';
+  display: block;
+  margin: 18%;
+  width: 64%;
+  height: 64%;
+  border-radius: inherit;
+  background-color: var(--pf-color-accent);
+}
+
+.tick:checked[type='checkbox']::after {
+  margin: 12%;
+  width: 76%;
+  height: 76%;
+  clip-path: polygon(14% 44%, 0 58%, 40% 100%, 100% 16%, 86% 2%, 38% 72%);
+}
+
+/* A button or a signature field: shown, never acted on. */
+.placeholder {
+  width: 100%;
+  height: 100%;
+  border: 1px dashed color-mix(in srgb, var(--pf-color-text-secondary) 60%, transparent);
+  border-radius: 2px;
+}

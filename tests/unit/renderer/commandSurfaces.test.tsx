@@ -145,7 +145,11 @@ describe('home screen', () => {
     const editTool = screen.getByRole('button', { name: /Edit PDF/ });
     expect(editTool).toBeDisabled();
     expect(editTool).toHaveAttribute('title', 'No document is open.');
-    expect(screen.getAllByText('Needs a document')).toHaveLength(3);
+    // As does filling a form in.
+    const fillTool = screen.getByRole('button', { name: /Fill & Sign/ });
+    expect(fillTool).toBeDisabled();
+    expect(fillTool).toHaveAttribute('title', 'No document is open.');
+    expect(screen.getAllByText('Needs a document')).toHaveLength(4);
 
     // A tool whose capability is not built says something different.
     const ocrTool = screen.getByRole('button', { name: /Recognize Text/ });

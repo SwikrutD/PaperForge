@@ -42,6 +42,12 @@ export interface RenderPageOptions {
   canvas: HTMLCanvasElement;
   /** Device pixel ratio to render at, so text stays sharp on high-DPI screens. */
   devicePixelRatio: number;
+  /**
+   * Leaves the form fields out of the picture, for when they are being drawn
+   * as real controls on top of it. Without this the page would show what a
+   * field holds and the control would show it again, half a line apart.
+   */
+  hideFormFields?: boolean;
   signal?: AbortSignal;
 }
 

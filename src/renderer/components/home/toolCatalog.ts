@@ -88,6 +88,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     title: 'Fill & Sign',
     description: 'Complete form fields and add a simple signature.',
     icon: Signature,
+    commandId: 'tools.fillSign',
     requires: 'forms',
   },
   {

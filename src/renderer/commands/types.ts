@@ -47,6 +47,8 @@ export interface CommandContext {
   readonly annotationTool: AnnotationKind | 'eraser' | null;
   /** True when a comment is selected. */
   readonly annotationSelected: boolean;
+  /** True while Fill & Sign is on. */
+  readonly filling: boolean;
   /** True while the find bar is on screen. */
   readonly findOpen: boolean;
   /** How many matches the current search found. */
@@ -86,6 +88,7 @@ export interface CommandActions {
   toggleCommenting(): void;
   toggleOrganizing(): void;
   toggleTextEditing(): void;
+  toggleFilling(): void;
   openCreateWorkspace(intent: 'create' | 'combine'): void;
   closeCreateWorkspace(): void;
   setAnnotationTool(tool: AnnotationKind | 'eraser' | 'select'): void;

@@ -20,6 +20,8 @@ interface PdfPageViewProps {
   label: string | null;
   /** Bumped when layer visibility changes, which requires a repaint. */
   layersVersion: number;
+  /** Leaves the form fields out of the canvas while they are being filled in. */
+  hideFormFields?: boolean;
   highlights?: readonly PageHighlight[] | undefined;
   /** Comment tools and hit areas, which sit over the text layer. */
   overlay?: ReactNode;
@@ -38,6 +40,7 @@ export function PdfPageView({
   rotation,
   label,
   layersVersion,
+  hideFormFields = false,
   highlights,
   overlay,
   onFollowLink,
@@ -61,6 +64,7 @@ export function PdfPageView({
         rotation,
         canvas,
         devicePixelRatio: window.devicePixelRatio || 1,
+        hideFormFields,
         signal: controller.signal,
       });
       if (controller.signal.aborted) return;
@@ -78,7 +82,7 @@ export function PdfPageView({
     });
 
     return () => controller.abort();
-  }, [pdf, box.pageNumber, scale, rotation, layersVersion]);
+  }, [pdf, box.pageNumber, scale, rotation, layersVersion, hideFormFields]);
 
   useEffect(() => {
     let cancelled = false;

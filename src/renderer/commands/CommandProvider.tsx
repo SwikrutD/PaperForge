@@ -12,6 +12,7 @@ import { useDocumentStore } from '../stores/documentStore';
 import { useAnnotationStore } from '../stores/annotationStore';
 import { useCreateStore } from '../stores/createStore';
 import { useTextEditStore } from '../stores/textEditStore';
+import { useFormStore } from '../stores/formStore';
 import { useOrganizeStore } from '../stores/organizeStore';
 import { useSearchStore } from '../stores/searchStore';
 import { useUiStore } from '../stores/uiStore';
@@ -35,6 +36,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
   const organizing = useOrganizeStore((state) => state.active);
   const creating = useCreateStore((state) => state.open);
   const editingText = useTextEditStore((state) => state.active);
+  const filling = useFormStore((state) => state.active);
   const annotationTool = useAnnotationStore((state) => state.tool);
   const annotationSelected = useAnnotationStore((state) => state.selectedId !== null);
   const findOpen = useSearchStore((state) => state.open);
@@ -51,6 +53,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     const organize = useOrganizeStore.getState;
     const creation = useCreateStore.getState;
     const textEditor = useTextEditStore.getState;
+    const forms = useFormStore.getState;
 
     const activeSessionId = (): string | null => documents().activeId;
 
@@ -184,6 +187,24 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
           });
         }
         textEditor().setActive(next);
+        if (next) forms().setActive(false);
+      },
+      toggleFilling: () => {
+        const next = !forms().active;
+        // Filling a form in is its own way of working: the comment tools and
+        // the content editor have nothing to act on while it is open.
+        if (next) {
+          ui().setCommenting(false);
+          annotations().setTool('select');
+          organize().setActive(false);
+          textEditor().setActive(false);
+          void app().patchSettings({
+            layout: { activeRightPanel: 'properties', rightPanel: { visible: true } },
+          });
+        } else {
+          void forms().commitDrafts();
+        }
+        forms().setActive(next);
       },
       openCreateWorkspace: (intent) => {
         // Making a document is its own workspace: the page grid has nothing to
@@ -244,6 +265,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
       organizing,
       creating,
       editingText,
+      filling,
       annotationTool: annotationTool === 'select' ? null : annotationTool,
       annotationSelected,
       findOpen,
@@ -263,6 +285,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     organizing,
     creating,
     editingText,
+    filling,
     annotationTool,
     annotationSelected,
     findOpen,
