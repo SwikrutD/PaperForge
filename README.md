@@ -4,7 +4,7 @@ PaperForge is an offline-first PDF workspace for Windows. It is being built to c
 work people do with a PDF tool — read, annotate, organize, edit, recognize text, convert, protect
 and redact — on a local machine, with no account, no telemetry and no cloud services.
 
-**Status: early development.** This repository currently contains Segments 0 to 11 of the build plan
+**Status: early development.** This repository currently contains Segments 0 to 12 of the build plan
 in [`CLAUDE.md`](./CLAUDE.md):
 
 - the secure Electron foundation and the Fluent Workspace shell with its command system;
@@ -32,7 +32,11 @@ in [`CLAUDE.md`](./CLAUDE.md):
   with totals PaperForge works out itself rather than by running a script, and flattening when you
   want the result to be part of the page.
 
-OCR, exporting to other formats, protection and redaction arrive in later segments.
+- recognising text: a scan is read by the local Tesseract program, and the words go on invisibly
+  over the picture, so the page still looks like a scan and its words can be found. Nothing is
+  uploaded and nothing is downloaded.
+
+Exporting to other formats, protection and redaction arrive in later segments.
 
 [`PROGRESS.md`](./PROGRESS.md) is the authoritative status file.
 
@@ -91,6 +95,7 @@ The Windows installer, file associations and "Open with" support arrive in Segme
 - [`docs/ANNOTATIONS.md`](./docs/ANNOTATIONS.md) — how comments are written into the PDF itself
 - [`docs/PAGE_ORGANIZATION.md`](./docs/PAGE_ORGANIZATION.md) — the page grid, and how pages leave a document
 - [`docs/FORMS.md`](./docs/FORMS.md) — filling a form in, making one, signing it, and flattening
+- [`docs/OCR_PIPELINE.md`](./docs/OCR_PIPELINE.md) — how a scan is read, and where each step runs
 - [`docs/CONVERSION_PIPELINE.md`](./docs/CONVERSION_PIPELINE.md) — how a file becomes a PDF, and how documents are combined
 - [`docs/SECURITY.md`](./docs/SECURITY.md) — the Electron security baseline PaperForge holds itself to
 - [`docs/DEPENDENCIES.md`](./docs/DEPENDENCIES.md) — why each dependency is here, and its license

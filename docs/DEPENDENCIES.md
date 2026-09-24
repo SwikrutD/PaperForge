@@ -69,3 +69,13 @@ tiny. The full audit reports findings in the Electron Forge packaging chain only
 `extract-zip`, reached through `@electron/get` and `@electron/packager`. Those run on the developer
 machine during download and packaging and are not shipped in the application. They are re-checked
 whenever Forge is upgraded; `npm audit fix --force` is not run, because it would downgrade Forge.
+
+## Local programs PaperForge can use
+
+Neither is bundled and neither is downloaded; PaperForge finds what is installed and says plainly
+when it is not there.
+
+| Program   | Licence    | What it is for                                                |
+| --------- | ---------- | ------------------------------------------------------------- |
+| qpdf      | Apache-2.0 | A second opinion on a file PaperForge has just written        |
+| Tesseract | Apache-2.0 | Reading the words on a scanned page, with local language data |

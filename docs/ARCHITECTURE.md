@@ -7,7 +7,7 @@ schema-validated contract between them.
 ┌────────────────────────── main process (Node) ───────────────────────────┐
 │ app lifecycle · window management · settings · logging · theme           │
 │ security policy (CSP, protocol, navigation) · IPC handlers               │
-│ later: qpdf / Tesseract / LibreOffice sidecars, filesystem, jobs         │
+│ qpdf and Tesseract sidecars, filesystem, jobs; LibreOffice later         │
 └───────────────▲──────────────────────────────────────────────────────────┘
                 │ typed IPC, validated both ways
 ┌───────────────┴─── preload (isolated world, sandboxed, CommonJS) ────────┐
@@ -268,6 +268,10 @@ shows what PaperForge showed. The renderer turns a gesture or a text selection i
 main process writes it through the same mutation engine every other change goes through, and the
 comments panel lists what the file contains — including annotations another application wrote.
 `docs/ANNOTATIONS.md` has the subtypes, the entries and the limits.
+
+Recognising text is the one job split across both processes: the window renders the page, because
+that is where PDF.js is, and the main process runs Tesseract, because that is the only place
+allowed to run a program at all. `docs/OCR_PIPELINE.md` has each step and where it happens.
 
 Forms are the same shape of work: fields are read whole, filled through their own types and drawn
 again where they changed, and the rules a field is held to are PaperForge's own entry rather than

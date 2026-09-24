@@ -442,3 +442,34 @@ Run in both light and dark themes:
       and undo puts the fields back until the file is saved.
 - [ ] Both toolbars and both panels are correct in light and dark, at 125% and 150% Windows
       scaling, and every control has a label.
+
+## Segment 12 — recognising text
+
+- [ ] With Tesseract installed, Recognize Text says which version was found, where it is, and which
+      languages are available.
+- [ ] With Tesseract missing, the dialog says so plainly and offers to be pointed at a copy; nothing
+      pretends to work.
+- [ ] Choosing another program, or another tessdata folder, is remembered and can be undone with
+      Use automatic.
+- [ ] A scanned page is read, and the words it holds can then be found with Ctrl+F, selected and
+      copied.
+- [ ] The page looks exactly as it did: the words are invisible and the picture is untouched.
+- [ ] Selecting a line of the recognised text follows the marks on the page rather than drifting
+      away from them.
+- [ ] All pages, this page and a page range each read what they say they will.
+- [ ] Progress says which page is being read, and the progress centre shows the same job.
+- [ ] Stopping a run keeps the pages already read and says so; running it again finishes the rest.
+- [ ] Reading a page a second time replaces the words rather than leaving two sets.
+- [ ] Turning off "Put the words into the document" reads the pages without changing the file, and
+      Save the text writes what was read.
+- [ ] "Clean the picture up first" changes what is read, never the document.
+- [ ] A page with nothing on it comes back empty and says so rather than failing.
+- [ ] What was read is in the file after saving, and is still there when it is reopened.
+- [ ] Searching a scan that has not been read offers Recognize Text rather than only explaining the
+      silence.
+- [ ] Settings → Text recognition shows the same status and keeps the default language and
+      resolution.
+- [ ] No network connection is needed at any point: with the machine offline, everything above
+      behaves the same.
+- [ ] The dialog is correct in light and dark, at 125% and 150% Windows scaling, and every control
+      has a label.

@@ -2,10 +2,10 @@
 
 ## Current status
 
-- Last completed segment: **11 — Forms and Fill & Sign**
-- Next segment: **12 — OCR**
+- Last completed segment: **12 — OCR**
+- Next segment: **13 — Conversion center**
 - Build status: `npm run package` succeeds; packaged app launches and closes cleanly on Windows 11 x64
-- Test status: 600 unit tests (51 files) and 119 Playwright end-to-end tests passing; typecheck, lint and format clean
+- Test status: 609 unit tests (52 files) and 126 Playwright end-to-end tests passing; typecheck, lint and format clean
 
 ## Completed segments
 
@@ -21,7 +21,7 @@
 - [x] 9 Edit PDF: content model and text editing
 - [x] 10 Edit PDF: images, links, layout content
 - [x] 11 Forms and Fill & Sign
-- [ ] 12 OCR
+- [x] 12 OCR
 - [ ] 13 Conversion center
 - [ ] 14 Protect, metadata, sanitize, attachments
 - [ ] 15 True redaction
@@ -456,6 +456,34 @@ each already carries, and writes a copy by default.
 | Renderer | `renderer/stores/{formStore,signatureStore}.ts`, `renderer/components/forms/**`                      |
 | Tests    | `tests/unit/shared/{forms,formRules}.test.ts`, `tests/e2e/{fillForm,signatures,prepareForm}.e2e.ts`  |
 
+## Segment 12 — what landed
+
+**The pipeline.** The window renders a page with PDF.js at the chosen resolution and hands the
+picture to the main process; the main process runs the local Tesseract binary against local
+language data and hands back the words with the boxes they were read from. Pages go one at a time,
+so a long document never has more than one picture in flight.
+
+**The words go on invisibly.** Each one is drawn in rendering mode 3 — which paints nothing — at
+the box it came from and stretched to that box's width, so selecting, searching and copying all
+work while the page still looks exactly like the scan it is. The layer is marked `/PFOcr`, so a
+page read again replaces its words rather than gathering a second set, and a page read to nothing
+loses the old ones.
+
+**Nothing is downloaded.** Not the binary, not the language data, not at any point. Tesseract is
+found where it was installed or where the reader points; language packs are folders on this
+computer, and the dialog says so.
+
+**Stopping is safe.** Cancelling stops before the next page and keeps every page already read, so
+running it again finishes the rest.
+
+| Area     | Files                                                                                      |
+| -------- | ------------------------------------------------------------------------------------------ |
+| Engine   | `src/pdf/ocr/{textLayer,apply}.ts`                                                         |
+| Main     | `main/services/tesseract/{tesseractService,tsv}.ts`, `main/ipc/handlers/ocrHandlers.ts`    |
+| Shared   | `src/shared/schemas/ocr.ts`, the `addRecognisedText` operation, the `ocr` settings section |
+| Renderer | `renderer/stores/ocrStore.ts`, `renderer/services/ocrRender.ts`, `renderer/components/ocr` |
+| Tests    | `tests/unit/shared/ocr.test.ts`, `tests/e2e/ocr.e2e.ts`, `tests/fixtures/scans.ts`         |
+
 ## Architecture decisions
 
 1. **Channel allowlist separate from schemas**, so the preload carries no validation library and
@@ -675,6 +703,22 @@ each already carries, and writes a copy by default.
 88. **A rewritten stamp keeps the appearance it already had** when PaperForge has no picture to hand
     for it; only the rectangle moves. Redrawing it would turn a signature into an empty box.
 
+89. **The window renders the page and the main process reads it.** PDF.js lives in the window and
+    only the main process may run a program, so the picture crosses between them — one page at a
+    time, as base64 in a validated payload.
+90. **Recognised words are drawn invisibly over the picture, not in place of it.** A scan that has
+    been read must still look like the scan it is.
+91. **Each word is placed and stretched to the box Tesseract read it from.** A selection then
+    follows the marks on the page rather than the font's own spacing.
+92. **The recognised layer is marked like PaperForge's other furniture.** Reading a page again
+    replaces the words rather than stacking them, and Remove can take them off.
+93. **Orientation detection is asked for only when the data for it is installed.** Asking Tesseract
+    for something it cannot do would only fail the run.
+94. **A cancelled run keeps the pages it finished.** Recognition is page by page, and losing an
+    hour's work to one click would be indefensible.
+95. **Tesseract is not bundled.** It is a separate Apache-2.0 program; PaperForge finds it, says
+    where it is, and says plainly when it is missing.
+
 ## Known limitations
 
 - The viewer is continuous scrolling only. Single page, two-page spread, cover page, the hand and
@@ -691,6 +735,12 @@ each already carries, and writes a copy by default.
 - Search highlights are placed from text-run geometry, so on a run with unusual per-glyph spacing a
   highlight can be a fraction of a character out. It never affects what is found, only what is
   drawn.
+- Recognised words are drawn with the standard fourteen fonts, which cover Latin-1: a language
+  whose script needs other characters is read but searchable only as far as that encoding reaches.
+- PaperForge does not deskew or despeckle a scan. The optional cleanup is greyscale and contrast,
+  and Tesseract's own orientation detection does the rest.
+- Confidence is reported, not acted on: every word read goes on the page, and the dialog says how
+  sure Tesseract was overall.
 - Certificate-based signing, and the validation of one, are out of scope for v1: PaperForge places
   a visual mark and says as much wherever a reader might wonder.
 - PaperForge runs no document JavaScript. A form that calculates with a script keeps it, untouched
@@ -789,7 +839,9 @@ each already carries, and writes a copy by default.
 - qpdf: optional. Saved files are checked with it when it is installed; Settings → Local tools
   reports what was found and can point at a different one. Encryption and repair follow in
   Segment 14.
-- Tesseract: not required yet — integrated in Segment 12
+- Tesseract: optional, and needed for Recognize Text. PaperForge looks in the usual Windows
+  locations and on the PATH; Settings → Text recognition says what was found and can point at
+  another copy or another tessdata folder. Nothing is downloaded.
 - LibreOffice: not required yet — optional, integrated in Segment 13
 
 Nothing is downloaded at runtime, then or now.
@@ -798,19 +850,19 @@ Nothing is downloaded at runtime, then or now.
 
 Run on Windows 11 x64, Node 24.19.0, npm 11.17.0:
 
-| Command                     | Result                                                                                                                              |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                                                      |
-| `npm run typecheck`         | Pass — four projects, no errors                                                                                                     |
-| `npm run lint`              | Pass — no errors, no warnings                                                                                                       |
-| `npm test`                  | Pass — 600 tests in 51 files                                                                                                        |
-| `npm run test:e2e`          | Pass — 119 Playwright tests against the built application                                                                           |
-| `npm run format:check`      | Pass — Prettier clean                                                                                                               |
-| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                                                           |
-| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                                                    |
-| Packaged launch/close smoke | Pass — window ready in ~400 ms, closes cleanly, and `%TEMP%/PaperForge/sessions` is empty afterwards                                |
-| Settings upgrade            | Pass — a settings file without the new `session` section is repaired in place                                                       |
-| Appearance                  | Checked by driving the real application: a form being filled in with a field selected, and the same form being made in Prepare Form |
+| Command                     | Result                                                                                               |
+| --------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                       |
+| `npm run typecheck`         | Pass — four projects, no errors                                                                      |
+| `npm run lint`              | Pass — no errors, no warnings                                                                        |
+| `npm test`                  | Pass — 609 tests in 52 files                                                                         |
+| `npm run test:e2e`          | Pass — 126 Playwright tests against the built application                                            |
+| `npm run format:check`      | Pass — Prettier clean                                                                                |
+| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                            |
+| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                     |
+| Packaged launch/close smoke | Pass — window ready in ~400 ms, closes cleanly, and `%TEMP%/PaperForge/sessions` is empty afterwards |
+| Settings upgrade            | Pass — a settings file without the new `session` section is repaired in place                        |
+| Appearance                  | Checked by driving the real application: Recognize Text before and after reading a scanned page      |
 
 ## Manual setup required
 
