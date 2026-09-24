@@ -151,6 +151,10 @@ export function describeOperation(operation: EditOperation): string {
       return operation.token === null ? 'Move image' : 'Replace image';
     case 'deleteImage':
       return 'Delete image';
+    case 'setFieldValues':
+      return operation.values.length === 1
+        ? `Fill ${operation.values[0]?.name ?? 'field'}`
+        : `Fill ${String(operation.values.length)} fields`;
     case 'setWatermark':
       return 'Watermark';
     case 'setBackground':

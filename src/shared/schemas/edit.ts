@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { linkRectSchema, linkTargetSchema } from './link';
+import { formValueChangeSchema } from './form';
 import {
   backgroundSchema,
   furnitureKindSchema,
@@ -255,6 +256,12 @@ export const removeFurnitureOperationSchema = z.strictObject({
   kinds: z.array(furnitureKindSchema).min(1),
 });
 
+/** Fills in one or more fields, as one undoable step. */
+export const setFieldValuesOperationSchema = z.strictObject({
+  kind: z.literal('setFieldValues'),
+  values: z.array(formValueChangeSchema).min(1).max(5000),
+});
+
 export const editOperationSchema = z.discriminatedUnion('kind', [
   rotatePagesOperationSchema,
   deletePagesOperationSchema,
@@ -278,6 +285,7 @@ export const editOperationSchema = z.discriminatedUnion('kind', [
   setBackgroundOperationSchema,
   setHeaderFooterOperationSchema,
   removeFurnitureOperationSchema,
+  setFieldValuesOperationSchema,
   addAnnotationsOperationSchema,
   updateAnnotationsOperationSchema,
   deleteAnnotationsOperationSchema,
