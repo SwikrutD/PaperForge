@@ -19,6 +19,7 @@ import { applyLinkOperation } from './links';
 import { applyFurnitureOperation } from './furniture';
 import { applyFormOperation } from '../forms/write';
 import { applyAuthoringOperation } from '../forms/author';
+import { applyOcrOperation } from '../ocr/apply';
 import type { DocumentFacts, MutationResult, PdfMutationEngine, StagedAsset } from './types';
 
 /**
@@ -94,16 +95,14 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
         if (applyLinkOperation(document, operation)) continue;
         if (await applyFormOperation(document, operation)) continue;
         if (await applyAuthoringOperation(document, operation)) continue;
-        if (
-          'pages' in operation &&
-          operation.pages !== null &&
-          (await applyFurnitureOperation(
+        if (await applyOcrOperation(document, operation)) continue;
+        if (isFurnitureOperation(operation)) {
+          await applyFurnitureOperation(
             document,
             operation,
             assets,
             normalizePages(operation.pages, pageContext.order.length),
-          ))
-        ) {
+          );
           continue;
         }
 
@@ -267,6 +266,21 @@ function mergeStyle(
     if (value !== undefined) Object.assign(merged, { [key]: value });
   }
   return merged;
+}
+
+/** The operations that put PaperForge's own furniture on a range of pages. */
+function isFurnitureOperation(
+  operation: EditOperation,
+): operation is Extract<
+  EditOperation,
+  { kind: 'setWatermark' | 'setBackground' | 'setHeaderFooter' | 'removeFurniture' }
+> {
+  return (
+    operation.kind === 'setWatermark' ||
+    operation.kind === 'setBackground' ||
+    operation.kind === 'setHeaderFooter' ||
+    operation.kind === 'removeFurniture'
+  );
 }
 
 function pagesFor(order: readonly PDFPage[], pages: readonly number[]): PDFPage[] {

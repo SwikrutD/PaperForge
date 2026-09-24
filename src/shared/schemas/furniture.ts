@@ -9,7 +9,14 @@ import { textStyleSchema } from './text';
  * itself draws.
  */
 
-export const furnitureKindSchema = z.enum(['watermark', 'background', 'header', 'footer']);
+export const furnitureKindSchema = z.enum([
+  'watermark',
+  'background',
+  'header',
+  'footer',
+  /** The words recognised from a scan. */
+  'ocr',
+]);
 export type FurnitureKindName = z.infer<typeof furnitureKindSchema>;
 
 export const furniturePositionSchema = z.strictObject({

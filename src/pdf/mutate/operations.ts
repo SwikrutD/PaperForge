@@ -151,6 +151,10 @@ export function describeOperation(operation: EditOperation): string {
       return operation.token === null ? 'Move image' : 'Replace image';
     case 'deleteImage':
       return 'Delete image';
+    case 'addRecognisedText':
+      return operation.pages.length === 1
+        ? `Recognise text on page ${String(operation.pages[0]?.page ?? 1)}`
+        : `Recognise text on ${String(operation.pages.length)} pages`;
     case 'addFormField':
       return `Add ${operation.name}`;
     case 'updateFormField':

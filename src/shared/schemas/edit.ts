@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { linkRectSchema, linkTargetSchema } from './link';
+import { ocrPageResultSchema } from './ocr';
 import { formFieldPropertiesSchema, formFieldTypeSchema, formValueChangeSchema } from './form';
 import {
   backgroundSchema,
@@ -309,6 +310,15 @@ export const deleteFormFieldOperationSchema = z.strictObject({
   name: z.string().min(1).max(500),
 });
 
+/**
+ * Puts the words read from a scan onto the pages they were read from, as an
+ * invisible layer over the picture that is already there.
+ */
+export const addRecognisedTextOperationSchema = z.strictObject({
+  kind: z.literal('addRecognisedText'),
+  pages: z.array(ocrPageResultSchema).min(1).max(5000),
+});
+
 export const editOperationSchema = z.discriminatedUnion('kind', [
   rotatePagesOperationSchema,
   deletePagesOperationSchema,
@@ -338,6 +348,7 @@ export const editOperationSchema = z.discriminatedUnion('kind', [
   addFormFieldOperationSchema,
   updateFormFieldOperationSchema,
   deleteFormFieldOperationSchema,
+  addRecognisedTextOperationSchema,
   addAnnotationsOperationSchema,
   updateAnnotationsOperationSchema,
   deleteAnnotationsOperationSchema,

@@ -13,7 +13,7 @@ import { nameOf } from './values';
  * exactly as it was.
  */
 
-export const FURNITURE_KINDS = ['watermark', 'background', 'header', 'footer'] as const;
+export const FURNITURE_KINDS = ['watermark', 'background', 'header', 'footer', 'ocr'] as const;
 export type FurnitureKind = (typeof FURNITURE_KINDS)[number];
 
 const TAGS: Record<FurnitureKind, string> = {
@@ -21,6 +21,8 @@ const TAGS: Record<FurnitureKind, string> = {
   background: 'PFBackground',
   header: 'PFHeader',
   footer: 'PFFooter',
+  /** The words read from a scan, drawn invisibly over the picture. */
+  ocr: 'PFOcr',
 };
 
 export function tagFor(kind: FurnitureKind): string {
