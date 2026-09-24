@@ -185,6 +185,8 @@ export const placeImageOperationSchema = z.strictObject({
   imageId: z.string().min(1).max(64),
   placement: imagePlacementSchema,
   crop: imageCropSchema.nullable(),
+  /** How see-through to draw it, where 1 is solid. */
+  opacity: z.number().min(0.05).max(1),
   /** A staged image to draw in its place, or null to keep the one there. */
   token: z.string().min(1).max(200).nullable(),
 });
@@ -201,6 +203,7 @@ export const addImageOperationSchema = z.strictObject({
   page: z.number().int().min(1).max(100_000),
   token: z.string().min(1).max(200),
   placement: imagePlacementSchema,
+  opacity: z.number().min(0.05).max(1),
 });
 
 /** Adds a link over part of a page. */

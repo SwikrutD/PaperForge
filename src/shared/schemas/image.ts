@@ -21,6 +21,8 @@ export const pageImageSchema = z.strictObject({
   pixelHeight: z.number().int().min(0),
   /** The part of the image that shows, when the page crops it. */
   crop: imageCropSchema.nullable(),
+  /** How see-through the page draws it, where 1 is solid. */
+  opacity: z.number().min(0).max(1),
   /** True when the image carries its own transparency. */
   hasAlpha: z.boolean(),
   /** True when PaperForge added this image rather than the document. */

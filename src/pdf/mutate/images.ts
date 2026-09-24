@@ -5,7 +5,7 @@ import { appendImage, moveImage, removeImage } from '@pdf/content/editImage';
 import { placementMatrix, type ImagePlacement } from '@pdf/content/images';
 import { readPageContent, type PageContent } from '@pdf/content/pageContent';
 import type { StagedAsset } from './types';
-import { embedImage, readXObjects } from './imageResources';
+import { embedImage, ensureAlphaResource, readAlphas, readXObjects } from './imageResources';
 import { setPageContent } from './text';
 
 /**
@@ -27,7 +27,10 @@ export function findImage(content: PageContent, imageId: string): ImagePlacement
 
 /** Reads a page with its images, which needs pdf-lib to see the resources. */
 export function readPageWithImages(document: PDFDocument, pageIndex: number): Promise<PageContent> {
-  return readPageContent(document, pageIndex, readXObjects);
+  return readPageContent(document, pageIndex, (target, resources) => ({
+    images: readXObjects(target, resources),
+    alphas: readAlphas(target, resources),
+  }));
 }
 
 /** Applies an image operation; returns false when it is not one. */
@@ -65,10 +68,12 @@ export async function applyImageOperation(
     }
 
     const embedded = await embedImage(document, page, asset.bytes, asset.format);
+    const alpha =
+      operation.opacity >= 1 ? undefined : ensureAlphaResource(document, page, operation.opacity);
     setPageContent(
       document,
       pageIndex,
-      appendImage(content.bytes, placementMatrix(operation.placement), embedded.name),
+      appendImage(content.bytes, placementMatrix(operation.placement), embedded.name, alpha),
     );
     return true;
   }
@@ -103,6 +108,9 @@ export async function applyImageOperation(
     matrix: placementMatrix(operation.placement),
     crop: operation.crop,
     ...(resourceName === undefined ? {} : { resourceName }),
+    ...(operation.opacity >= 1
+      ? {}
+      : { alphaName: ensureAlphaResource(document, page, operation.opacity) }),
   });
 
   if (moved === null) {

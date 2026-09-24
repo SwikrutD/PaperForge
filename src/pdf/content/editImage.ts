@@ -26,6 +26,8 @@ export interface ImageEdit {
   crop?: { x: number; y: number; width: number; height: number } | null;
   /** A different image to draw in its place, by resource name. */
   resourceName?: string;
+  /** The transparency state to draw with, by resource name. */
+  alphaName?: string;
 }
 
 /** Writes a matrix the way a content stream spells one. */
@@ -54,11 +56,12 @@ export function moveImage(
   const local = multiply(edit.matrix, undo);
   const name = edit.resourceName ?? placement.resourceName;
   const clip = edit.crop == null ? '' : `${cropRect(edit.crop)} `;
+  const alpha = edit.alphaName === undefined ? '' : `/${edit.alphaName} gs `;
 
   return spliceBytes(
     content,
     placement.operationRange,
-    `q ${formatMatrix(local)} cm ${clip}/${name} Do Q`,
+    `q ${alpha}${formatMatrix(local)} cm ${clip}/${name} Do Q`,
   );
 }
 
@@ -83,8 +86,14 @@ export function removeImage(content: Uint8Array, placement: ImagePlacement): Uin
 }
 
 /** Draws an image on a page, over whatever is already there. */
-export function appendImage(content: Uint8Array, matrix: Matrix, resourceName: string): Uint8Array {
-  const block = `\nq ${formatMatrix(matrix)} cm /${resourceName} Do Q\n`;
+export function appendImage(
+  content: Uint8Array,
+  matrix: Matrix,
+  resourceName: string,
+  alphaName?: string,
+): Uint8Array {
+  const alpha = alphaName === undefined ? '' : `/${alphaName} gs `;
+  const block = `\nq ${alpha}${formatMatrix(matrix)} cm /${resourceName} Do Q\n`;
   return spliceBytes(content, { start: content.length, end: content.length }, block);
 }
 

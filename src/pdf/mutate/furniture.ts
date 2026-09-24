@@ -1,4 +1,4 @@
-import { PDFDict, PDFName, type PDFDocument, type PDFPage } from 'pdf-lib';
+import type { PDFDocument, PDFPage } from 'pdf-lib';
 import { AppError } from '@shared/errors/appError';
 import type { EditOperation } from '@shared/schemas/edit';
 import type {
@@ -18,7 +18,7 @@ import {
 import { contentBytes } from '@pdf/content/pageContent';
 import { formatNumber } from '@pdf/content/values';
 import { toWinAnsi } from '@pdf/text/layout';
-import { embedImage, ownResources } from './imageResources';
+import { embedImage, ensureAlphaResource } from './imageResources';
 import { setPageContent } from './text';
 import { ensureFontResource, standardFont } from './textResources';
 import type { StagedAsset } from './types';
@@ -109,35 +109,13 @@ function write(document: PDFDocument, target: PageWork, bytes: Uint8Array): void
   setPageContent(document, target.index, bytes);
 }
 
-/** The transparency state a watermark or background is drawn with. */
-function opacityResource(document: PDFDocument, page: PDFPage, opacity: number): string {
-  const resources = ownResources(document, page);
-  const existing = document.context.lookupMaybe(resources.get(PDFName.of('ExtGState')), PDFDict);
-  const states =
-    existing ??
-    (() => {
-      const created = document.context.obj({});
-      resources.set(PDFName.of('ExtGState'), created);
-      return created;
-    })();
-
-  const name = `PFAlpha${String(Math.round(opacity * 100))}`;
-  if (states.get(PDFName.of(name)) === undefined) {
-    states.set(
-      PDFName.of(name),
-      document.context.obj({ Type: 'ExtGState', ca: opacity, CA: opacity }),
-    );
-  }
-  return name;
-}
-
 async function drawWatermark(
   document: PDFDocument,
   target: PageWork,
   watermark: WatermarkSettings,
   assets: ReadonlyMap<string, StagedAsset>,
 ): Promise<void> {
-  const alpha = opacityResource(document, target.page, watermark.opacity);
+  const alpha = ensureAlphaResource(document, target.page, watermark.opacity);
   const body =
     watermark.source.kind === 'text'
       ? await watermarkText(
@@ -242,7 +220,7 @@ async function drawBackground(
   background: BackgroundSettings,
   assets: ReadonlyMap<string, StagedAsset>,
 ): Promise<void> {
-  const alpha = opacityResource(document, target.page, background.opacity);
+  const alpha = ensureAlphaResource(document, target.page, background.opacity);
   const { width, height } = target.size;
   const parts: string[] = [`/${alpha} gs`];
 

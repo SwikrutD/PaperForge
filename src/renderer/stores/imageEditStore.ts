@@ -39,6 +39,8 @@ export interface ImageEditStore {
 
   /** Writes a new placement for an image, keeping whatever crop it has. */
   place: (page: number, id: string, placement: ImagePlacementInput) => Promise<void>;
+  /** Writes how see-through an image is, keeping everything else. */
+  setOpacity: (page: number, id: string, opacity: number) => Promise<void>;
   /** Writes a new crop for an image, keeping where it sits. */
   crop: (
     page: number,
@@ -121,11 +123,35 @@ export const useImageEditStore = create<ImageEditStore>((set, get) => ({
           imageId: id,
           placement,
           crop: image?.crop ?? null,
+          opacity: image?.opacity ?? 1,
           token: null,
         },
       ],
     });
     await reselect(sessionId, page, placement);
+  },
+
+  setOpacity: async (page, id, opacity) => {
+    const sessionId = useDocumentStore.getState().activeId;
+    if (sessionId === null) return;
+    const image = imageOf(get(), sessionId, page, id);
+    if (image === undefined) return;
+
+    await run(sessionId, {
+      label: 'Image transparency',
+      operations: [
+        {
+          kind: 'placeImage',
+          page,
+          imageId: id,
+          placement: image.placement,
+          crop: image.crop,
+          opacity,
+          token: null,
+        },
+      ],
+    });
+    await reselect(sessionId, page, image.placement);
   },
 
   crop: async (page, id, crop) => {
@@ -143,6 +169,7 @@ export const useImageEditStore = create<ImageEditStore>((set, get) => ({
           imageId: id,
           placement: image.placement,
           crop,
+          opacity: image.opacity,
           token: null,
         },
       ],
@@ -174,6 +201,7 @@ export const useImageEditStore = create<ImageEditStore>((set, get) => ({
           imageId: id,
           placement: image.placement,
           crop: image.crop,
+          opacity: image.opacity,
           token: staged.token,
         },
       ],
@@ -244,7 +272,7 @@ export const useImageEditStore = create<ImageEditStore>((set, get) => ({
 
     await run(sessionId, {
       label: 'Add image',
-      operations: [{ kind: 'addImage', page, token: pending.token, placement }],
+      operations: [{ kind: 'addImage', page, token: pending.token, placement, opacity: 1 }],
     });
     await reselect(sessionId, page, placement);
   },

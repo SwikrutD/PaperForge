@@ -37,7 +37,7 @@ export interface PageContent {
 export type XObjectReader = (
   document: PDFDocument,
   resources: PDFDict | undefined,
-) => Map<string, ImageFacts>;
+) => { images: Map<string, ImageFacts>; alphas: Map<string, number> };
 
 export async function readPageContent(
   document: PDFDocument,
@@ -51,8 +51,10 @@ export async function readPageContent(
   const fonts = await readPageFonts(document, resources);
   const runs = extractTextRuns(operations, { fonts: (name) => fonts.get(name) });
 
-  const xobjects = readXObjects?.(document, resources) ?? new Map<string, ImageFacts>();
-  const images = extractImages(operations, (name) => xobjects.get(name));
+  const resourcesRead = readXObjects?.(document, resources);
+  const images = extractImages(operations, (name) => resourcesRead?.images.get(name), {
+    alphas: (name) => resourcesRead?.alphas.get(name),
+  });
 
   return { pageIndex, bytes, operations, fonts, runs, images };
 }

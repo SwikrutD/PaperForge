@@ -94,7 +94,7 @@ describe('moving an image', () => {
     const id = imageIdOf(before.images[0]!);
 
     const result = await engine.apply(original, [
-      { kind: 'placeImage', page: 1, imageId: id, placement, crop: null, token: null },
+      { kind: 'placeImage', page: 1, imageId: id, placement, crop: null, opacity: 1, token: null },
     ]);
     const after = await pageOf(result.bytes);
 
@@ -111,7 +111,7 @@ describe('moving an image', () => {
     const id = imageIdOf(before.images[0]!);
 
     const result = await engine.apply(original, [
-      { kind: 'placeImage', page: 1, imageId: id, placement, crop: null, token: null },
+      { kind: 'placeImage', page: 1, imageId: id, placement, crop: null, opacity: 1, token: null },
     ]);
     const after = await pageOf(result.bytes);
 
@@ -131,6 +131,7 @@ describe('moving an image', () => {
         imageId: id,
         placement: { ...placement, rotation: 90 },
         crop: null,
+        opacity: 1,
         token: null,
       },
     ]);
@@ -148,6 +149,7 @@ describe('moving an image', () => {
         imageId: id,
         placement: { ...placement, flipX: true },
         crop: null,
+        opacity: 1,
         token: null,
       },
     ]);
@@ -165,6 +167,7 @@ describe('moving an image', () => {
         imageId: id,
         placement: { ...placement, x: 100, y: 500, width: 200, height: 100 },
         crop: { x: 0.25, y: 0.1, width: 0.5, height: 0.8 },
+        opacity: 1,
         token: null,
       },
     ]);
@@ -203,6 +206,7 @@ describe('moving an image', () => {
         imageId: id,
         placement,
         crop: { x: 0.25, y: 0, width: 0.5, height: 1 },
+        opacity: 1,
         token: null,
       },
     ]);
@@ -226,9 +230,46 @@ describe('moving an image', () => {
 
     await expect(
       engine.apply(bytes, [
-        { kind: 'placeImage', page: 1, imageId: id, placement, crop: null, token: null },
+        {
+          kind: 'placeImage',
+          page: 1,
+          imageId: id,
+          placement,
+          crop: null,
+          opacity: 1,
+          token: null,
+        },
       ]),
     ).rejects.toThrow(/cannot undo/i);
+  });
+});
+
+describe('how see-through an image is', () => {
+  it('draws it see-through, and reads back how see-through it is', async () => {
+    const original = withImage();
+    const id = imageIdOf((await pageOf(original)).images[0]!);
+
+    const result = await engine.apply(original, [
+      {
+        kind: 'placeImage',
+        page: 1,
+        imageId: id,
+        placement,
+        crop: null,
+        opacity: 0.4,
+        token: null,
+      },
+    ]);
+
+    const image = (await pageOf(result.bytes)).images[0];
+    expect(image?.opacity).toBeCloseTo(0.4, 4);
+    expect(new TextDecoder('latin1').decode((await pageOf(result.bytes)).bytes)).toContain(
+      '/PFAlpha40 gs',
+    );
+  });
+
+  it('says a solid image is solid', async () => {
+    expect((await pageOf(withImage())).images[0]?.opacity).toBe(1);
   });
 });
 
@@ -254,6 +295,7 @@ describe('replacing and removing', () => {
             flipY: false,
           },
           crop: null,
+          opacity: 1,
           token: 'token',
         },
       ],
@@ -291,7 +333,7 @@ describe('adding an image', () => {
 
     const result = await engine.apply(
       original,
-      [{ kind: 'addImage', page: 1, token: 'token', placement }],
+      [{ kind: 'addImage', page: 1, token: 'token', placement, opacity: 1 }],
       staged,
     );
 
@@ -307,7 +349,7 @@ describe('adding an image', () => {
     for (let round = 0; round < 3; round += 1) {
       const result = await engine.apply(
         bytes,
-        [{ kind: 'addImage', page: 1, token: 'token', placement }],
+        [{ kind: 'addImage', page: 1, token: 'token', placement, opacity: 1 }],
         staged,
       );
       bytes = result.bytes;

@@ -130,6 +130,7 @@ function describeImage(placement: ImagePlacement): PageImageModel {
     resourceName: placement.resourceName,
     placement: placementOf(placement.matrix),
     crop: placement.crop,
+    opacity: placement.opacity,
     pixelWidth: Math.round(placement.facts.width),
     pixelHeight: Math.round(placement.facts.height),
     hasAlpha: placement.facts.hasAlpha,

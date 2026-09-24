@@ -23,6 +23,9 @@ export interface ImageFacts {
 
 export type XObjectLookup = (name: string) => ImageFacts | undefined;
 
+/** How see-through a named transparency state makes what is drawn with it. */
+export type AlphaLookup = (name: string) => number | undefined;
+
 export interface ImagePlacement {
   /** Index of the `Do` operation in the parsed stream. */
   operationIndex: number;
@@ -46,6 +49,8 @@ export interface ImagePlacement {
    * it to less than all of it. Null means all of it shows.
    */
   crop: { x: number; y: number; width: number; height: number } | null;
+  /** How see-through the page draws it, where 1 is solid. */
+  opacity: number;
   facts: ImageFacts;
 }
 
@@ -53,7 +58,7 @@ export interface ImagePlacement {
 export function extractImages(
   operations: readonly ContentOperation[],
   lookup: XObjectLookup,
-  ctm?: Matrix,
+  options: { ctm?: Matrix; alphas?: AlphaLookup } = {},
 ): ImagePlacement[] {
   const images: ImagePlacement[] = [];
   /**
@@ -63,15 +68,25 @@ export function extractImages(
    */
   let rect: Rect | null = null;
   let clip: Rect | null = null;
+  let opacity = 1;
 
   walkContent(operations, {
-    ...(ctm === undefined ? {} : { ctm }),
+    ...(options.ctm === undefined ? {} : { ctm: options.ctm }),
     onOperation: (context) => {
       const { operation, state } = context;
 
       if (operation.operator === 'q' || operation.operator === 'Q') {
         rect = null;
         clip = null;
+        opacity = 1;
+        return;
+      }
+      if (operation.operator === 'gs') {
+        // Opacity is not an operand of the drawing: it is set in the graphics
+        // state, which the page's resources name.
+        const name = nameOf(operation.operands[0]);
+        const alpha = name === null ? undefined : options.alphas?.(name);
+        if (alpha !== undefined) opacity = alpha;
         return;
       }
       if (operation.operator === 're') {
@@ -104,10 +119,12 @@ export function extractImages(
         flippedX: state.ctm.a * state.ctm.d - state.ctm.b * state.ctm.c < 0,
         flippedY: state.ctm.d < 0 && state.ctm.a >= 0,
         crop: cropOf(clip, state.ctm),
+        opacity,
         facts,
       });
       clip = null;
       rect = null;
+      opacity = 1;
     },
   });
 

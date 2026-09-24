@@ -95,7 +95,7 @@ export function ImageProperties(): ReactElement {
         </div>
         <div className={styles.row}>
           <dt className={styles.label}>Transparency</dt>
-          <dd className={styles.value}>{image.hasAlpha ? 'Yes' : 'No'}</dd>
+          <dd className={styles.value}>{image.hasAlpha ? 'Its own' : 'None'}</dd>
         </div>
         {image.added && (
           <div className={styles.row}>
@@ -141,6 +141,26 @@ export function ImageProperties(): ReactElement {
               }
             />
           </span>
+        </div>
+      </section>
+
+      <section className={styles.group}>
+        <div className={styles.row}>
+          <label className={styles.label} htmlFor="image-opacity">
+            Opacity
+          </label>
+          <input
+            id="image-opacity"
+            type="range"
+            min={5}
+            max={100}
+            value={Math.round(image.opacity * 100)}
+            disabled={busy}
+            onChange={(event) =>
+              void store().setOpacity(selected.page, selected.id, Number(event.target.value) / 100)
+            }
+          />
+          <span className={styles.value}>{`${String(Math.round(image.opacity * 100))}%`}</span>
         </div>
       </section>
 

@@ -96,6 +96,54 @@ export async function embedImage(
   return { name, width: embedded.width, height: embedded.height };
 }
 
+/** How see-through each of the page's transparency states makes its drawing. */
+export function readAlphas(
+  document: PDFDocument,
+  resources: PDFDict | undefined,
+): Map<string, number> {
+  const found = new Map<string, number>();
+  const states = resources?.lookup(PDFName.of('ExtGState'));
+  if (!(states instanceof PDFDict)) return found;
+
+  for (const [key, value] of states.entries()) {
+    const state = document.context.lookup(value);
+    if (!(state instanceof PDFDict)) continue;
+    const alpha = state.lookup(PDFName.of('ca'));
+    if (alpha instanceof PDFNumber) found.set(key.decodeText(), alpha.asNumber());
+  }
+  return found;
+}
+
+/**
+ * A transparency state for an opacity, made once per page.
+ *
+ * PDF has no opacity on a drawing operator: it is set in the graphics state,
+ * which lives in the page's resources under a name.
+ */
+export function ensureAlphaResource(document: PDFDocument, page: PDFPage, opacity: number): string {
+  const resources = ownResources(document, page);
+  const existing = document.context.lookupMaybe(resources.get(PDFName.of('ExtGState')), PDFDict);
+  const states =
+    existing ??
+    (() => {
+      const created = document.context.obj({});
+      resources.set(PDFName.of('ExtGState'), created);
+      return created;
+    })();
+
+  const name = `${ADDED_ALPHA_PREFIX}${String(Math.round(opacity * 100))}`;
+  if (states.get(PDFName.of(name)) === undefined) {
+    states.set(
+      PDFName.of(name),
+      document.context.obj({ Type: 'ExtGState', ca: opacity, CA: opacity }),
+    );
+  }
+  return name;
+}
+
+/** Names a transparency state PaperForge added. */
+export const ADDED_ALPHA_PREFIX = 'PFAlpha';
+
 /** True when a resource name is one PaperForge gave an image it added. */
 export function isAddedImage(resourceName: string): boolean {
   return resourceName.startsWith(ADDED_IMAGE_PREFIX);
