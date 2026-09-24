@@ -18,6 +18,7 @@ import { createHtmlProvider } from './services/conversion/htmlProvider';
 import { ConversionRegistry } from '@conversion/models/provider';
 import { imageProvider, pdfProvider, textProvider } from '@conversion/providers/localProviders';
 import { StagedAssets } from './services/documents/stagedAssets';
+import { SignatureLibrary } from './services/signatures/signatureLibrary';
 import { QpdfService } from './services/qpdf/qpdfService';
 import { PdfLibMutationEngine } from '@pdf/mutate/pdfLibEngine';
 import { createLogger, parseLogLevel, type Logger } from './services/logging/logger';
@@ -92,6 +93,7 @@ async function bootstrap(): Promise<void> {
     configuredPath: settings.get().tools.qpdfPath,
   });
   const stagedAssets = new StagedAssets();
+  const signatures = new SignatureLibrary(app.getPath('userData'), logger);
   const engine = new PdfLibMutationEngine();
   const pageExport = new PageExport({ engine, qpdf, logger });
   // Everything a new document can be made from. The web-page provider needs
@@ -163,6 +165,7 @@ async function bootstrap(): Promise<void> {
     editor,
     qpdf,
     stagedAssets,
+    signatures,
     pageExport,
     engine,
     library,

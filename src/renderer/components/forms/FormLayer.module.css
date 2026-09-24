@@ -1,7 +1,22 @@
+/*
+ * The layer covers the page but takes no pointer events of its own: a click
+ * away from a field belongs to whatever is underneath, which is how a
+ * signature is placed and picked up while the fields stay usable.
+ */
 .layer {
   position: absolute;
   inset: 0;
-  z-index: 3;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.widget {
+  pointer-events: auto;
+}
+
+/* While a mark is being placed, the fields are not the thing being pointed at. */
+.passive .widget {
+  pointer-events: none;
 }
 
 .widget {

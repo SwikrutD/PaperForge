@@ -15,6 +15,11 @@ interface FormLayerProps {
   valueOf: (field: FormFieldModel) => FormValue | null;
   selected: string | null;
   highlight: boolean;
+  /**
+   * False while a mark is being placed or drawn: the fields then let the
+   * pointer through, so a signature can be put down over one.
+   */
+  interactive: boolean;
   onSelect: (name: string) => void;
   onDraft: (name: string, value: FormValue) => void;
   /** Writes the value: leaving a field, ticking a box, choosing an option. */
@@ -40,6 +45,7 @@ export function FormLayer({
   valueOf,
   selected,
   highlight,
+  interactive,
   onSelect,
   onDraft,
   onCommit,
@@ -55,7 +61,10 @@ export function FormLayer({
   };
 
   return (
-    <div className={styles.layer} data-form-layer="filling">
+    <div
+      className={cx(styles.layer, !interactive && styles.passive)}
+      data-form-layer={interactive ? 'filling' : 'passive'}
+    >
       {widgets.map(({ field, widgetIndex }) => {
         const widget = field.widgets[widgetIndex];
         if (widget === undefined) return null;

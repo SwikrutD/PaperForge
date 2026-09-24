@@ -68,6 +68,30 @@ export class StagedAssets {
     return { kind: 'pdf', token, fileName: path.basename(filePath), pageCount };
   }
 
+  /**
+   * Stages a picture PaperForge already holds, such as a signature the window
+   * has just drawn. The bytes are checked like any other image.
+   */
+  stageImageBytes(sessionId: string, bytes: Uint8Array, fileName: string): StampImage {
+    const measured = measureImage(bytes);
+    if (measured === null || bytes.length > MAX_IMAGE_BYTES) {
+      throw new AppError('internal/unexpected', {
+        message: 'That picture could not be used.',
+        details: measured === null ? 'not a PNG or JPEG' : 'too large',
+      });
+    }
+
+    const token = this.keep(sessionId, {
+      kind: 'image',
+      bytes,
+      format: measured.format,
+      width: measured.width,
+      height: measured.height,
+    });
+
+    return { token, fileName, ...placementSize(measured.width, measured.height) };
+  }
+
   /** Stages bytes PaperForge already has, such as another open document. */
   stageBytes(sessionId: string, bytes: Uint8Array, pageCount: number): string {
     return this.keep(sessionId, { kind: 'pdf', bytes, pageCount });

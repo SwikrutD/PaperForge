@@ -35,6 +35,8 @@ interface AnnotationStore {
   /** Style new annotations are created with, and what the properties panel edits. */
   style: AnnotationStyle;
   stampLabel: BuiltInStamp;
+  /** Text a new text box starts with, such as today's date. */
+  pendingText: string | null;
   /** Annotations of the active document, as the file records them. */
   annotations: Annotation[];
   /** Which document and revision the list came from. */
@@ -53,6 +55,8 @@ interface AnnotationStore {
   setSort: (sort: CommentSort) => void;
   setFilter: (filter: Partial<CommentFilter>) => void;
   setDraft: (draft: AnnotationInput | null) => void;
+  /** Text a new box starts with, such as today's date. */
+  setPendingText: (text: string | null) => void;
 
   /** Reads the annotations of a document revision, once. */
   load: (sessionId: string, revision: number) => Promise<void>;
@@ -90,6 +94,7 @@ export const useAnnotationStore = create<AnnotationStore>((set, get) => ({
   tool: 'select',
   style: DEFAULT_ANNOTATION_STYLE,
   stampLabel: 'Approved',
+  pendingText: null,
   annotations: [],
   loadedFor: null,
   loading: false,
@@ -105,6 +110,7 @@ export const useAnnotationStore = create<AnnotationStore>((set, get) => ({
   setSort: (sort) => set({ sort }),
   setFilter: (filter) => set((state) => ({ filter: { ...state.filter, ...filter } })),
   setDraft: (draft) => set({ draft }),
+  setPendingText: (pendingText) => set({ pendingText }),
 
   load: async (sessionId, revision) => {
     const loaded = get().loadedFor;

@@ -7,6 +7,7 @@ import type { DocumentEditor } from '../services/documents/documentEditor';
 import type { DocumentService } from '../services/documents/documentService';
 import type { QpdfService } from '../services/qpdf/qpdfService';
 import type { StagedAssets } from '../services/documents/stagedAssets';
+import type { SignatureLibrary } from '../services/signatures/signatureLibrary';
 import type { RecentFilesStore } from '../services/recentFiles/recentFilesStore';
 import type { SessionWorkspaces } from '../services/recovery/recoveryJournal';
 import type { SettingsStore } from '../services/settings/settingsStore';
@@ -24,6 +25,7 @@ import { registerTextHandlers } from './handlers/textHandlers';
 import { registerImageHandlers } from './handlers/imageHandlers';
 import { registerLinkHandlers } from './handlers/linkHandlers';
 import { registerFormHandlers } from './handlers/formHandlers';
+import { registerSignatureHandlers } from './handlers/signatureHandlers';
 import { registerFileHandlers } from './handlers/fileHandlers';
 import { createIpcRegistrar } from './registry';
 
@@ -34,6 +36,7 @@ export interface IpcDependencies {
   editor: DocumentEditor;
   qpdf: QpdfService;
   stagedAssets: StagedAssets;
+  signatures: SignatureLibrary;
   pageExport: PageExport;
   engine: PdfMutationEngine;
   library: SourceLibrary;
@@ -124,6 +127,11 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
   registerLinkHandlers(registerInvoke, { editor: deps.editor });
 
   registerFormHandlers(registerInvoke, { editor: deps.editor });
+
+  registerSignatureHandlers(registerInvoke, {
+    signatures: deps.signatures,
+    stagedAssets: deps.stagedAssets,
+  });
 
   registerCreationHandlers(registerInvoke, {
     library: deps.library,

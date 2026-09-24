@@ -1,11 +1,23 @@
 import type { ReactElement } from 'react';
-import { Check, Eraser, Highlighter, Redo2, Save, Signature, Undo2 } from 'lucide-react';
+import {
+  CalendarDays,
+  Check,
+  Eraser,
+  Highlighter,
+  PenTool,
+  Redo2,
+  Save,
+  Signature,
+  Undo2,
+} from 'lucide-react';
 import { Button } from '../controls/Button';
 import { CommandIconButton } from '../controls/CommandIconButton';
 import { IconButton } from '../controls/IconButton';
 import { useDocumentStore } from '../../stores/documentStore';
 import { formFieldsFor, missingRequired, useFormStore } from '../../stores/formStore';
 import { useUiStore } from '../../stores/uiStore';
+import { useSignatureStore } from '../../stores/signatureStore';
+import { useAnnotationStore } from '../../stores/annotationStore';
 import styles from './FillSignToolbar.module.css';
 
 /**
@@ -23,6 +35,7 @@ export function FillSignToolbar({ disabled }: { disabled: boolean }): ReactEleme
   const setHighlight = useFormStore((store) => store.setHighlight);
   const setActive = useFormStore((store) => store.setActive);
 
+  const staged = useSignatureStore((store) => store.staged);
   const model = sessionId === null ? undefined : forms.get(sessionId)?.model;
   const fields = formFieldsFor(forms, sessionId);
   const missing = missingRequired(fields);
@@ -59,12 +72,41 @@ export function FillSignToolbar({ disabled }: { disabled: boolean }): ReactEleme
         }
       />
 
+      <span className={styles.divider} aria-hidden="true" />
+
+      <IconButton
+        icon={Signature}
+        label="Signature"
+        tooltip="Draw, type or bring in a signature"
+        disabled={disabled || busy}
+        onClick={() => useSignatureStore.getState().openDialog('signature')}
+      />
+      <IconButton
+        icon={PenTool}
+        label="Initials"
+        tooltip="Draw, type or bring in your initials"
+        disabled={disabled || busy}
+        onClick={() => useSignatureStore.getState().openDialog('initials')}
+      />
+      <IconButton
+        icon={CalendarDays}
+        label="Date"
+        tooltip="Put today's date on the page: drag a box for it"
+        disabled={disabled || busy}
+        onClick={() => {
+          useAnnotationStore.getState().setPendingText(new Date().toLocaleDateString());
+          useAnnotationStore.getState().setTool('freeText');
+        }}
+      />
+
       <p className={styles.hint} aria-live="polite">
-        {fields.length === 0
-          ? 'This document carries no form fields.'
-          : missing.length > 0
-            ? `${String(missing.length)} required field${missing.length === 1 ? '' : 's'} still to fill in.`
-            : `${String(fields.length)} field${fields.length === 1 ? '' : 's'}; nothing required is missing.`}
+        {staged !== null
+          ? 'Click the page where the mark should go.'
+          : fields.length === 0
+            ? 'This document carries no form fields. A signature can still be placed.'
+            : missing.length > 0
+              ? `${String(missing.length)} required field${missing.length === 1 ? '' : 's'} still to fill in.`
+              : `${String(fields.length)} field${fields.length === 1 ? '' : 's'}; nothing required is missing.`}
         {model?.hasDocumentScript === true
           ? ' This form carries JavaScript, which PaperForge does not run.'
           : ''}

@@ -32,6 +32,7 @@ import { pageTextModelSchema } from '../schemas/text';
 import { pageImageModelSchema } from '../schemas/image';
 import { pageLinksModelSchema } from '../schemas/link';
 import { formModelSchema } from '../schemas/form';
+import { savedSignatureSchema, stageSignatureSchema } from '../schemas/signature';
 import { recentFilesListSchema } from '../schemas/recentFiles';
 import { settingsPatchSchema, settingsSchema } from '../schemas/settings';
 import { themeStateSchema } from '../schemas/theme';
@@ -219,6 +220,20 @@ export const invokeContracts = {
     request: z.strictObject({ sessionId: z.string().min(1) }),
     response: formModelSchema,
   },
+
+  /** The signatures this computer has been asked to keep. */
+  'signatures:list': { request: z.void(), response: z.array(savedSignatureSchema) },
+
+  /** Stages a signature for placing, and keeps it when the reader asked. */
+  'signatures:stage': { request: stageSignatureSchema, response: stampImageSchema },
+
+  'signatures:remove': {
+    request: z.strictObject({ id: z.string().min(1).max(64) }),
+    response: z.array(savedSignatureSchema),
+  },
+
+  /** Forgets every saved signature, from Settings → Privacy. */
+  'signatures:clear': { request: z.void(), response: z.null() },
 
   /** Writes an image the page draws out to a file the reader chooses. */
   'images:export': {

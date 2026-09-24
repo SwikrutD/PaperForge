@@ -26,6 +26,9 @@ import { useDocumentStore, type DocumentViewState } from '../stores/documentStor
 import { useCreateStore } from '../stores/createStore';
 import { useOrganizeStore } from '../stores/organizeStore';
 import { useTextEditStore } from '../stores/textEditStore';
+import { SignatureDialog } from '../components/forms/SignatureDialog';
+import { useSignatureStore } from '../stores/signatureStore';
+import { useFormStore } from '../stores/formStore';
 import { WatermarkDialog } from '../components/edit/furniture/WatermarkDialog';
 import { BackgroundDialog } from '../components/edit/furniture/BackgroundDialog';
 import { HeaderFooterDialog } from '../components/edit/furniture/HeaderFooterDialog';
@@ -75,6 +78,7 @@ export function App(): ReactElement {
 
   const dialog = useUiStore((state) => state.dialog);
   const closeDialog = useUiStore((state) => state.closeDialog);
+  const signatureDialog = useSignatureStore((state) => state.open);
   const paletteOpen = useUiStore((state) => state.commandPaletteOpen);
   const progressOpen = useUiStore((state) => state.progressCenterOpen);
   const confirmation = useUiStore((state) => state.confirmation);
@@ -84,6 +88,8 @@ export function App(): ReactElement {
   const editingText = useTextEditStore((state) => state.active);
   const setEditingText = useTextEditStore((state) => state.setActive);
   const setOrganizing = useOrganizeStore((state) => state.setActive);
+  const filling = useFormStore((state) => state.active);
+  const setFilling = useFormStore((state) => state.setActive);
 
   const [recovery, setRecovery] = useState<RecoveryEntry[] | null>(null);
 
@@ -108,14 +114,15 @@ export function App(): ReactElement {
     };
   }, [initializeDocuments, restoreSession]);
 
-  // Organizing pages and editing text are ways of working on a document; with
-  // none open there is nothing to work on, so they close rather than waiting
-  // behind the home screen for the next document.
+  // Organizing pages, editing text and filling a form in are ways of working
+  // on a document; with none open there is nothing to work on, so they close
+  // rather than waiting behind the home screen for the next document.
   useEffect(() => {
     if (activeId !== null) return;
     if (organizing) setOrganizing(false);
     if (editingText) setEditingText(false);
-  }, [activeId, organizing, setOrganizing, editingText, setEditingText]);
+    if (filling) setFilling(false);
+  }, [activeId, organizing, setOrganizing, editingText, setEditingText, filling, setFilling]);
 
   const resolvedTheme = theme?.resolved ?? null;
   useEffect(() => {
@@ -151,6 +158,7 @@ export function App(): ReactElement {
             {paletteOpen && <CommandPalette />}
             {dialog === 'settings' && <SettingsDialog settings={effectiveSettings} />}
             {dialog === 'about' && <AboutDialog appInfo={appInfo} />}
+            {signatureDialog !== null && <SignatureDialog kind={signatureDialog} />}
             {dialog === 'watermark' && <WatermarkDialog onClose={closeDialog} />}
             {dialog === 'background' && <BackgroundDialog onClose={closeDialog} />}
             {dialog === 'headerFooter' && <HeaderFooterDialog onClose={closeDialog} />}

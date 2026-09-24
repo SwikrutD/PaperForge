@@ -29,6 +29,8 @@ export function useAnnotationTools(
   pages: readonly PdfPageGeometry[],
   scale: number,
   rotation: number,
+  /** A picture already chosen elsewhere, such as a signature. */
+  ready?: StampImage | null,
 ): {
   tool: ReturnType<typeof useAnnotationStore.getState>['tool'];
   create: (geometry: AnnotationGeometry, pageNumber: number) => void;
@@ -51,7 +53,8 @@ export function useAnnotationTools(
   });
   // The image belongs to the image stamp tool: picking another tool drops it
   // without needing an effect to clear it.
-  const stampImage = staged.tool === tool ? staged.image : null;
+  const stampImage =
+    (ready ?? null) !== null ? (ready ?? null) : staged.tool === tool ? staged.image : null;
 
   // The author a new comment is signed with: what the reader set, or who is
   // signed in to Windows.
@@ -67,9 +70,9 @@ export function useAnnotationTools(
   }, [sessionId, revision]);
 
   // Choosing the image stamp tool asks for the picture first: there is nothing
-  // to place until one has been chosen.
+  // to place until one has been chosen. A signature comes with its own.
   useEffect(() => {
-    if (tool !== 'imageStamp') return;
+    if (tool !== 'imageStamp' || (ready ?? null) !== null) return;
     let cancelled = false;
     void useAnnotationStore
       .getState()
@@ -83,7 +86,7 @@ export function useAnnotationTools(
     return () => {
       cancelled = true;
     };
-  }, [tool]);
+  }, [tool, ready]);
 
   const inputFor = useCallback(
     (geometry: AnnotationGeometry, pageNumber: number, contents = ''): AnnotationInput => ({
@@ -105,9 +108,12 @@ export function useAnnotationTools(
     (geometry: AnnotationGeometry, pageNumber: number) => {
       const store = useAnnotationStore.getState();
 
-      // A text box and a callout are typed into before they are written.
+      // A text box and a callout are typed into before they are written; one
+      // started from the date button opens with the date already in it.
       if (geometry.kind === 'freeText' || geometry.kind === 'callout') {
-        store.setDraft(inputFor(geometry, pageNumber));
+        const pending = store.pendingText ?? '';
+        store.setPendingText(null);
+        store.setDraft(inputFor(geometry, pageNumber, pending));
         return;
       }
       void store.add([inputFor(geometry, pageNumber)]);

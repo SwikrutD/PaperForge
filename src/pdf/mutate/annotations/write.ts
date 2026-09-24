@@ -314,7 +314,16 @@ export function rewriteAnnotation(
   const { document } = context;
   const rect = boundsOf(input.geometry, input.style.borderWidth);
   const image = input.imageToken === undefined ? undefined : context.images.get(input.imageToken);
-  const appearance = appearanceStream(context, input, rect, image);
+
+  /**
+   * A stamp with neither a label nor a picture to hand is one whose
+   * appearance PaperForge cannot draw again — a signature, or a picture
+   * stamped in an earlier session. Its appearance is kept exactly as it is
+   * and the rectangle is moved instead: a form appearance is mapped onto the
+   * rectangle, so moving the one moves the other, and the picture survives.
+   */
+  const canRedraw =
+    input.geometry.kind !== 'stamp' || input.stampLabel !== undefined || image !== undefined;
 
   const set = (key: string, value: PdfValue | PdfObjectValue): void => {
     dict.set(PDFName.of(key), document.context.obj(value as PdfDictLiteral));
@@ -323,7 +332,7 @@ export function rewriteAnnotation(
   set('Rect', [rect.x, rect.y, rect.x + rect.width, rect.y + rect.height]);
   set('C', colorArray(input.style.color));
   set('CA', input.style.opacity);
-  set('AP', { N: appearance });
+  if (canRedraw) set('AP', { N: appearanceStream(context, input, rect, image) });
   set('M', PDFString.of(toPdfDate(modifiedAt)));
   for (const [key, value] of Object.entries(borderEntries(input.style))) set(key, value);
   for (const [key, value] of Object.entries(geometryEntries(input.geometry, input.style, rect))) {

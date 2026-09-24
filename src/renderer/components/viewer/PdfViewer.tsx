@@ -32,6 +32,7 @@ import {
   valueOf as formValueOf,
   useFormStore,
 } from '../../stores/formStore';
+import { useSignatureStore } from '../../stores/signatureStore';
 import { FindBar } from '../search/FindBar';
 import { highlightsByPage } from '../search/searchNavigation';
 import { pdfRectToCss } from './pageGeometry';
@@ -90,6 +91,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const formDrafts = useFormStore((store) => store.drafts);
   const formSelected = useFormStore((store) => store.selected);
   const formHighlight = useFormStore((store) => store.highlight);
+  const stagedSignature = useSignatureStore((store) => store.staged);
   const requestConfirmation = useUiStore((store) => store.requestConfirmation);
 
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -137,7 +139,14 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   ]);
 
   const pageLabels = useMemo(() => pages.map((page) => page.label), [pages]);
-  const tools = useAnnotationTools(sessionId, tab.edit.revision, pages, scale, view.rotation);
+  const tools = useAnnotationTools(
+    sessionId,
+    tab.edit.revision,
+    pages,
+    scale,
+    view.rotation,
+    stagedSignature,
+  );
   const layout = useMemo(
     () => layoutPages(pages, scale, view.rotation),
     [pages, scale, view.rotation],
@@ -362,18 +371,53 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                   highlights={highlights.get(pageNumber)}
                   overlay={
                     state.document === null ? null : filling ? (
-                      <FormLayer
-                        geometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}
-                        scale={scale}
-                        rotation={view.rotation}
-                        widgets={fieldsOnPage(formFieldsFor(forms, sessionId), pageNumber)}
-                        valueOf={(field) => formValueOf(formDrafts, field)}
-                        selected={formSelected}
-                        highlight={formHighlight}
-                        onSelect={(name) => useFormStore.getState().select(name)}
-                        onDraft={(name, value) => useFormStore.getState().setDraft(name, value)}
-                        onCommit={(name, value) => void useFormStore.getState().commit(name, value)}
-                      />
+                      <>
+                        {/* A signature is an annotation, so the layer that
+                            places a stamp places one. The fields sit over it,
+                            and only the fields themselves take the pointer. */}
+                        <AnnotationLayer
+                          geometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}
+                          scale={scale}
+                          rotation={view.rotation}
+                          annotations={annotationsOnPage(annotations, pageNumber)}
+                          tool={tools.tool}
+                          selectedId={selectedAnnotationId}
+                          stampSize={tools.stampImage ?? undefined}
+                          draft={draft}
+                          onSelect={selectAnnotation}
+                          onCreate={(geometry, placedOn) => {
+                            tools.create(geometry, placedOn);
+                            useSignatureStore.getState().clearStaged();
+                          }}
+                          onMove={tools.move}
+                          onErase={tools.erase}
+                        />
+                        {draft !== null && draft.pageNumber === pageNumber && (
+                          <DraftEditor
+                            draft={draft}
+                            pageGeometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}
+                            scale={scale}
+                            rotation={view.rotation}
+                            onCommit={tools.commitDraft}
+                            onCancel={tools.cancelDraft}
+                          />
+                        )}
+                        <FormLayer
+                          geometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}
+                          scale={scale}
+                          rotation={view.rotation}
+                          widgets={fieldsOnPage(formFieldsFor(forms, sessionId), pageNumber)}
+                          valueOf={(field) => formValueOf(formDrafts, field)}
+                          selected={formSelected}
+                          highlight={formHighlight}
+                          interactive={tools.tool === 'select'}
+                          onSelect={(name) => useFormStore.getState().select(name)}
+                          onDraft={(name, value) => useFormStore.getState().setDraft(name, value)}
+                          onCommit={(name, value) =>
+                            void useFormStore.getState().commit(name, value)
+                          }
+                        />
+                      </>
                     ) : editing && editTarget === 'links' ? (
                       <LinkEditLayer
                         geometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}

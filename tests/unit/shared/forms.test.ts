@@ -3,7 +3,10 @@ import { PDFDocument } from 'pdf-lib';
 import { PdfLibMutationEngine } from '../../../src/pdf/mutate/pdfLibEngine';
 import { hasDocumentScript, needsAppearances, readFormFields } from '../../../src/pdf/forms/read';
 import type { FormFieldModel } from '../../../src/shared/schemas/form';
+import { readAnnotations } from '../../../src/pdf/mutate/annotations/read';
+import { DEFAULT_ANNOTATION_STYLE, type Annotation } from '../../../src/shared/schemas/annotation';
 import { buildFormPdf } from '../../fixtures/forms';
+import { pngPixel } from '../../fixtures/images';
 
 /**
  * Reading a form and filling it in: what the fields are, what they hold, and
@@ -15,6 +18,12 @@ const engine = new PdfLibMutationEngine();
 async function fieldsOf(bytes: Uint8Array): Promise<FormFieldModel[]> {
   const document = await PDFDocument.load(bytes, { updateMetadata: false });
   return readFormFields(document);
+}
+
+/** The annotations a document carries, as the engine reads them. */
+async function marksOf(bytes: Uint8Array): Promise<Annotation[]> {
+  const document = await PDFDocument.load(bytes, { updateMetadata: false });
+  return readAnnotations(document).map((record) => record.annotation);
 }
 
 function byName(fields: readonly FormFieldModel[], name: string): FormFieldModel | undefined {
@@ -188,5 +197,72 @@ describe('filling a form in', () => {
     // One operation, one revision: undo puts both back.
     const fields = await fieldsOf(result.bytes);
     expect(byName(fields, 'person.notes')?.value).toBe('Two lines\nof notes');
+  });
+});
+
+describe('a signature placed as a mark', () => {
+  it('keeps its picture when it is moved', async () => {
+    const staged = new Map([
+      [
+        'sig',
+        {
+          kind: 'image' as const,
+          bytes: pngPixel(40, 20),
+          format: 'png' as const,
+          width: 40,
+          height: 20,
+        },
+      ],
+    ]);
+
+    const placed = await engine.apply(
+      await buildFormPdf(),
+      [
+        {
+          kind: 'addAnnotations',
+          annotations: [
+            {
+              pageNumber: 1,
+              geometry: { kind: 'imageStamp', rect: { x: 60, y: 60, width: 120, height: 60 } },
+              style: DEFAULT_ANNOTATION_STYLE,
+              contents: '',
+              author: 'Grace',
+              subject: '',
+              imageToken: 'sig',
+            },
+          ],
+        },
+      ],
+      staged,
+    );
+
+    const before = await marksOf(placed.bytes);
+    const mark = before[0];
+    expect(mark).toBeDefined();
+
+    const moved = await engine.apply(placed.bytes, [
+      {
+        kind: 'updateAnnotations',
+        updates: [
+          {
+            id: mark?.id ?? '',
+            patch: {
+              geometry: { kind: 'stamp', rect: { x: 200, y: 200, width: 120, height: 60 } },
+            },
+          },
+        ],
+      },
+    ]);
+
+    // The picture is still what the mark draws: moving it must not turn a
+    // signature into an empty box.
+    const document = await PDFDocument.load(moved.bytes, { updateMetadata: false });
+    const text = new TextDecoder('latin1').decode(moved.bytes);
+    expect(text).toContain('/Image');
+    expect(document.getPage(0).node.Annots()?.size()).toBeGreaterThan(0);
+
+    const after = await marksOf(moved.bytes);
+    expect(after[0]?.geometry.kind).toBe('stamp');
+    expect(Math.round((after[0]?.geometry as { rect: { x: number } }).rect.x)).toBe(200);
   });
 });
