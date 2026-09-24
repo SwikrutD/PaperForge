@@ -165,6 +165,91 @@ Run ids (`op12`) name the operation the run came from and hold only for the revi
 from. Every change rewrites the page, so the editor reads the page again afterwards rather than
 patching what it had.
 
+## Editing images
+
+A page draws an image by mapping the unit square onto the page with the current transform and then
+saying `Do`. Everything the editor needs follows from that one matrix: where the image sits, how
+big it is, how far it is turned, and whether it has been mirrored.
+
+### Changing one in place
+
+Every image edit replaces the `Do` operation where it stands with
+
+```
+q [/PFAlphaNN gs] <M> cm [x y w h re W n] /Name Do Q
+```
+
+where `M = new × inverse(current)`. The inverse cancels whatever transform the page had already
+built up, so what is left inside the `q`/`Q` is exactly the placement the reader asked for,
+whatever route the page took to get there.
+
+Editing in place is what keeps the drawing order. Appending the image to the end of the stream
+would lift it in front of anything that used to cover it — a caption, a box, a redaction — and the
+page would no longer look like itself.
+
+A page that draws an image with a transform that cannot be inverted (everything flattened onto a
+line) is refused with a message that says so, rather than moved to a place that means nothing.
+
+### What each edit is
+
+| Edit                       | What is written                                                      |
+| -------------------------- | -------------------------------------------------------------------- |
+| Move, resize, turn, mirror | A new matrix, built by `placementMatrix` from the box and the turn   |
+| Crop                       | `x y w h re W n` inside the block: a clip, in the image's own square |
+| Opacity                    | `/PFAlphaNN gs`, a transparency state in the page's resources        |
+| Replace                    | The new image embedded as `PFImgN`, drawn with the same matrix       |
+| Delete                     | The operation removed; nothing else on the page moves                |
+| Add                        | `q … cm /PFImgN Do Q` appended, so it goes on top                    |
+
+Cropping clips rather than re-encoding: the picture keeps every pixel it arrived with, and the crop
+can be taken off again. Reading a page back recovers the crop from the clip and the opacity from
+the transparency state, so neither is cumulative and the panel says what the page does rather than
+what was last asked for.
+
+Mirroring down is mirroring across turned half a circle — the same matrix — so that is how a
+mirrored image is reported, and what is read back is what was written.
+
+### Writing an image out
+
+A stream that is already a JPEG is handed over untouched. Anything else is decoded to its samples
+and written as a PNG by a small encoder in `imageResources.ts` — stored deflate blocks, no
+dependency, lossless. An image in an indexed or ICC colour space is written with its samples as
+they are; a CMYK image is refused rather than guessed at.
+
+## Links
+
+A link is a `/Link` annotation: a rectangle with somewhere to go. PaperForge writes two
+destinations and no others — a page of this document (`/Dest [page /Fit]`) and an `http`, `https`
+or `mailto` address (`/A << /S /URI >>`). Anything else the file already carries is described to
+the reader as it is: a named destination, a launch action, embedded JavaScript. None of it is
+followed, and none of it is rewritten unless the reader points the link somewhere new, which
+replaces the whole annotation rather than leaving the old action beside the new destination.
+
+Links PaperForge makes are named `PFLinkN` in `/NM`, so they can be told from the document's own.
+
+## Page furniture
+
+Watermarks, backgrounds, headers and footers are drawn by PaperForge rather than by the document,
+so each is wrapped in marked content named after what it is:
+
+```
+/PFWatermark BMC q … Q EMC
+```
+
+`BMC` rather than `BDC`, because a tag with no property list is what this is. The mark is what lets
+PaperForge find its own work again: applying a watermark to a page that already carries one
+replaces it instead of stacking a second on top, and Remove takes it off and leaves the page
+underneath byte for byte as it was. A page that carries no PaperForge furniture is never touched.
+
+A background is put before the page's own drawing, which is wrapped in `q`/`Q` as it moves along so
+nothing the background sets can leak into it. A watermark goes before or after as the reader asks.
+
+Headers and footers are written with tokens — `{{page}}`, `{{pages}}`, `{{date}}`, `{{title}}`,
+`{{bates}}` — so one line serves every page. The window resolves the date and the title, because
+locales belong to the window; the engine resolves the numbering, because only it knows which page
+is which. `{{page}}` starts from the number the reader gives the first page in the range, and a
+Bates number is a prefix, a zero-padded count and a suffix.
+
 ## Saving
 
 Nothing is written to the reader's file until they ask. `Save` writes the current revision;
@@ -211,10 +296,16 @@ so reverting is itself undoable — a reader who reverts by mistake has not lost
 - **Encrypted documents cannot be changed.** pdf-lib cannot decrypt, and PaperForge will not write
   a file it has not really understood. The password the viewer holds lives in the renderer and is
   never sent to the main process. Decryption belongs with the qpdf-based security tools.
-- **The operations are structural, annotation-level and textual so far**: rotate, delete, move,
-  duplicate, insert blank pages, insert pages from another document, insert an image as a page,
-  crop, page numbering, adding, changing or removing comments, and rewriting a run of text in the
-  font that drew it. Image editing follows in Segment 10.
+- **Shapes are annotations, not page content.** A rectangle, ellipse, line, arrow, polygon or ink
+  stroke is written as a real PDF annotation with an appearance stream and the print flag set, and
+  it can be selected, moved and deleted afterwards. PaperForge does not also draw shapes into the
+  content stream, because content it cannot then select would be a shape the reader could only
+  remove by undoing. Turning an annotation into page content is what flattening is for, in
+  Segment 11.
+- **An image in a form XObject is not listed**, for the same reason text inside one is not: the
+  editor reads the page's own content stream.
+- **A clip the page sets around its whole content is not called a crop.** Only a clip written
+  beside the image counts as one, which is what PaperForge itself writes.
 - **Text editing is Tier A and Tier B.** A run is rewritten in its own font where that works, and
   otherwise taken out and drawn again in a standard font, with the reader asked first.
 - **PaperForge draws with the standard fourteen fonts, which are Latin-1.** Text in another writing

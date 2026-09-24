@@ -317,3 +317,61 @@ Run in both light and dark themes:
 - [ ] A page with no text PaperForge can read says so rather than looking broken.
 - [ ] The editor closes with the last document, and Done goes back to reading.
 - [ ] The editor and its panel are correct in light and dark, at 125% and 150% Windows scaling.
+
+## Segment 10 — images, links and page furniture
+
+### Images
+
+- [ ] In Edit, the Images button puts a box around every picture the page draws, and the boxes sit
+      exactly on the pictures at any zoom, page rotation and view rotation.
+- [ ] Clicking one selects it, grows eight handles, and the panel says how many pixels it holds,
+      how big it is on the page, where it sits and how far it is turned.
+- [ ] Dragging the box moves the picture; dragging a handle resizes it from that handle, with the
+      opposite corner staying put; Shift keeps its shape.
+- [ ] A picture the page draws at an angle resizes along its own edges, not the page's.
+- [ ] Turn left, turn right and the two mirror buttons do what they say, and the selection survives
+      each one.
+- [ ] A move is one undo, not one per pixel dragged.
+- [ ] The picture keeps its place in the drawing order: whatever covered it still covers it, and
+      the text around it does not move.
+- [ ] Cropping by trimming each edge hides part of the picture without changing its pixel count;
+      Reset crop puts it back; cropping twice is not cumulative.
+- [ ] The opacity slider reports what the page does, and survives a save and reopen.
+- [ ] Replace draws a different picture in the same box, and the panel then says PaperForge added
+      it.
+- [ ] Save image writes a JPEG untouched, or a PNG of the samples, and says where it went.
+- [ ] Delete takes the picture off and leaves everything else; undo puts it back.
+- [ ] Add image places a chosen file where the page is clicked, at a sensible size.
+- [ ] Everything above survives save, close and reopen — in PaperForge and in another reader.
+
+### Links
+
+- [ ] The Links button shows the links the page already carries, with where each one goes in its
+      tooltip.
+- [ ] Selecting one says whether it goes to a page or to an address, and its area and position.
+- [ ] A link can be pointed at another page, or at an http, https or mailto address; anything else
+      is refused before it is written, with a plain reason.
+- [ ] A link that carries a launch action or document JavaScript is described, not followed, and is
+      left alone unless the reader points it somewhere new.
+- [ ] Add link draws the area with a drag; a click that does not travel makes nothing.
+- [ ] Dragging a link moves it; the handles resize it; both are one undo each.
+- [ ] Deleting a link takes it off the page, and the links survive save and reopen.
+
+### Watermark, background, header and footer
+
+- [ ] Each tool says which pages it applies to, and applying to a range leaves the other pages
+      untouched.
+- [ ] A watermark can be words or a picture, over the page or under it, at the opacity, angle and
+      size chosen; the preview matches what lands on the page.
+- [ ] Applying a second watermark replaces the first rather than stacking; Remove takes it off and
+      the page underneath is exactly as it was.
+- [ ] A background goes under everything the page draws, as a colour or as a picture filled,
+      fitted or tiled.
+- [ ] A header or footer resolves {{page}}, {{pages}}, {{date}}, {{title}} and {{bates}} page by
+      page, and the preview says what the first page will carry.
+- [ ] {{page}} starts from the number given, and Bates numbering pads to the digits given with the
+      prefix and suffix given.
+- [ ] A line left empty writes nothing at all.
+- [ ] Every one of them is one undo, and what the pages carry is in the file after a save.
+- [ ] All three dialogs are correct in light and dark, at 125% and 150% Windows scaling, and every
+      control has a label.

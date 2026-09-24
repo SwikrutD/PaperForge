@@ -2,10 +2,10 @@
 
 ## Current status
 
-- Last completed segment: **9 — Edit PDF: content model and text editing**
-- Next segment: **10 — Edit PDF: images, links, layout content**
+- Last completed segment: **10 — Edit PDF: images, links, layout content**
+- Next segment: **11 — Forms and Fill & Sign**
 - Build status: `npm run package` succeeds; packaged app launches and closes cleanly on Windows 11 x64
-- Test status: 509 unit tests (45 files) and 73 Playwright end-to-end tests passing; typecheck, lint and format clean
+- Test status: 565 unit tests (49 files) and 95 Playwright end-to-end tests passing; typecheck, lint and format clean
 
 ## Completed segments
 
@@ -19,7 +19,7 @@
 - [x] 7 Organize Pages
 - [x] 8 Create PDF and Combine Files
 - [x] 9 Edit PDF: content model and text editing
-- [ ] 10 Edit PDF: images, links, layout content
+- [x] 10 Edit PDF: images, links, layout content
 - [ ] 11 Forms and Fill & Sign
 - [ ] 12 OCR
 - [ ] 13 Conversion center
@@ -379,6 +379,44 @@ edited a dozen times over.
 | Renderer | `renderer/stores/textEditStore.ts`, `renderer/components/edit/*`                                              |
 | Tests    | `tests/unit/shared/{contentParser,textRuns,editText,textEditRegression}.test.ts`, `tests/e2e/editText.e2e.ts` |
 
+## Segment 10 — what landed
+
+**Images.** A page draws an image by mapping the unit square onto the page and saying `Do`, so
+every edit is one matrix. The `Do` is replaced where it stands with `q [/PFAlphaNN gs] M cm
+[clip] /Name Do Q`, where `M` cancels the transform the page had already built up. Editing in
+place is what keeps the drawing order: appending would lift the picture in front of whatever used
+to cover it. Move, resize, turn, mirror, crop, opacity, replace, delete, add and write-out are all
+built on that one rewrite, and the crop and the opacity are read back out of the page so neither
+is cumulative and the panel reports what the page does.
+
+Writing an image out hands back a JPEG untouched and otherwise encodes the samples as a PNG, with
+a small dependency-free encoder (stored deflate blocks) in `imageResources.ts`.
+
+**Links.** `/Link` annotations, read with where each one goes. PaperForge writes a page
+destination or an `http`, `https` or `mailto` address and refuses anything else before writing;
+a launch action or document JavaScript already in the file is described to the reader, never
+followed and never rewritten unless they point the link somewhere new.
+
+**Page furniture.** Watermarks, backgrounds, headers and footers are wrapped in marked content
+named after what they are (`/PFWatermark BMC … EMC`), so PaperForge can find its own work: a
+second watermark replaces the first rather than stacking, and Remove leaves the page underneath
+byte for byte as it was. Headers and footers are written with tokens — `{{page}}`, `{{pages}}`,
+`{{date}}`, `{{title}}`, `{{bates}}` — resolved page by page, with Bates numbering as a prefix, a
+padded count and a suffix.
+
+**The editor points at one thing at a time.** Text, images and links each have their own layer and
+panel, and one shared target decides which takes the pointer — so a click on a caption printed over
+a photograph is never a guess about which was meant.
+
+| Area     | Files                                                                                                                                   |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Model    | `src/pdf/content/{images,editImage,furniture}.ts`                                                                                       |
+| Engine   | `src/pdf/mutate/{images,imageResources,links,furniture}.ts`                                                                             |
+| Shared   | `src/shared/schemas/{image,link,furniture}.ts`, the image, link and furniture operations in `edit.ts`                                   |
+| Main     | `main/ipc/handlers/{imageHandlers,linkHandlers}.ts`                                                                                     |
+| Renderer | `renderer/stores/{imageEditStore,linkEditStore,editTargetStore}.ts`, `renderer/components/edit/**`                                      |
+| Tests    | `tests/unit/shared/{editImages,editLinks,furniture}.test.ts`, `tests/unit/renderer/imageGeometry.test.ts`, three new `tests/e2e` suites |
+
 ## Architecture decisions
 
 1. **Channel allowlist separate from schemas**, so the preload carries no validation library and
@@ -552,6 +590,29 @@ edited a dozen times over.
 70. **PaperForge draws with the standard fourteen fonts only.** Nothing is embedded, so no font is
     redistributed — and text outside Latin-1 is refused rather than drawn as question marks.
 
+71. **Image edits are made where the image is drawn, never appended.** The `Do` is replaced with
+    `q M cm … Do Q`, with `M` cancelling the page's own transform. Appending would change the
+    drawing order and lift the picture in front of what used to cover it.
+72. **Cropping is a clip, not a re-encode.** The picture keeps every pixel it arrived with, the
+    crop can be taken off again, and reading the clip back is what stops a second crop compounding
+    the first.
+73. **Mirroring down is reported as mirroring across, turned half a circle.** They are the same
+    matrix, and reporting one of them keeps what is read back equal to what was written.
+74. **An object's name comes from where it sits in the page's content**, and every change rewrites
+    that content — so after a change the editor finds the object again by where it is on the page
+    and keeps it selected.
+75. **Opacity is read from the page, not remembered.** It is a graphics state the resources name;
+    the editor writes one beside the image and reads it back from the same place.
+76. **Shapes stay annotations.** A shape drawn into the content stream could not then be selected
+    or moved, only undone; the annotation tools already write real, selectable, printing shapes.
+    Turning one into page content is what flattening is for, in Segment 11.
+77. **PaperForge's own page furniture is marked with `BMC`**, not `BDC`: a tag with no property
+    list is what it is, and `BDC` without its dictionary is malformed — PDF.js said so.
+78. **The window resolves the date and the title for a header; the engine resolves the numbering.**
+    Locales belong to the window, and only the engine knows which page is which.
+79. **Text, images and links take the pointer in turn.** One shared target, three layers: the
+    alternative is guessing which object a click on overlapping content meant.
+
 ## Known limitations
 
 - The viewer is continuous scrolling only. Single page, two-page spread, cover page, the hand and
@@ -571,9 +632,24 @@ edited a dozen times over.
 - Form fields are drawn from their appearance streams but are not interactive; that is Segment 11.
 - The encryption marker shown in the properties panel is still a trailer scan. The viewer knows the
   truth once a document is open, and the two are not yet reconciled.
-- Editing is structural, comment-level and textual: rotate, delete, move, duplicate, insert,
-  replace, crop and renumber pages, annotations, and the text a page draws. Images, links, headers
-  and watermarks are Segment 10.
+- An image inside a form XObject is not listed, for the same reason text inside one is not: the
+  editor reads the page's own content stream.
+- A CMYK image cannot be written out yet; a JPEG comes out untouched and everything else is written
+  as a PNG of its samples, which an indexed or ICC image will have in its own space rather than
+  converted.
+- A link can be pointed at a page or at an http, https or mailto address. Named destinations, launch
+  actions and document JavaScript are described where they are found but cannot be authored, and
+  PaperForge never follows them.
+- A link's rectangle is axis-aligned: `/QuadPoints` on a rotated link is not authored.
+- Page furniture is put on with a dialog and taken off with the same dialog. There is no listing of
+  which pages already carry a watermark or a header; Remove simply takes off whatever PaperForge
+  put on the pages chosen.
+- A watermark sits in the middle of the page. The engine takes a position, and the dialog does not
+  offer the other eight yet.
+- Editing covers pages, comments, text, images, links and page furniture: rotate, delete, move,
+  duplicate, insert, replace, crop and renumber pages; annotations; the text a page draws; the
+  images it draws; the links it carries; and the watermarks, backgrounds, headers and footers
+  PaperForge puts on. Form fields are Segment 11.
 - Text editing rewrites a run in its own font where that works, and otherwise replaces it with text
   drawn in a standard font, with the reader asked first.
 - PaperForge draws text with the fourteen standard fonts, which cover Latin-1. Cyrillic, Greek and
@@ -652,19 +728,19 @@ Nothing is downloaded at runtime, then or now.
 
 Run on Windows 11 x64, Node 24.19.0, npm 11.17.0:
 
-| Command                     | Result                                                                                                                                                                                  |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                                                                                                          |
-| `npm run typecheck`         | Pass — four projects, no errors                                                                                                                                                         |
-| `npm run lint`              | Pass — no errors, no warnings                                                                                                                                                           |
-| `npm test`                  | Pass — 509 tests in 45 files                                                                                                                                                            |
-| `npm run test:e2e`          | Pass — 73 Playwright tests against the built application                                                                                                                                |
-| `npm run format:check`      | Pass — Prettier clean                                                                                                                                                                   |
-| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                                                                                                               |
-| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                                                                                                        |
-| Packaged launch/close smoke | Pass — window ready in ~400 ms, closes cleanly, and `%TEMP%/PaperForge/sessions` is empty afterwards                                                                                    |
-| Settings upgrade            | Pass — a settings file without the new `session` section is repaired in place                                                                                                           |
-| Appearance                  | Checked in light and dark by driving the real application: the text editor's boxes, a run open for typing, a replacement offered and refused, and text added where the page was clicked |
+| Command                     | Result                                                                                                                                      |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                                                              |
+| `npm run typecheck`         | Pass — four projects, no errors                                                                                                             |
+| `npm run lint`              | Pass — no errors, no warnings                                                                                                               |
+| `npm test`                  | Pass — 565 tests in 49 files                                                                                                                |
+| `npm run test:e2e`          | Pass — 95 Playwright tests against the built application                                                                                    |
+| `npm run format:check`      | Pass — Prettier clean                                                                                                                       |
+| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                                                                   |
+| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                                                            |
+| Packaged launch/close smoke | Pass — window ready in ~400 ms, closes cleanly, and `%TEMP%/PaperForge/sessions` is empty afterwards                                        |
+| Settings upgrade            | Pass — a settings file without the new `session` section is repaired in place                                                               |
+| Appearance                  | Checked by driving the real application: the image editor's handles and panel, and the watermark and header dialogs with Bates numbering on |
 
 ## Manual setup required
 

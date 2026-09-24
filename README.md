@@ -4,7 +4,7 @@ PaperForge is an offline-first PDF workspace for Windows. It is being built to c
 work people do with a PDF tool — read, annotate, organize, edit, recognize text, convert, protect
 and redact — on a local machine, with no account, no telemetry and no cloud services.
 
-**Status: early development.** This repository currently contains Segments 0 to 7 of the build plan
+**Status: early development.** This repository currently contains Segments 0 to 10 of the build plan
 in [`CLAUDE.md`](./CLAUDE.md):
 
 - the secure Electron foundation and the Fluent Workspace shell with its command system;
@@ -23,10 +23,13 @@ in [`CLAUDE.md`](./CLAUDE.md):
   from;
 - editing text: PaperForge reads a page's content stream itself, so a line can be rewritten in the
   font that drew it, replaced in a standard font when that font cannot write it, or added where
-  you click.
+  you click;
+- editing images and links: move, resize, turn, crop, replace, fade, export or delete a picture the
+  page draws, and make or change the links it carries;
+- watermarks, backgrounds, headers and footers, with page numbers, dates, titles and Bates
+  numbering — marked as PaperForge's own, so they can be changed or taken off again.
 
-Editing images and links, OCR, exporting to other formats, protection and redaction arrive in later
-segments.
+Forms, OCR, exporting to other formats, protection and redaction arrive in later segments.
 
 [`PROGRESS.md`](./PROGRESS.md) is the authoritative status file.
 
