@@ -13,6 +13,7 @@ import {
 import { AppError } from '@shared/errors/appError';
 import type { EditOperation } from '@shared/schemas/edit';
 import type { FormValue } from '@shared/schemas/form';
+import { flattenAnnotations, flattenFields } from './flatten';
 
 /**
  * Filling in a form.
@@ -30,6 +31,14 @@ export async function applyFormOperation(
   document: PDFDocument,
   operation: EditOperation,
 ): Promise<boolean> {
+  if (operation.kind === 'flattenFields') {
+    await flattenFields(document, operation.names);
+    return true;
+  }
+  if (operation.kind === 'flattenAnnotations') {
+    flattenAnnotations(document, operation.ids);
+    return true;
+  }
   if (operation.kind !== 'setFieldValues') return false;
 
   const form = document.getForm();

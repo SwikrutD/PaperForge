@@ -4,6 +4,7 @@ import { PdfLibMutationEngine } from '../../../src/pdf/mutate/pdfLibEngine';
 import { hasDocumentScript, needsAppearances, readFormFields } from '../../../src/pdf/forms/read';
 import type { FormFieldModel } from '../../../src/shared/schemas/form';
 import { readAnnotations } from '../../../src/pdf/mutate/annotations/read';
+import { contentBytes } from '../../../src/pdf/content/pageContent';
 import { DEFAULT_ANNOTATION_STYLE, type Annotation } from '../../../src/shared/schemas/annotation';
 import { buildFormPdf } from '../../fixtures/forms';
 import { pngPixel } from '../../fixtures/images';
@@ -264,5 +265,78 @@ describe('a signature placed as a mark', () => {
     const after = await marksOf(moved.bytes);
     expect(after[0]?.geometry.kind).toBe('stamp');
     expect(Math.round((after[0]?.geometry as { rect: { x: number } }).rect.x)).toBe(200);
+  });
+});
+
+describe('flattening', () => {
+  it('draws what a field holds onto the page and takes the field away', async () => {
+    const filled = await engine.apply(await buildFormPdf(), [
+      { kind: 'setFieldValues', values: [{ name: 'person.name', value: 'Grace Hopper' }] },
+    ]);
+
+    const flattened = await engine.apply(filled.bytes, [
+      { kind: 'flattenFields', names: ['person.name'] },
+    ]);
+
+    const fields = await fieldsOf(flattened.bytes);
+    expect(byName(fields, 'person.name')).toBeUndefined();
+    // The other fields are still fields.
+    expect(byName(fields, 'person.notes')).toBeDefined();
+
+    // What it held is now drawn by the page itself.
+    const document = await PDFDocument.load(flattened.bytes, { updateMetadata: false });
+    const content = new TextDecoder('latin1').decode(contentBytes(document, document.getPage(0)));
+    expect(content).toMatch(/\/PFFlat[\w-]+ Do/);
+  });
+
+  it('flattens the whole form when it is not told which fields', async () => {
+    const flattened = await engine.apply(await buildFormPdf(), [
+      { kind: 'flattenFields', names: null },
+    ]);
+
+    expect(await fieldsOf(flattened.bytes)).toHaveLength(0);
+  });
+
+  it('turns a placed mark into part of the page', async () => {
+    const staged = new Map([
+      [
+        'sig',
+        {
+          kind: 'image' as const,
+          bytes: pngPixel(40, 20),
+          format: 'png' as const,
+          width: 40,
+          height: 20,
+        },
+      ],
+    ]);
+
+    const placed = await engine.apply(
+      await buildFormPdf(),
+      [
+        {
+          kind: 'addAnnotations',
+          annotations: [
+            {
+              pageNumber: 1,
+              geometry: { kind: 'imageStamp', rect: { x: 60, y: 60, width: 120, height: 60 } },
+              style: DEFAULT_ANNOTATION_STYLE,
+              contents: '',
+              author: 'Grace',
+              subject: '',
+              imageToken: 'sig',
+            },
+          ],
+        },
+      ],
+      staged,
+    );
+
+    const flattened = await engine.apply(placed.bytes, [{ kind: 'flattenAnnotations', ids: null }]);
+
+    expect(await marksOf(flattened.bytes)).toHaveLength(0);
+    const document = await PDFDocument.load(flattened.bytes, { updateMetadata: false });
+    const content = new TextDecoder('latin1').decode(contentBytes(document, document.getPage(0)));
+    expect(content).toMatch(/\/PFFlat[\w-]+ Do/);
   });
 });

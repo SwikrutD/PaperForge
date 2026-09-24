@@ -164,6 +164,27 @@ test('emptying the form clears what can be changed, and can be undone', async ()
   await expect(field('person.name')).toHaveValue('Grace Hopper');
 });
 
+test('flattening draws the fields onto the page and leaves nothing to fill in', async () => {
+  await field('person.name').fill('Grace Hopper');
+  await page.keyboard.press('Enter');
+
+  await toolbar().getByRole('button', { name: 'Flatten' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toContainText('Form fields');
+  // Change this document rather than writing a copy, so the test can see it.
+  await dialog.getByRole('radio', { name: /Change this document/ }).check();
+  await dialog.getByRole('button', { name: 'Flatten', exact: true }).click();
+
+  await expect(page.locator('[data-field]')).toHaveCount(0);
+  await expect(toolbar()).toContainText('no form fields');
+
+  // What was filled in is still on the page, drawn rather than filled.
+  await expect(page.getByLabel('Page 1').getByText('Grace Hopper')).toBeVisible();
+
+  await page.keyboard.press('Control+z');
+  await expect(page.locator('[data-field]')).toHaveCount(7);
+});
+
 test('leaving Fill & Sign goes back to reading the document', async () => {
   await toolbar().getByRole('button', { name: 'Done' }).click();
 

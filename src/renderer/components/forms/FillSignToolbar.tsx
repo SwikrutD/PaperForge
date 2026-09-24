@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 import {
   CalendarDays,
+  Layers,
   Check,
   Eraser,
   Highlighter,
@@ -97,6 +98,14 @@ export function FillSignToolbar({ disabled }: { disabled: boolean }): ReactEleme
           useAnnotationStore.getState().setPendingText(new Date().toLocaleDateString());
           useAnnotationStore.getState().setTool('freeText');
         }}
+      />
+
+      <IconButton
+        icon={Layers}
+        label="Flatten"
+        tooltip="Draw the fields and marks onto the page itself"
+        disabled={disabled || busy}
+        onClick={() => useUiStore.getState().openDialog('flatten')}
       />
 
       <p className={styles.hint} aria-live="polite">

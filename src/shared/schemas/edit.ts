@@ -262,6 +262,20 @@ export const setFieldValuesOperationSchema = z.strictObject({
   values: z.array(formValueChangeSchema).min(1).max(5000),
 });
 
+/**
+ * Turns fields into part of the page. Null means every field there is.
+ */
+export const flattenFieldsOperationSchema = z.strictObject({
+  kind: z.literal('flattenFields'),
+  names: z.array(z.string().min(1).max(500)).max(5000).nullable(),
+});
+
+/** Turns marks — signatures, stamps, comments — into part of the page. */
+export const flattenAnnotationsOperationSchema = z.strictObject({
+  kind: z.literal('flattenAnnotations'),
+  ids: z.array(z.string().min(1).max(120)).max(5000).nullable(),
+});
+
 export const editOperationSchema = z.discriminatedUnion('kind', [
   rotatePagesOperationSchema,
   deletePagesOperationSchema,
@@ -286,6 +300,8 @@ export const editOperationSchema = z.discriminatedUnion('kind', [
   setHeaderFooterOperationSchema,
   removeFurnitureOperationSchema,
   setFieldValuesOperationSchema,
+  flattenFieldsOperationSchema,
+  flattenAnnotationsOperationSchema,
   addAnnotationsOperationSchema,
   updateAnnotationsOperationSchema,
   deleteAnnotationsOperationSchema,
