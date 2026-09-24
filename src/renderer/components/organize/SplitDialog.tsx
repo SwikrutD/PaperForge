@@ -5,7 +5,7 @@ import { Button } from '../controls/Button';
 import { Dialog } from '../overlays/Dialog';
 import { partsAtBoundaries, partsEveryN } from './organizeSelection';
 import type { OrganizeActions } from './useOrganizeActions';
-import styles from './organizeDialogs.module.css';
+import styles from '../overlays/dialogForm.module.css';
 
 /** A top-level bookmark, as a place a piece can begin. */
 export interface SplitBoundary {

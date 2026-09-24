@@ -4,7 +4,7 @@ import { Button } from '../controls/Button';
 import { Dialog } from '../overlays/Dialog';
 import { boxesForPage, useOrganizeStore } from '../../stores/organizeStore';
 import type { CropMargins, OrganizeActions } from './useOrganizeActions';
-import styles from './organizeDialogs.module.css';
+import styles from '../overlays/dialogForm.module.css';
 
 interface CropDialogProps {
   actions: OrganizeActions;

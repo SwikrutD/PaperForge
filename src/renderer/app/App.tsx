@@ -26,6 +26,9 @@ import { useDocumentStore, type DocumentViewState } from '../stores/documentStor
 import { useCreateStore } from '../stores/createStore';
 import { useOrganizeStore } from '../stores/organizeStore';
 import { useTextEditStore } from '../stores/textEditStore';
+import { WatermarkDialog } from '../components/edit/furniture/WatermarkDialog';
+import { BackgroundDialog } from '../components/edit/furniture/BackgroundDialog';
+import { HeaderFooterDialog } from '../components/edit/furniture/HeaderFooterDialog';
 import { useUiStore } from '../stores/uiStore';
 import { AppErrorBoundary } from './AppErrorBoundary';
 import styles from './App.module.css';
@@ -71,6 +74,7 @@ export function App(): ReactElement {
   const restoreSession = useDocumentStore((state) => state.restoreSession);
 
   const dialog = useUiStore((state) => state.dialog);
+  const closeDialog = useUiStore((state) => state.closeDialog);
   const paletteOpen = useUiStore((state) => state.commandPaletteOpen);
   const progressOpen = useUiStore((state) => state.progressCenterOpen);
   const confirmation = useUiStore((state) => state.confirmation);
@@ -147,6 +151,9 @@ export function App(): ReactElement {
             {paletteOpen && <CommandPalette />}
             {dialog === 'settings' && <SettingsDialog settings={effectiveSettings} />}
             {dialog === 'about' && <AboutDialog appInfo={appInfo} />}
+            {dialog === 'watermark' && <WatermarkDialog onClose={closeDialog} />}
+            {dialog === 'background' && <BackgroundDialog onClose={closeDialog} />}
+            {dialog === 'headerFooter' && <HeaderFooterDialog onClose={closeDialog} />}
             {recovery !== null && (
               <RecoveryDialog
                 entries={recovery}

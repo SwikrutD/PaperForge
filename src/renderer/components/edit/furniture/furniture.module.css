@@ -1,0 +1,84 @@
+.picker {
+  width: 44px;
+  height: var(--pf-control-height-md);
+  padding: 0;
+  border: 1px solid var(--pf-color-border-strong);
+  border-radius: var(--pf-radius-sm);
+  background: none;
+}
+
+/* A sample of what will be drawn, not a rendering of the page itself. */
+.preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 96px;
+  margin: 0;
+  padding: var(--pf-space-100);
+  border: 1px solid var(--pf-color-border);
+  border-radius: var(--pf-radius-md);
+  background-color: var(--pf-color-bg-page, #ffffff);
+  overflow: hidden;
+}
+
+.previewText {
+  font-size: var(--pf-font-size-500);
+  font-weight: var(--pf-font-weight-semibold);
+  white-space: nowrap;
+}
+
+/* The three places a header or footer line can put its text. */
+.lines {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--pf-space-100);
+}
+
+.lineField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-025);
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+}
+
+.tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pf-space-050);
+}
+
+.token {
+  padding: 2px var(--pf-space-075, 6px);
+  border: 1px solid var(--pf-color-border-strong);
+  border-radius: var(--pf-radius-sm);
+  background-color: var(--pf-color-bg-subtle);
+  color: var(--pf-color-text-primary);
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: var(--pf-font-size-100);
+  cursor: pointer;
+}
+
+.token:hover {
+  border-color: var(--pf-color-accent);
+}
+
+.sample {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--pf-space-100);
+  margin: 0;
+  padding: var(--pf-space-100);
+  border: 1px solid var(--pf-color-border);
+  border-radius: var(--pf-radius-md);
+  background-color: var(--pf-color-bg-subtle);
+  font-size: var(--pf-font-size-200);
+}
+
+.sampleCenter {
+  text-align: center;
+}
+
+.sampleRight {
+  text-align: right;
+}

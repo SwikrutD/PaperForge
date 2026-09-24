@@ -4,7 +4,7 @@ import { formatPageLabel } from '@shared/utils/pageLabels';
 import { Button } from '../controls/Button';
 import { Dialog } from '../overlays/Dialog';
 import type { OrganizeActions } from './useOrganizeActions';
-import styles from './organizeDialogs.module.css';
+import styles from '../overlays/dialogForm.module.css';
 
 interface LabelsDialogProps {
   actions: OrganizeActions;

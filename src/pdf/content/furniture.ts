@@ -7,7 +7,7 @@ import { nameOf } from './values';
  * puts on a page rather than the document's own drawing.
  *
  * Each one is wrapped in marked content named after what it is —
- * `/PFWatermark BDC … EMC` — so that PaperForge can find its own work again
+ * `/PFWatermark BMC … EMC` — so that PaperForge can find its own work again
  * and take it off or put a new one in its place. Nothing else on the page is
  * touched, and a document that carries no PaperForge furniture is left
  * exactly as it was.
@@ -29,7 +29,9 @@ export function tagFor(kind: FurnitureKind): string {
 
 /** Wraps drawing operators as a named, findable block. */
 export function furnitureBlock(kind: FurnitureKind, body: string): string {
-  return `/${TAGS[kind]} BDC\nq\n${body.trim()}\nQ\nEMC\n`;
+  // `BMC` rather than `BDC`: this is a plain tag with no property list, and a
+  // `BDC` without its dictionary is a malformed operator readers complain of.
+  return `/${TAGS[kind]} BMC\nq\n${body.trim()}\nQ\nEMC\n`;
 }
 
 /** Puts a block after everything the page draws, so it goes on top. */

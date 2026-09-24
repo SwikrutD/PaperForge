@@ -1,5 +1,5 @@
 /** Modal dialogs the shell can show. Each one has a real implementation. */
-export type DialogId = 'settings' | 'about';
+export type DialogId = 'settings' | 'about' | 'watermark' | 'background' | 'headerFooter';
 
 /** A question the user must answer before something irreversible happens. */
 export interface ConfirmationRequest {

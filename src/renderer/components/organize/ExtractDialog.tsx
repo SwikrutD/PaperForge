@@ -3,7 +3,7 @@ import { formatPageRange } from '@shared/utils/pageRange';
 import { Button } from '../controls/Button';
 import { Dialog } from '../overlays/Dialog';
 import type { OrganizeActions } from './useOrganizeActions';
-import styles from './organizeDialogs.module.css';
+import styles from '../overlays/dialogForm.module.css';
 
 interface ExtractDialogProps {
   actions: OrganizeActions;

@@ -48,7 +48,7 @@ describe('watermarks', () => {
       { kind: 'setWatermark', pages: [1, 3], watermark },
     ]);
 
-    expect(await pageText(result.bytes, 1)).toContain('/PFWatermark BDC');
+    expect(await pageText(result.bytes, 1)).toContain('/PFWatermark BMC');
     expect(await pageText(result.bytes, 2)).not.toContain('/PFWatermark');
     expect(await pageText(result.bytes, 3)).toContain('(DRAFT) Tj');
   });
@@ -88,7 +88,7 @@ describe('watermarks', () => {
     const content = await pageText(twice.bytes);
     expect(content).toContain('(FINAL) Tj');
     expect(content).not.toContain('(DRAFT) Tj');
-    expect(content.match(/PFWatermark BDC/g)).toHaveLength(1);
+    expect(content.match(/PFWatermark BMC/g)).toHaveLength(1);
   });
 
   it('draws an image watermark with the transparency it was given', async () => {
@@ -162,7 +162,7 @@ describe('headers and footers', () => {
     ]);
 
     const first = await pageText(result.bytes, 1);
-    expect(first).toContain('/PFHeader BDC');
+    expect(first).toContain('/PFHeader BMC');
     expect(first).toContain('(The Report) Tj');
     expect(first).toContain('(23 September 2026) Tj');
     expect(first).toContain('(Page 1 of 2) Tj');
