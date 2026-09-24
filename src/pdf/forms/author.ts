@@ -14,6 +14,7 @@ import {
 import { AppError } from '@shared/errors/appError';
 import type { EditOperation } from '@shared/schemas/edit';
 import type { FormFieldProperties, FormFieldType, FormValue } from '@shared/schemas/form';
+import { writeRule } from './rules';
 import { setValue } from './write';
 import { appearanceFont, refreshAppearances } from './write';
 
@@ -81,6 +82,7 @@ export async function applyAuthoringOperation(
   }
 
   applyProperties(field, operation.properties);
+  applyRule(document, field, operation.properties);
   if (operation.options !== null) setOptions(field, operation.options);
   if (operation.rect !== null) moveField(field, operation.rect);
 
@@ -170,6 +172,7 @@ async function createField(
 
   const created = form.getFieldMaybe(name);
   if (created !== undefined) {
+    applyRule(document, created, options.properties);
     applyProperties(created, {
       ...options.properties,
       // Nobody types into a place for a signature: the mark goes on top of it.
@@ -204,6 +207,18 @@ function applyProperties(field: PDFField, properties: FormFieldProperties): void
   }
 
   if (properties.defaultValue !== null) setValue(field, properties.defaultValue);
+}
+
+/**
+ * What the field will accept and what it works out, kept in the field's own
+ * dictionary rather than as a script for some other reader to run.
+ */
+export function applyRule(
+  document: PDFDocument,
+  field: PDFField,
+  properties: FormFieldProperties,
+): void {
+  writeRule(document, field, properties.rule);
 }
 
 function setOptions(field: PDFField, options: readonly string[]): void {

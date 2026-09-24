@@ -6,6 +6,9 @@ import { useDocumentStore } from '../../stores/documentStore';
 import { formFieldsFor, propertiesOf, useFormStore } from '../../stores/formStore';
 import styles from '../edit/EditProperties.module.css';
 
+/** One line per name, which is how the box is read and written. */
+const NEWLINE = String.fromCharCode(10);
+
 interface Draft {
   name: string;
   newName: string;
@@ -198,6 +201,95 @@ export function FieldDesignProperties(): ReactElement {
           </label>
         )}
       </section>
+
+      {takesText && (
+        <section className={styles.group}>
+          <h3 className={styles.title}>What it takes</h3>
+          <div className={styles.row}>
+            <label className={styles.label} htmlFor="field-format">
+              Accepts
+            </label>
+            <select
+              id="field-format"
+              className={styles.select}
+              value={draft.properties.rule.format}
+              onChange={(event) =>
+                setProperty({
+                  rule: {
+                    ...draft.properties.rule,
+                    format: event.target.value as 'text' | 'number' | 'date',
+                  },
+                })
+              }
+            >
+              <option value="text">Anything</option>
+              <option value="number">A number</option>
+              <option value="date">A date</option>
+            </select>
+          </div>
+
+          <div className={styles.row}>
+            <label className={styles.label} htmlFor="field-calc">
+              Works out
+            </label>
+            <select
+              id="field-calc"
+              className={styles.select}
+              value={draft.properties.rule.calculation?.kind ?? 'none'}
+              onChange={(event) =>
+                setProperty({
+                  rule: {
+                    ...draft.properties.rule,
+                    calculation:
+                      event.target.value === 'none'
+                        ? null
+                        : {
+                            kind: event.target.value as 'sum' | 'product' | 'average',
+                            fields: draft.properties.rule.calculation?.fields ?? [],
+                          },
+                  },
+                })
+              }
+            >
+              <option value="none">Nothing</option>
+              <option value="sum">The sum of</option>
+              <option value="product">The product of</option>
+              <option value="average">The average of</option>
+            </select>
+          </div>
+
+          {draft.properties.rule.calculation !== null && (
+            <label className={styles.cropField}>
+              From these fields, one a line
+              <textarea
+                className={styles.select}
+                rows={3}
+                aria-label="Fields to work from"
+                value={draft.properties.rule.calculation.fields.join(NEWLINE)}
+                onChange={(event) =>
+                  setProperty({
+                    rule: {
+                      ...draft.properties.rule,
+                      calculation: {
+                        kind: draft.properties.rule.calculation?.kind ?? 'sum',
+                        fields: event.target.value
+                          .split(NEWLINE)
+                          .map((name) => name.trim())
+                          .filter((name) => name !== ''),
+                      },
+                    },
+                  })
+                }
+              />
+            </label>
+          )}
+
+          <p className={styles.note}>
+            PaperForge works this out itself while the form is filled in. It writes no JavaScript
+            into the document, and runs none.
+          </p>
+        </section>
+      )}
 
       <section className={styles.group}>
         <div className={styles.actions}>

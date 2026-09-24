@@ -16,6 +16,7 @@ import {
   type PDFWidgetAnnotation,
 } from 'pdf-lib';
 import type { FormFieldModel, FormFieldType, FormValue, FormWidget } from '@shared/schemas/form';
+import { readRule } from './rules';
 
 /**
  * Reading the form a document carries.
@@ -72,6 +73,7 @@ function describe(
     alignment: alignmentOf(field),
     fontSize: fontSizeOf(document, acro.dict),
     tooltip: textOf(document, acro.dict, 'TU'),
+    rule: readRule(document, field),
     hasScript:
       carriesAction(document, acro.dict) ||
       acro.getWidgets().some((widget) => carriesAction(document, widget.dict)),

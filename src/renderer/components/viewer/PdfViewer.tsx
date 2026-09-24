@@ -93,6 +93,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const formDrafts = useFormStore((store) => store.drafts);
   const formSelected = useFormStore((store) => store.selected);
   const formHighlight = useFormStore((store) => store.highlight);
+  const formProblems = useFormStore((store) => store.problems);
   const stagedSignature = useSignatureStore((store) => store.staged);
   const preparing = useFormStore((store) => store.preparing);
   const fieldTool = useFormStore((store) => store.fieldTool);
@@ -430,6 +431,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                           valueOf={(field) => formValueOf(formDrafts, field)}
                           selected={formSelected}
                           highlight={formHighlight}
+                          problems={formProblems}
                           interactive={tools.tool === 'select'}
                           onSelect={(name) => useFormStore.getState().select(name)}
                           onDraft={(name, value) => useFormStore.getState().setDraft(name, value)}

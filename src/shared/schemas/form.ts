@@ -42,6 +42,26 @@ export type FormWidget = z.infer<typeof formWidgetSchema>;
 export const formValueSchema = z.union([z.string().max(20_000), z.array(z.string()), z.boolean()]);
 export type FormValue = z.infer<typeof formValueSchema>;
 
+/**
+ * What a field will accept, and what it works out for itself.
+ *
+ * PaperForge keeps this in the field's own dictionary and does the arithmetic
+ * itself. It writes no JavaScript, and runs none.
+ */
+export const formFieldRuleSchema = z.strictObject({
+  format: z.enum(['text', 'number', 'date']),
+  calculation: z
+    .strictObject({
+      kind: z.enum(['sum', 'product', 'average']),
+      /** The fields it works from, by name. */
+      fields: z.array(z.string().min(1).max(500)).max(200),
+    })
+    .nullable(),
+});
+export type FormFieldRule = z.infer<typeof formFieldRuleSchema>;
+
+export const NO_FIELD_RULE: FormFieldRule = { format: 'text', calculation: null };
+
 export const formFieldSchema = z.strictObject({
   /** The fully qualified name, which is how the field is addressed. */
   name: z.string().min(1).max(500),
@@ -62,6 +82,8 @@ export const formFieldSchema = z.strictObject({
   tooltip: z.string().max(1000).nullable(),
   /** True when the field or its widgets carry an action PaperForge will not run. */
   hasScript: z.boolean(),
+  /** What PaperForge itself will hold the field to. */
+  rule: formFieldRuleSchema,
 });
 export type FormFieldModel = z.infer<typeof formFieldSchema>;
 
@@ -90,6 +112,8 @@ export const formFieldPropertiesSchema = z.strictObject({
   defaultValue: formValueSchema.nullable(),
   /** The words on a push button. */
   label: z.string().max(200).nullable(),
+  /** What it will accept, and what it works out. */
+  rule: formFieldRuleSchema,
 });
 export type FormFieldProperties = z.infer<typeof formFieldPropertiesSchema>;
 
@@ -104,6 +128,7 @@ export const DEFAULT_FIELD_PROPERTIES: FormFieldProperties = {
   fontSize: null,
   defaultValue: null,
   label: null,
+  rule: NO_FIELD_RULE,
 };
 
 /** One field's new value, as the window sends it. */

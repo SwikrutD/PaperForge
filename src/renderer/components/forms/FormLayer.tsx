@@ -15,6 +15,8 @@ interface FormLayerProps {
   valueOf: (field: FormFieldModel) => FormValue | null;
   selected: string | null;
   highlight: boolean;
+  /** Why a field will not take what was typed, by field name. */
+  problems: ReadonlyMap<string, string>;
   /**
    * False while a mark is being placed or drawn: the fields then let the
    * pointer through, so a signature can be put down over one.
@@ -45,6 +47,7 @@ export function FormLayer({
   valueOf,
   selected,
   highlight,
+  problems,
   interactive,
   onSelect,
   onDraft,
@@ -73,8 +76,10 @@ export function FormLayer({
 
         const value = valueOf(field);
         const disabled = field.readOnly || field.type === 'button' || field.type === 'signature';
+        const problem = problems.get(field.name);
         const common = {
           'data-field': field.name,
+          'aria-invalid': problem !== undefined,
           'data-field-type': field.type,
           'aria-label': field.tooltip ?? field.name,
           title: field.tooltip ?? field.name,
@@ -89,6 +94,7 @@ export function FormLayer({
               styles.widget,
               highlight && styles.highlight,
               field.required && styles.required,
+              problem !== undefined && styles.wrong,
               selected === field.name && styles.selected,
               disabled && styles.disabled,
             )}

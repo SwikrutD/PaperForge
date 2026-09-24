@@ -8,6 +8,7 @@ import {
   type FormModel,
   type FormValue,
 } from '@shared/schemas/form';
+import { calculate, validate } from '@pdf/forms/rules';
 import { invoke } from '../services/ipcClient';
 import { useDocumentStore } from './documentStore';
 import { useUiStore } from './uiStore';
@@ -36,6 +37,8 @@ export interface FormStore {
   selected: string | null;
   /** What has been typed but not yet written, by field name. */
   drafts: Map<string, FormValue>;
+  /** Why a field will not take what was typed, by field name. */
+  problems: Map<string, string>;
   busy: boolean;
 
   setActive: (active: boolean) => void;
@@ -95,6 +98,7 @@ export const useFormStore = create<FormStore>((set, get) => ({
   highlight: true,
   selected: null,
   drafts: new Map(),
+  problems: new Map(),
   busy: false,
 
   setActive: (active) =>
@@ -213,9 +217,26 @@ export const useFormStore = create<FormStore>((set, get) => ({
       return;
     }
 
+    const problem = validate(field.rule, field.type, next);
+    if (problem !== null) {
+      set((state) => {
+        const problems = new Map(state.problems);
+        problems.set(name, problem);
+        return { problems };
+      });
+      return;
+    }
+    clearProblem(name);
+
+    const values = [
+      { name, value: next },
+      ...calculationsFor(fieldsOf(get(), sessionId), new Map([[name, next]])),
+    ];
+
     await run(sessionId, {
-      label: `Fill ${field.name}`,
-      operations: [{ kind: 'setFieldValues', values: [{ name, value: next }] }],
+      label:
+        values.length === 1 ? `Fill ${field.name}` : `Fill ${field.name} and work out the rest`,
+      operations: [{ kind: 'setFieldValues', values }],
     });
     clearDraft(name);
   },
@@ -294,7 +315,44 @@ export function propertiesOf(field: FormFieldModel): FormFieldProperties {
     fontSize: field.fontSize,
     defaultValue: null,
     label: null,
+    rule: field.rule,
   };
+}
+
+/**
+ * The fields that work something out, with what they now come to.
+ *
+ * PaperForge does the arithmetic itself, once, and writes the answers beside
+ * the value the reader typed — so a total is part of the same change, and the
+ * same undo.
+ */
+export function calculationsFor(
+  fields: readonly FormFieldModel[],
+  changed: ReadonlyMap<string, FormValue | null>,
+): Array<{ name: string; value: FormValue }> {
+  const valueOf = (name: string): FormValue | null => {
+    if (changed.has(name)) return changed.get(name) ?? null;
+    return fields.find((field) => field.name === name)?.value ?? null;
+  };
+
+  const results: Array<{ name: string; value: FormValue }> = [];
+  for (const field of fields) {
+    if (field.rule.calculation === null || field.readOnly) continue;
+    const worked = calculate(field.rule, valueOf);
+    if (worked === null) continue;
+    if (String(field.value ?? '') === worked) continue;
+    results.push({ name: field.name, value: worked });
+  }
+  return results;
+}
+
+function clearProblem(name: string): void {
+  useFormStore.setState((state) => {
+    if (!state.problems.has(name)) return state;
+    const problems = new Map(state.problems);
+    problems.delete(name);
+    return { ...state, problems };
+  });
 }
 
 function clearDraft(name: string): void {
@@ -306,16 +364,31 @@ function clearDraft(name: string): void {
   });
 }
 
+/**
+ * Changes go one at a time, and the model is read again before the next one.
+ *
+ * A form is filled in field by field, and a total is worked out from what the
+ * other fields hold: two changes in flight at once would each work from what
+ * the form held before the other, and the later answer would be wrong.
+ */
+let queue: Promise<void> = Promise.resolve();
+
 async function run(
   sessionId: string,
   transaction: Parameters<ReturnType<typeof useDocumentStore.getState>['applyEdit']>[1],
 ): Promise<void> {
-  useFormStore.setState({ busy: true });
-  try {
-    await useDocumentStore.getState().applyEdit(sessionId, transaction);
-  } finally {
-    useFormStore.setState({ busy: false });
-  }
+  queue = queue.then(async () => {
+    useFormStore.setState({ busy: true });
+    try {
+      await useDocumentStore.getState().applyEdit(sessionId, transaction);
+      const revision = useDocumentStore.getState().tabs.find((tab) => tab.session.id === sessionId)
+        ?.edit.revision;
+      if (revision !== undefined) await useFormStore.getState().load(sessionId, revision);
+    } finally {
+      useFormStore.setState({ busy: false });
+    }
+  });
+  await queue;
 }
 
 /** Whether two field values mean the same thing. */

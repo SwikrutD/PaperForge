@@ -31,6 +31,19 @@ function fields(): Locator {
   return page.getByLabel('Page 1').locator('[data-design-field]');
 }
 
+/** Goes back to making the form, wherever the last test left off. */
+async function openPrepare(): Promise<void> {
+  if ((await toolbar().count()) > 0) {
+    await expect(toolbar()).toBeVisible();
+    return;
+  }
+  // Through the menu rather than the palette: the keyboard may be in a field.
+  await page.getByRole('menuitem', { name: 'Tools' }).click();
+  // The item is a checkbox item: it says whether the mode is on.
+  await page.getByRole('menuitemcheckbox', { name: /Prepare Form/ }).click();
+  await expect(toolbar()).toBeVisible();
+}
+
 /** Drags a box on the page, in a part of it that is empty. */
 async function drawField(downwards: number): Promise<void> {
   const box = await page.getByLabel('Page 1').boundingBox();
@@ -67,10 +80,7 @@ test.beforeAll(async () => {
   await page.getByRole('button', { name: 'Open Blank.pdf' }).click();
   await expect(page.getByLabel('Page 1')).toBeVisible();
 
-  await page.keyboard.press('Control+k');
-  await page.getByPlaceholder('Search commands').fill('Prepare Form');
-  await page.getByRole('option').filter({ hasText: 'Prepare Form' }).first().click();
-  await expect(toolbar()).toBeVisible();
+  await openPrepare();
 });
 
 test.afterAll(async () => {
@@ -161,14 +171,68 @@ test('the form is in the file, and can be filled in after saving', async () => {
   await expect(field).toHaveValue('Ada Lovelace');
 });
 
-test('a field can be taken away again', async () => {
-  await page.keyboard.press('Control+k');
-  await page.getByPlaceholder('Search commands').fill('Prepare Form');
-  await page.getByRole('option').filter({ hasText: 'Prepare Form' }).first().click();
-  await expect(toolbar()).toBeVisible();
+test('a field can be told what it takes, and what it works out', async () => {
+  await openPrepare();
 
+  // Two numbers and a total that adds them up, made here and filled in below.
+  await toolbar().getByRole('button', { name: 'Text field' }).click();
+  await drawField(0.62);
+  await properties().getByLabel('Field name').fill('order.first');
+  await properties().getByRole('combobox', { name: 'Accepts' }).selectOption('number');
+  await properties().getByRole('button', { name: 'Apply' }).click();
+
+  await toolbar().getByRole('button', { name: 'Text field' }).click();
+  await drawField(0.72);
+  await properties().getByLabel('Field name').fill('order.second');
+  await properties().getByRole('combobox', { name: 'Accepts' }).selectOption('number');
+  await properties().getByRole('button', { name: 'Apply' }).click();
+
+  await toolbar().getByRole('button', { name: 'Text field' }).click();
+  await drawField(0.82);
+  await properties().getByLabel('Field name').fill('order.total');
+  await properties().getByRole('combobox', { name: 'Accepts' }).selectOption('number');
+  await properties().getByRole('combobox', { name: 'Works out' }).selectOption('sum');
+  await properties()
+    .getByLabel('Fields to work from')
+    .fill(['order.first', 'order.second'].join(String.fromCharCode(10)));
+  await properties().getByRole('button', { name: 'Apply' }).click();
+
+  await expect(properties().getByLabel('Fields to work from')).toHaveValue(
+    ['order.first', 'order.second'].join(String.fromCharCode(10)),
+  );
+});
+
+test('the total works itself out, and a word is refused where a number belongs', async () => {
+  await toolbar().getByRole('button', { name: 'Done' }).click();
+  await page.keyboard.press('Control+Shift+F');
+  await expect(page.getByRole('toolbar', { name: 'Fill and sign' })).toBeVisible();
+
+  await page.locator('[data-field="order.first"]').fill('12');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[data-field="order.total"]')).toHaveValue('12');
+
+  await page.locator('[data-field="order.second"]').fill('30.5');
+  await page.keyboard.press('Enter');
+
+  // PaperForge does the arithmetic itself: no script runs.
+  await expect(page.locator('[data-field="order.total"]')).toHaveValue('42.5');
+
+  // A word where a number belongs is refused before anything is written.
+  await page.locator('[data-field="order.first"]').fill('twelve');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[data-field="order.first"]')).toHaveAttribute('aria-invalid', 'true');
+  await expect(page.getByRole('region', { name: 'Properties and tools' })).toContainText(
+    'takes a number',
+  );
+  await expect(page.locator('[data-field="order.total"]')).toHaveValue('42.5');
+});
+
+test('a field can be taken away again', async () => {
+  await openPrepare();
+
+  const before = await fields().count();
   await fields().first().click();
   await properties().getByRole('button', { name: 'Delete' }).click();
 
-  await expect(fields()).toHaveCount(2);
+  await expect(fields()).toHaveCount(before - 1);
 });

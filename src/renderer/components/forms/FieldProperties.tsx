@@ -22,6 +22,7 @@ export function FieldProperties(): ReactElement {
   const sessionId = useDocumentStore((store) => store.activeId);
   const forms = useFormStore((store) => store.forms);
   const selected = useFormStore((store) => store.selected);
+  const problems = useFormStore((store) => store.problems);
 
   const fields = formFieldsFor(forms, sessionId);
   const field = fields.find((entry) => entry.name === selected);
@@ -101,6 +102,22 @@ export function FieldProperties(): ReactElement {
             <dd className={styles.value}>Dots, not what is typed</dd>
           </div>
         )}
+        {field.rule.format !== 'text' && (
+          <div className={styles.row}>
+            <dt className={styles.label}>Takes</dt>
+            <dd className={styles.value}>
+              {field.rule.format === 'number' ? 'A number' : 'A date'}
+            </dd>
+          </div>
+        )}
+        {field.rule.calculation !== null && (
+          <div className={styles.row}>
+            <dt className={styles.label}>Works out</dt>
+            <dd className={styles.value}>
+              {`The ${field.rule.calculation.kind} of ${field.rule.calculation.fields.join(', ')}`}
+            </dd>
+          </div>
+        )}
         {field.options !== null && (
           <div className={styles.row}>
             <dt className={styles.label}>Offers</dt>
@@ -120,6 +137,17 @@ export function FieldProperties(): ReactElement {
         <p className={styles.note}>
           A button. Whatever it was built to do is written in the document as an action, and
           PaperForge does not run it.
+        </p>
+      )}
+
+      {problems.get(field.name) !== undefined && (
+        <p className={styles.warning}>{problems.get(field.name)}</p>
+      )}
+
+      {field.rule.calculation !== null && (
+        <p className={styles.note}>
+          PaperForge works this out itself when the fields it depends on change, and writes the
+          answer into the document. No script runs.
         </p>
       )}
 
