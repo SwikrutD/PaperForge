@@ -10,9 +10,11 @@ import {
   WholeWord,
   X,
 } from 'lucide-react';
+import { Button } from '../controls/Button';
 import { IconButton } from '../controls/IconButton';
 import { useDocumentStore } from '../../stores/documentStore';
 import { useSearchStore } from '../../stores/searchStore';
+import { useUiStore } from '../../stores/uiStore';
 import { SearchResults } from './SearchResults';
 import styles from './FindBar.module.css';
 
@@ -235,6 +237,9 @@ function FindStatus(): ReactElement | null {
           {note}
         </p>
       ))}
+      {noText && (
+        <Button onClick={() => useUiStore.getState().openDialog('ocr')}>Recognize Text</Button>
+      )}
     </div>
   );
 }

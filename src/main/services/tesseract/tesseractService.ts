@@ -32,6 +32,7 @@ export interface TesseractServiceOptions {
  */
 export class TesseractService {
   private discovery: Promise<string | null> | undefined;
+  private installed: Promise<string[]> | undefined;
   private configuredPath: string | null;
   private configuredTessdata: string | null;
 
@@ -45,8 +46,12 @@ export class TesseractService {
     if (paths.executable !== undefined && paths.executable !== this.configuredPath) {
       this.configuredPath = paths.executable;
       this.discovery = undefined;
+      this.installed = undefined;
     }
-    if (paths.tessdata !== undefined) this.configuredTessdata = paths.tessdata;
+    if (paths.tessdata !== undefined) {
+      this.configuredTessdata = paths.tessdata;
+      this.installed = undefined;
+    }
   }
 
   /** The executable to run, or null when Tesseract is not installed. */
@@ -138,6 +143,13 @@ export class TesseractService {
 
     try {
       await fs.writeFile(imagePath, image);
+
+      // Page segmentation mode 1 lets Tesseract work out which way up the page
+      // is before reading it, which needs the orientation data; without that
+      // data it is left to its own default rather than being asked for
+      // something it cannot do.
+      const orientable = (await this.installedLanguages(executable)).includes('osd');
+
       const result = await this.run(
         [
           imagePath,
@@ -147,6 +159,7 @@ export class TesseractService {
           options.languages.join('+'),
           '--dpi',
           String(options.dpi),
+          ...(orientable ? ['--psm', '1'] : []),
           'tsv',
         ],
         { executable, ...(signal === undefined ? {} : { signal }) },
@@ -204,6 +217,12 @@ export class TesseractService {
       options.signal?.addEventListener('abort', abort, { once: true });
       child.on('close', () => options.signal?.removeEventListener('abort', abort));
     });
+  }
+
+  /** The installed languages, asked for once and remembered. */
+  private async installedLanguages(executable: string): Promise<string[]> {
+    this.installed ??= this.languages(executable);
+    return this.installed;
   }
 
   /** Where Tesseract looks for language data when nothing says otherwise. */

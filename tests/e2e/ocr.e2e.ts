@@ -106,6 +106,18 @@ test('a scan has no text to find before it is read', async () => {
   expect((await textOnDisk(documentPath)).trim()).toBe('');
 });
 
+test('searching a scan that has not been read offers to read it', async () => {
+  await page.keyboard.press('Control+f');
+  await page.getByRole('searchbox', { name: 'Find in document' }).fill('ACME');
+  await expect(page.getByText(/carry no text|carries no text/)).toBeVisible({ timeout: 20_000 });
+
+  // The offer is the tool itself, not a suggestion to go and find it.
+  await page.getByRole('button', { name: 'Recognize Text' }).click();
+  await expect(dialog()).toContainText('Recognize Text');
+  await dialog().getByRole('button', { name: 'Close', exact: true }).last().click();
+  await page.keyboard.press('Escape');
+});
+
 test('the dialog says where Tesseract is and what it can read', async () => {
   await openOcr();
 
