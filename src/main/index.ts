@@ -21,6 +21,7 @@ import { StagedAssets } from './services/documents/stagedAssets';
 import { SignatureLibrary } from './services/signatures/signatureLibrary';
 import { TesseractService } from './services/tesseract/tesseractService';
 import { ExportSessions } from './services/conversion/exportSession';
+import { LibreOfficeProvider } from './services/conversion/libreOffice';
 import { QpdfService } from './services/qpdf/qpdfService';
 import { PdfLibMutationEngine } from '@pdf/mutate/pdfLibEngine';
 import { createLogger, parseLogLevel, type Logger } from './services/logging/logger';
@@ -116,6 +117,14 @@ async function bootstrap(): Promise<void> {
   conversions.add(textProvider);
   conversions.add(createHtmlProvider(logger));
 
+  // Office files convert through a local LibreOffice when there is one; when
+  // there is not, the provider says so and the file is refused with a reason.
+  const office = new LibreOfficeProvider({
+    logger,
+    configuredPath: settings.get().tools.libreOfficePath,
+  });
+  conversions.add(office);
+
   const library = new SourceLibrary({ registry: conversions, engine, logger });
   const creator = new DocumentCreator({ library, engine, qpdf, logger });
 
@@ -179,6 +188,7 @@ async function bootstrap(): Promise<void> {
     signatures,
     tesseract,
     exports,
+    office,
     pageExport,
     engine,
     library,

@@ -68,6 +68,15 @@ export const DEFAULT_EXPORT_OPTIONS: Omit<ExportOptions, 'pages'> = {
   includePageImages: true,
 };
 
+/** Whether a local LibreOffice was found, and what it is. */
+export const officeStatusSchema = z.strictObject({
+  available: z.boolean(),
+  path: z.string().nullable(),
+  version: z.string().nullable(),
+  problem: z.string().nullable(),
+});
+export type OfficeStatus = z.infer<typeof officeStatusSchema>;
+
 /** One piece of text the page draws, as the window read it. */
 export const exportTextItemSchema = z.strictObject({
   text: z.string().max(4000),

@@ -9,6 +9,7 @@ import { ThemeSwitcher } from '../controls/ThemeSwitcher';
 import { Toggle } from '../controls/Toggle';
 import { Dialog } from './Dialog';
 import { QpdfSetting } from './QpdfSetting';
+import { OfficeSetting } from './OfficeSetting';
 import { OcrSetting } from './OcrSetting';
 import styles from './SettingsDialog.module.css';
 
@@ -135,6 +136,7 @@ export function SettingsDialog({ settings }: { settings: Settings }): ReactEleme
       <section className={styles.section} aria-label="Local tools">
         <h3 className={styles.sectionTitle}>Local tools</h3>
         <QpdfSetting />
+        <OfficeSetting />
         <p className={styles.note}>
           Optional. PaperForge reopens everything it saves to check it; with qpdf installed it is
           inspected a second time before it replaces your file. Nothing is ever downloaded.

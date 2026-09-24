@@ -72,6 +72,8 @@ export const toolsSettingsSchema = z.object({
   tesseractPath: z.string().max(4096).nullable(),
   /** A folder of Tesseract language data, when one has been chosen. */
   tessdataPath: z.string().max(4096).nullable(),
+  /** Where the local LibreOffice is, when the reader has chosen one. */
+  libreOfficePath: z.string().max(4096).nullable(),
 });
 export type ToolsSettings = z.infer<typeof toolsSettingsSchema>;
 
@@ -142,7 +144,7 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   session: { restoreOnStartup: true, openDocuments: [] },
   editing: { annotationAuthor: '' },
-  tools: { qpdfPath: null, tesseractPath: null, tessdataPath: null },
+  tools: { qpdfPath: null, tesseractPath: null, tessdataPath: null, libreOfficePath: null },
   ocr: { languages: ['eng'], dpi: 300, preprocess: false },
 };
 
@@ -188,7 +190,7 @@ function mergeTools(
   if (patch === undefined) return current;
 
   const merged: ToolsSettings = { ...current };
-  for (const key of ['qpdfPath', 'tesseractPath', 'tessdataPath'] as const) {
+  for (const key of ['qpdfPath', 'tesseractPath', 'tessdataPath', 'libreOfficePath'] as const) {
     if (key in patch) merged[key] = patch[key] ?? null;
   }
   return merged;

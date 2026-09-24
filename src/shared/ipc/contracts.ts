@@ -33,7 +33,11 @@ import { pageImageModelSchema } from '../schemas/image';
 import { pageLinksModelSchema } from '../schemas/link';
 import { formModelSchema } from '../schemas/form';
 import { ocrOptionsSchema, ocrPageResultSchema, ocrStatusSchema } from '../schemas/ocr';
-import { exportOptionsSchema, exportPagePayloadSchema } from '../schemas/convert';
+import {
+  exportOptionsSchema,
+  exportPagePayloadSchema,
+  officeStatusSchema,
+} from '../schemas/convert';
 import { savedSignatureSchema, stageSignatureSchema } from '../schemas/signature';
 import { recentFilesListSchema } from '../schemas/recentFiles';
 import { settingsPatchSchema, settingsSchema } from '../schemas/settings';
@@ -305,6 +309,15 @@ export const invokeContracts = {
   'convert:cancel': {
     request: z.strictObject({ exportId: z.string().min(1).max(64) }),
     response: exportResultSchema,
+  },
+
+  /** Whether a local LibreOffice was found, for Office files. */
+  'convert:officeStatus': { request: z.void(), response: officeStatusSchema },
+
+  /** Points PaperForge at a LibreOffice, or forgets the one it has. */
+  'convert:locateOffice': {
+    request: z.strictObject({ clear: z.boolean().optional() }),
+    response: officeStatusSchema,
   },
 
   /** Writes an image the page draws out to a file the reader chooses. */

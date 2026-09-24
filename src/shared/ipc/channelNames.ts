@@ -50,6 +50,8 @@ export const INVOKE_CHANNEL_NAMES = [
   'convert:page',
   'convert:finish',
   'convert:cancel',
+  'convert:officeStatus',
+  'convert:locateOffice',
   'signatures:list',
   'signatures:stage',
   'signatures:remove',

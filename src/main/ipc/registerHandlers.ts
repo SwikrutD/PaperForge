@@ -10,6 +10,7 @@ import type { StagedAssets } from '../services/documents/stagedAssets';
 import type { SignatureLibrary } from '../services/signatures/signatureLibrary';
 import type { TesseractService } from '../services/tesseract/tesseractService';
 import type { ExportSessions } from '../services/conversion/exportSession';
+import type { LibreOfficeProvider } from '../services/conversion/libreOffice';
 import type { RecentFilesStore } from '../services/recentFiles/recentFilesStore';
 import type { SessionWorkspaces } from '../services/recovery/recoveryJournal';
 import type { SettingsStore } from '../services/settings/settingsStore';
@@ -43,6 +44,7 @@ export interface IpcDependencies {
   signatures: SignatureLibrary;
   tesseract: TesseractService;
   exports: ExportSessions;
+  office: LibreOfficeProvider;
   pageExport: PageExport;
   engine: PdfMutationEngine;
   library: SourceLibrary;
@@ -149,6 +151,8 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
   registerConvertHandlers(registerInvoke, {
     documents: deps.documents,
     exports: deps.exports,
+    office: deps.office,
+    settings: deps.settings,
     senderWindow,
   });
 

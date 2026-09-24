@@ -107,6 +107,7 @@ test.beforeAll(async () => {
   files['image'] = path.join(sandbox, 'Picture.png');
   files['text'] = path.join(sandbox, 'Notes.txt');
   files['other'] = path.join(sandbox, 'Archive.zip');
+  files['office'] = path.join(sandbox, 'Letter.docx');
 
   await fs.writeFile(
     files['first'],
@@ -119,6 +120,7 @@ test.beforeAll(async () => {
   await fs.writeFile(files['image'], pngPixel(60, 40));
   await fs.writeFile(files['text'], 'Notes made outside PaperForge.\nSecond line.');
   await fs.writeFile(files['other'], 'PK not really an archive');
+  await fs.writeFile(files['office'], 'PK not really a Word document');
 });
 
 test.afterAll(async () => {
@@ -156,6 +158,17 @@ test('files of several kinds become pages, listed with what they became', async 
 
   // Three files, five pages between them.
   await expect(page.getByText('3 files · 5 pages')).toBeVisible();
+});
+
+test('an Office file says what PaperForge would need to convert it', async () => {
+  await addFiles([files['office'] as string]);
+
+  // LibreOffice is not installed on this machine, so the file is refused with
+  // a reason rather than silently producing nothing — and the reason says
+  // plainly that nothing would be uploaded either way.
+  const alert = page.getByRole('alert');
+  await expect(alert).toContainText(/LibreOffice/);
+  await expect(alert).toContainText(/nothing is uploaded/i);
 });
 
 test('a file it cannot make pages from is reported, not silently dropped', async () => {

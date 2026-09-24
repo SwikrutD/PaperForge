@@ -5,11 +5,15 @@ import type { ExportResult } from '@shared/schemas/pages';
 import type { ExportMode } from '@shared/schemas/convert';
 import type { DocumentService } from '../../services/documents/documentService';
 import type { ExportSessions } from '../../services/conversion/exportSession';
+import type { LibreOfficeProvider } from '../../services/conversion/libreOffice';
+import type { SettingsStore } from '../../services/settings/settingsStore';
 import type { RegisterInvoke } from '../registry';
 
 export interface ConvertHandlerDeps {
   documents: DocumentService;
   exports: ExportSessions;
+  office: LibreOfficeProvider;
+  settings: SettingsStore;
   senderWindow: (event: Electron.IpcMainInvokeEvent) => BrowserWindow;
 }
 
@@ -93,6 +97,30 @@ export function registerConvertHandlers(
   });
 
   registerInvoke('convert:finish', ({ exportId }) => deps.exports.finish(exportId));
+
+  registerInvoke('convert:officeStatus', () => deps.office.status());
+
+  registerInvoke('convert:locateOffice', async ({ clear }, event) => {
+    if (clear === true) {
+      await deps.settings.patch({ tools: { libreOfficePath: null } });
+      deps.office.setConfiguredPath(null);
+      return deps.office.status();
+    }
+
+    const result = await dialog.showOpenDialog(deps.senderWindow(event), {
+      title: 'Where is LibreOffice?',
+      buttonLabel: 'Use this program',
+      properties: ['openFile'],
+      filters: [{ name: 'Programs', extensions: ['exe'] }],
+    });
+
+    const chosen = result.canceled ? undefined : result.filePaths[0];
+    if (chosen === undefined) return deps.office.status();
+
+    await deps.settings.patch({ tools: { libreOfficePath: chosen } });
+    deps.office.setConfiguredPath(chosen);
+    return deps.office.status();
+  });
 
   registerInvoke('convert:cancel', ({ exportId }) => {
     const result = deps.exports.cancel(exportId);
