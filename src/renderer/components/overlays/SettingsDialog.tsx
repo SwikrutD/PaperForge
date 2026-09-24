@@ -1,8 +1,9 @@
-import type { ReactElement } from 'react';
+import { useEffect, type ReactElement } from 'react';
 import type { Settings } from '@shared/schemas/settings';
 import { useCommands } from '../../commands/useCommands';
 import { useAppStore } from '../../stores/appStore';
 import { useUiStore } from '../../stores/uiStore';
+import { useSignatureStore } from '../../stores/signatureStore';
 import { Button } from '../controls/Button';
 import { ThemeSwitcher } from '../controls/ThemeSwitcher';
 import { Toggle } from '../controls/Toggle';
@@ -41,6 +42,13 @@ export function SettingsDialog({ settings }: { settings: Settings }): ReactEleme
   const { execute, resolve } = useCommands();
 
   const clearCommand = resolve('privacy.clearRecentFiles');
+  const signatures = useSignatureStore((store) => store.saved);
+  const loadSignatures = useSignatureStore((store) => store.loadSaved);
+
+  // The list is read when the dialog opens, so the count is what is there.
+  useEffect(() => {
+    void loadSignatures();
+  }, [loadSignatures]);
 
   return (
     <Dialog
@@ -91,6 +99,23 @@ export function SettingsDialog({ settings }: { settings: Settings }): ReactEleme
             disabled={clearCommand?.enabled === false}
             title={clearCommand?.enabled === false ? clearCommand.reason : undefined}
             onClick={() => execute('privacy.clearRecentFiles')}
+          >
+            Clear
+          </Button>
+        </SettingRow>
+        <SettingRow
+          label="Saved signatures"
+          description={
+            signatures.length === 0
+              ? 'None are kept on this computer.'
+              : `${String(signatures.length)} kept on this computer, and never sent anywhere.`
+          }
+        >
+          <Button
+            disabled={signatures.length === 0}
+            onClick={() => {
+              void useSignatureStore.getState().clearSaved();
+            }}
           >
             Clear
           </Button>

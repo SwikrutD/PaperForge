@@ -269,6 +269,11 @@ main process writes it through the same mutation engine every other change goes 
 comments panel lists what the file contains — including annotations another application wrote.
 `docs/ANNOTATIONS.md` has the subtypes, the entries and the limits.
 
+Forms are the same shape of work: fields are read whole, filled through their own types and drawn
+again where they changed, and the rules a field is held to are PaperForge's own entry rather than
+document JavaScript, which it never runs. `docs/FORMS.md` has the model, the signing and the
+flattening.
+
 ## Organizing pages
 
 The Organize Pages workspace (`renderer/components/organize`) replaces the reading view with a grid

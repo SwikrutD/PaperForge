@@ -375,3 +375,70 @@ Run in both light and dark themes:
 - [ ] Every one of them is one undo, and what the pages carry is in the file after a save.
 - [ ] All three dialogs are correct in light and dark, at 125% and 150% Windows scaling, and every
       control has a label.
+
+## Segment 11 — forms, signing and flattening
+
+### Filling a form in
+
+- [ ] Fill & Sign puts a control on every field the document carries, exactly where it is drawn, at
+      any zoom, page rotation and view rotation.
+- [ ] The page no longer shows a field's value twice: the canvas leaves the widgets out while they
+      are being filled in.
+- [ ] Tab moves from field to field, Space ticks a checkbox, and a screen reader reads each field's
+      name or tooltip.
+- [ ] Typing is written when the field is left or Enter is pressed — one undo for a sentence, not
+      one per keystroke.
+- [ ] A tick, a radio choice and a dropdown choice are written at once, and show at once.
+- [ ] A read-only field cannot be changed; a required field that is empty is counted in the bar.
+- [ ] Highlight fields tints every field, and turning it off leaves the page as the document draws
+      it.
+- [ ] Empty the form clears everything that can be changed, asks first, and can be undone.
+- [ ] What was filled in is in the saved file, and is still there when it is reopened — in
+      PaperForge and in another reader.
+- [ ] A form carrying JavaScript says so in the bar, and nothing runs.
+
+### What a field takes, and what it works out
+
+- [ ] A field set to take a number refuses a word, marks itself, and says why in the panel; nothing
+      is written.
+- [ ] A field set to take a date accepts both 2026-09-23 and 23/09/2026, and refuses 31/02/2026.
+- [ ] A total set to the sum, product or average of other fields works itself out as they are
+      filled in, in the same undo step.
+- [ ] Nothing in the written file is a script: the rule is PaperForge's own entry and the document
+      carries no JavaScript.
+
+### Signing
+
+- [ ] A signature can be drawn, typed or brought in as a picture, and the dialog says plainly that
+      it is a mark rather than a certificate-based signature.
+- [ ] A drawn or typed mark is cropped to itself; an imported photograph has its paper cleared away
+      and its ink kept.
+- [ ] The mark goes where the page is clicked, and can then be moved, resized and deleted like any
+      other mark.
+- [ ] Moving a placed signature keeps the picture — it does not become an empty box.
+- [ ] Initials work the same way, and are kept apart from signatures in the list.
+- [ ] Today's date goes on as text that can be selected and searched.
+- [ ] A signature is kept only when Remember is ticked, appears in the dialog next time, and can be
+      forgotten from the dialog or cleared from Settings → Privacy.
+- [ ] Marks are in the saved file and come back on reopening.
+
+### Making a form
+
+- [ ] Prepare Form offers each kind of field, and dragging with one chosen draws it there.
+- [ ] A new field is selected as soon as it is made, and the panel is about it.
+- [ ] Name, tooltip, required, read-only, several lines, hidden text, length limit, alignment and
+      options can all be set, and hold after a save and reopen.
+- [ ] Renaming a field keeps what it is and where it sits; renaming onto a name already in use is
+      refused, as is renaming a field that carries an action.
+- [ ] Fields move and resize by dragging, and are taken away by Delete.
+- [ ] A form made from nothing can be filled in straight afterwards.
+- [ ] A signature field is read-only and says what it is.
+
+### Flattening
+
+- [ ] Flatten says how many fields and marks will be drawn onto the page.
+- [ ] Flattening writes a copy by default, and the open document keeps its fields.
+- [ ] After flattening in place there is nothing left to fill in, the page looks exactly as it did,
+      and undo puts the fields back until the file is saved.
+- [ ] Both toolbars and both panels are correct in light and dark, at 125% and 150% Windows
+      scaling, and every control has a label.

@@ -32,6 +32,8 @@ export interface SignatureStore {
   /** Puts a saved signature on a page again. */
   placeSaved: (id: string) => Promise<void>;
   forget: (id: string) => Promise<void>;
+  /** Forgets every saved signature, from Settings → Privacy. */
+  clearSaved: () => Promise<void>;
   /** Called once the mark has been put down. */
   clearStaged: () => void;
 }
@@ -122,6 +124,15 @@ export const useSignatureStore = create<SignatureStore>((set, get) => ({
   forget: async (id) => {
     try {
       set({ saved: await invoke('signatures:remove', { id }) });
+    } catch (error) {
+      report(error);
+    }
+  },
+
+  clearSaved: async () => {
+    try {
+      await invoke('signatures:clear');
+      set({ saved: [] });
     } catch (error) {
       report(error);
     }

@@ -12,6 +12,7 @@
 .badge {
   display: inline-flex;
   align-items: center;
+  white-space: nowrap;
   gap: var(--pf-space-050);
   padding: 2px var(--pf-space-100);
   border: 1px solid var(--pf-color-accent);
@@ -26,8 +27,14 @@
   height: 14px;
 }
 
+/* One line: the bar keeps its height however long the sentence is. */
 .hint {
   margin: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--pf-color-text-secondary);
   font-size: var(--pf-font-size-200);
 }

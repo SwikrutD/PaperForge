@@ -2,10 +2,10 @@
 
 ## Current status
 
-- Last completed segment: **10 — Edit PDF: images, links, layout content**
-- Next segment: **11 — Forms and Fill & Sign**
+- Last completed segment: **11 — Forms and Fill & Sign**
+- Next segment: **12 — OCR**
 - Build status: `npm run package` succeeds; packaged app launches and closes cleanly on Windows 11 x64
-- Test status: 565 unit tests (49 files) and 95 Playwright end-to-end tests passing; typecheck, lint and format clean
+- Test status: 600 unit tests (51 files) and 119 Playwright end-to-end tests passing; typecheck, lint and format clean
 
 ## Completed segments
 
@@ -20,7 +20,7 @@
 - [x] 8 Create PDF and Combine Files
 - [x] 9 Edit PDF: content model and text editing
 - [x] 10 Edit PDF: images, links, layout content
-- [ ] 11 Forms and Fill & Sign
+- [x] 11 Forms and Fill & Sign
 - [ ] 12 OCR
 - [ ] 13 Conversion center
 - [ ] 14 Protect, metadata, sanitize, attachments
@@ -417,6 +417,45 @@ a photograph is never a guess about which was meant.
 | Renderer | `renderer/stores/{imageEditStore,linkEditStore,editTargetStore}.ts`, `renderer/components/edit/**`                                      |
 | Tests    | `tests/unit/shared/{editImages,editLinks,furniture}.test.ts`, `tests/unit/renderer/imageGeometry.test.ts`, three new `tests/e2e` suites |
 
+## Segment 11 — what landed
+
+**Reading and filling.** The whole form is read at once, because a field can be drawn on several
+pages: what each field is, what it holds, what it will accept, where it is drawn, and whether it
+carries an action PaperForge will not run. Filling writes through the field's own type — text cut
+to its limit, an option the field does not offer refused, a read-only field left alone — and draws
+the appearance of the fields that changed, so a reader that generates none of its own still shows
+what was filled in.
+
+**In the window**, each widget is a real control where the field is drawn, and the page is rendered
+without its widgets while filling, so a value is never shown twice. Typing is held until the field
+is left; ticks and choices are written at once. Changes go through a queue and the form is read
+again after each, so a total is never worked out from what the form held a moment ago.
+
+**Rules without scripts.** A field can be told to take a number or a date, and to work out the sum,
+product or average of other fields. It is kept in the field's own dictionary under `/PFRule` and
+PaperForge does the arithmetic itself: it writes no JavaScript into a document and runs none.
+
+**Simple signatures.** Drawn, typed or brought in as a picture, cropped to the mark, and placed as
+a stamp annotation so it can be moved and taken off like any other. An imported photograph has its
+paper cleared away. A typed mark is rasterised with a face this computer already has, so no font is
+embedded. Signatures are kept only when the reader asks, only on this computer, and are cleared
+from Settings -> Privacy. Today's date goes on as text rather than a picture.
+
+**Prepare Form.** A mode for making the form rather than filling it: pick a kind, drag where it
+goes, name it and say what it accepts. Fields move, resize and go away; renaming makes the field
+again under the new name, and is refused on a field carrying an action.
+
+**Flattening** draws the fields and marks onto the page and takes them away, using the appearance
+each already carries, and writes a copy by default.
+
+| Area     | Files                                                                                                |
+| -------- | ---------------------------------------------------------------------------------------------------- |
+| Engine   | `src/pdf/forms/{read,write,author,rules,flatten}.ts`                                                 |
+| Shared   | `src/shared/schemas/{form,signature}.ts`, the field, flatten and authoring operations in `edit.ts`   |
+| Main     | `main/ipc/handlers/{formHandlers,signatureHandlers}.ts`, `main/services/signatures/signatureLibrary` |
+| Renderer | `renderer/stores/{formStore,signatureStore}.ts`, `renderer/components/forms/**`                      |
+| Tests    | `tests/unit/shared/{forms,formRules}.test.ts`, `tests/e2e/{fillForm,signatures,prepareForm}.e2e.ts`  |
+
 ## Architecture decisions
 
 1. **Channel allowlist separate from schemas**, so the preload carries no validation library and
@@ -613,6 +652,29 @@ a photograph is never a guess about which was meant.
 79. **Text, images and links take the pointer in turn.** One shared target, three layers: the
     alternative is guessing which object a click on overlapping content meant.
 
+80. **A form is read whole, not page by page.** A field can be drawn on several pages, and a form
+    is small next to the document it sits on.
+81. **The page is drawn without its widgets while a form is filled in.** Otherwise the canvas would
+    show what a field holds and the control over it would show the same thing, half a line apart.
+82. **Typing is held until the field is left; ticks and choices are written at once.** Every change
+    makes a revision, and a sentence should be one undo rather than forty — but a control that
+    waits for a round trip to show a tick feels broken.
+83. **Form changes go through a queue, and the form is read again after each.** Two in flight at
+    once would each work from what the form held before the other, and a total would come out
+    wrong.
+84. **A field's rule is PaperForge's own entry, not a script.** Acrobat writes calculations as
+    document JavaScript; PaperForge will not run JavaScript, so it does not write any — it keeps
+    the rule under `/PFRule` and does the arithmetic itself.
+85. **A signature is a stamp annotation**, so it can be moved and taken off like any other mark, and
+    flattening is what makes it part of the page.
+86. **A typed signature is rasterised in the window.** It is drawn with a face this computer already
+    has and goes into the document as a picture, so no font program is embedded or redistributed.
+87. **Renaming a field makes it again under the new name**, because a name is where the field sits
+    in the form's tree rather than a label on it — and it is refused on a field carrying an action
+    PaperForge would have to drop.
+88. **A rewritten stamp keeps the appearance it already had** when PaperForge has no picture to hand
+    for it; only the rectangle moves. Redrawing it would turn a signature into an empty box.
+
 ## Known limitations
 
 - The viewer is continuous scrolling only. Single page, two-page spread, cover page, the hand and
@@ -629,7 +691,15 @@ a photograph is never a guess about which was meant.
 - Search highlights are placed from text-run geometry, so on a run with unusual per-glyph spacing a
   highlight can be a fraction of a character out. It never affects what is found, only what is
   drawn.
-- Form fields are drawn from their appearance streams but are not interactive; that is Segment 11.
+- Certificate-based signing, and the validation of one, are out of scope for v1: PaperForge places
+  a visual mark and says as much wherever a reader might wonder.
+- PaperForge runs no document JavaScript. A form that calculates with a script keeps it, untouched
+  and unrun; PaperForge's own arithmetic is sum, product and average.
+- A radio group's options are fixed when the field is made — each is a widget in its own right, so
+  changing them means making the field again.
+- A new field takes the border and fill colours `pdf-lib` gives it; the panel does not offer them.
+- XFA forms are not supported. PaperForge reads the AcroForm underneath, which is what most such
+  documents also carry.
 - The encryption marker shown in the properties panel is still a trailer scan. The viewer knows the
   truth once a document is open, and the two are not yet reconciled.
 - An image inside a form XObject is not listed, for the same reason text inside one is not: the
@@ -728,19 +798,19 @@ Nothing is downloaded at runtime, then or now.
 
 Run on Windows 11 x64, Node 24.19.0, npm 11.17.0:
 
-| Command                     | Result                                                                                                                                      |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                                                              |
-| `npm run typecheck`         | Pass — four projects, no errors                                                                                                             |
-| `npm run lint`              | Pass — no errors, no warnings                                                                                                               |
-| `npm test`                  | Pass — 565 tests in 49 files                                                                                                                |
-| `npm run test:e2e`          | Pass — 95 Playwright tests against the built application                                                                                    |
-| `npm run format:check`      | Pass — Prettier clean                                                                                                                       |
-| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                                                                   |
-| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                                                            |
-| Packaged launch/close smoke | Pass — window ready in ~400 ms, closes cleanly, and `%TEMP%/PaperForge/sessions` is empty afterwards                                        |
-| Settings upgrade            | Pass — a settings file without the new `session` section is repaired in place                                                               |
-| Appearance                  | Checked by driving the real application: the image editor's handles and panel, and the watermark and header dialogs with Bates numbering on |
+| Command                     | Result                                                                                                                              |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                                                      |
+| `npm run typecheck`         | Pass — four projects, no errors                                                                                                     |
+| `npm run lint`              | Pass — no errors, no warnings                                                                                                       |
+| `npm test`                  | Pass — 600 tests in 51 files                                                                                                        |
+| `npm run test:e2e`          | Pass — 119 Playwright tests against the built application                                                                           |
+| `npm run format:check`      | Pass — Prettier clean                                                                                                               |
+| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                                                           |
+| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                                                    |
+| Packaged launch/close smoke | Pass — window ready in ~400 ms, closes cleanly, and `%TEMP%/PaperForge/sessions` is empty afterwards                                |
+| Settings upgrade            | Pass — a settings file without the new `session` section is repaired in place                                                       |
+| Appearance                  | Checked by driving the real application: a form being filled in with a field selected, and the same form being made in Prepare Form |
 
 ## Manual setup required
 

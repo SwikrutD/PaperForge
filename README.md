@@ -4,7 +4,7 @@ PaperForge is an offline-first PDF workspace for Windows. It is being built to c
 work people do with a PDF tool — read, annotate, organize, edit, recognize text, convert, protect
 and redact — on a local machine, with no account, no telemetry and no cloud services.
 
-**Status: early development.** This repository currently contains Segments 0 to 10 of the build plan
+**Status: early development.** This repository currently contains Segments 0 to 11 of the build plan
 in [`CLAUDE.md`](./CLAUDE.md):
 
 - the secure Electron foundation and the Fluent Workspace shell with its command system;
@@ -27,9 +27,12 @@ in [`CLAUDE.md`](./CLAUDE.md):
 - editing images and links: move, resize, turn, crop, replace, fade, export or delete a picture the
   page draws, and make or change the links it carries;
 - watermarks, backgrounds, headers and footers, with page numbers, dates, titles and Bates
-  numbering — marked as PaperForge's own, so they can be changed or taken off again.
+  numbering — marked as PaperForge's own, so they can be changed or taken off again;
+- forms: fill one in, make one, and sign it with a mark you draw, type or bring in as a picture —
+  with totals PaperForge works out itself rather than by running a script, and flattening when you
+  want the result to be part of the page.
 
-Forms, OCR, exporting to other formats, protection and redaction arrive in later segments.
+OCR, exporting to other formats, protection and redaction arrive in later segments.
 
 [`PROGRESS.md`](./PROGRESS.md) is the authoritative status file.
 
@@ -87,6 +90,7 @@ The Windows installer, file associations and "Open with" support arrive in Segme
 - [`docs/EDITING_MODEL.md`](./docs/EDITING_MODEL.md) — how a change is applied, undone and saved
 - [`docs/ANNOTATIONS.md`](./docs/ANNOTATIONS.md) — how comments are written into the PDF itself
 - [`docs/PAGE_ORGANIZATION.md`](./docs/PAGE_ORGANIZATION.md) — the page grid, and how pages leave a document
+- [`docs/FORMS.md`](./docs/FORMS.md) — filling a form in, making one, signing it, and flattening
 - [`docs/CONVERSION_PIPELINE.md`](./docs/CONVERSION_PIPELINE.md) — how a file becomes a PDF, and how documents are combined
 - [`docs/SECURITY.md`](./docs/SECURITY.md) — the Electron security baseline PaperForge holds itself to
 - [`docs/DEPENDENCIES.md`](./docs/DEPENDENCIES.md) — why each dependency is here, and its license
