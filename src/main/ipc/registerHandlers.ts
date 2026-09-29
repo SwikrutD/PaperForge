@@ -3,6 +3,7 @@ import { AppError } from '@shared/errors/appError';
 import type { WindowRuntimeState } from '@shared/schemas/windowState';
 import { eventContracts, type EventChannel, type EventPayload } from '@shared/ipc/contracts';
 import { buildAppInfo } from '../services/appInfo';
+import type { DocumentAdmin } from '../services/documents/documentAdmin';
 import type { DocumentEditor } from '../services/documents/documentEditor';
 import type { DocumentService } from '../services/documents/documentService';
 import type { QpdfService } from '../services/qpdf/qpdfService';
@@ -21,6 +22,7 @@ import type { DocumentCreator } from '../services/creation/documentCreator';
 import type { SourceLibrary } from '../services/creation/sourceLibrary';
 import type { ConversionRegistry } from '@conversion/models/provider';
 import type { PdfMutationEngine } from '@pdf/mutate/types';
+import { registerAdminHandlers } from './handlers/adminHandlers';
 import { registerEditHandlers } from './handlers/editHandlers';
 import { registerCreationHandlers } from './handlers/creationHandlers';
 import { registerOrganizeHandlers } from './handlers/organizeHandlers';
@@ -39,6 +41,7 @@ export interface IpcDependencies {
   recentFiles: RecentFilesStore;
   documents: DocumentService;
   editor: DocumentEditor;
+  admin: DocumentAdmin;
   qpdf: QpdfService;
   stagedAssets: StagedAssets;
   signatures: SignatureLibrary;
@@ -120,6 +123,12 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
     stagedAssets: deps.stagedAssets,
     pageExport: deps.pageExport,
     engine: deps.engine,
+    senderWindow,
+  });
+
+  registerAdminHandlers(registerInvoke, {
+    documents: deps.documents,
+    admin: deps.admin,
     senderWindow,
   });
 

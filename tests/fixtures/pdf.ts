@@ -80,6 +80,16 @@ export interface AttachmentSpec {
 
 export interface PdfSpec {
   pages: PageSpec[];
+  /** Entries of the document information dictionary, written as text strings. */
+  info?: Record<string, string>;
+  /** An XMP metadata packet, written to the catalogue as /Metadata. */
+  xmp?: string;
+  /** Document-level scripts, by name. PaperForge lists them and never runs one. */
+  javaScript?: Record<string, string>;
+  /** An action dictionary, written out as given, for the catalogue's /OpenAction. */
+  openAction?: string;
+  /** Gives every page a saved thumbnail, which the sanitizer should find. */
+  thumbnails?: boolean;
   /** Encrypts the file with 40-bit RC4 and the standard security handler. */
   password?: string;
   outline?: OutlineSpec[];
@@ -314,6 +324,62 @@ endstream`,
     catalogEntries.push(`/Names << /EmbeddedFiles ${namesNumber} 0 R >>`);
   }
 
+  if (spec.thumbnails === true) {
+    // A tiny grey picture per page: what matters is that /Thumb is there.
+    const samples = Buffer.alloc(4, 128);
+    pageNumbers.forEach((pageNumber) => {
+      const thumbNumber = add(
+        Buffer.concat([
+          latin1(
+            `<< /Type /XObject /Subtype /Image /Width 2 /Height 2 /ColorSpace /DeviceGray ` +
+              `/BitsPerComponent 8 /Length ${samples.length} >>\nstream\n`,
+          ),
+          samples,
+          latin1('\nendstream'),
+        ]),
+      );
+      const page = objects[pageNumber - 1] as PdfObject;
+      objects[pageNumber - 1] = {
+        body: latin1(page.body.toString('latin1').replace(/>>$/, ` /Thumb ${thumbNumber} 0 R >>`)),
+      };
+    });
+  }
+
+  if (spec.javaScript !== undefined && Object.keys(spec.javaScript).length > 0) {
+    const names: string[] = [];
+    for (const [name, script] of Object.entries(spec.javaScript)) {
+      const actionNumber = add(`<< /S /JavaScript /JS ${pdfString(script)} >>`);
+      names.push(`${pdfString(name)} ${actionNumber} 0 R`);
+    }
+    const namesNumber = add(`<< /Names [${names.join(' ')}] >>`);
+    // A document may carry both kinds of name tree, so this merges rather than
+    // replacing whatever the attachments added.
+    const existing = catalogEntries.findIndex((entry) => entry.startsWith('/Names <<'));
+    if (existing >= 0) {
+      catalogEntries[existing] = (catalogEntries[existing] as string).replace(
+        / >>$/,
+        ` /JavaScript ${namesNumber} 0 R >>`,
+      );
+    } else {
+      catalogEntries.push(`/Names << /JavaScript ${namesNumber} 0 R >>`);
+    }
+  }
+
+  if (spec.openAction !== undefined) {
+    catalogEntries.push(`/OpenAction ${add(spec.openAction)} 0 R`);
+  }
+
+  if (spec.xmp !== undefined) {
+    catalogEntries.push(
+      `/Metadata ${add(
+        `<< /Type /Metadata /Subtype /XML /Length ${spec.xmp.length} >>
+stream
+${spec.xmp}
+endstream`,
+      )} 0 R`,
+    );
+  }
+
   if (spec.layers !== undefined && spec.layers.length > 0) {
     const refs = spec.layers.map((name) => `${layerNumbers.get(name) ?? 0} 0 R`).join(' ');
     catalogEntries.push(
@@ -322,6 +388,15 @@ endstream`,
   }
 
   objects[catalogNumber - 1] = { body: latin1(`<< ${catalogEntries.join(' ')} >>`) };
+
+  let infoNumber: number | undefined;
+  if (spec.info !== undefined && Object.keys(spec.info).length > 0) {
+    infoNumber = add(
+      `<< ${Object.entries(spec.info)
+        .map(([key, value]) => `/${key} ${pdfString(value)}`)
+        .join(' ')} >>`,
+    );
+  }
 
   const fileId = createHash('md5').update(JSON.stringify(spec)).digest();
   let encryptNumber: number | undefined;
@@ -338,6 +413,7 @@ endstream`,
   return assemble(objects, {
     root: catalogNumber,
     fileId,
+    ...(infoNumber === undefined ? {} : { infoNumber }),
     ...(encryptNumber === undefined ? {} : { encryptNumber }),
     ...(encryptionKey === undefined ? {} : { encryptionKey }),
   });
@@ -396,6 +472,7 @@ function writeOutlineLevel(
 interface AssembleOptions {
   root: number;
   fileId: Buffer;
+  infoNumber?: number;
   encryptNumber?: number;
   encryptionKey?: Buffer;
 }
@@ -427,6 +504,7 @@ function assemble(objects: PdfObject[], options: AssembleOptions): Buffer {
   const id = options.fileId.toString('hex');
   const trailer =
     `trailer\n<< /Size ${objects.length + 1} /Root ${options.root} 0 R /ID [<${id}> <${id}>]` +
+    `${options.infoNumber === undefined ? '' : ` /Info ${options.infoNumber} 0 R`}` +
     `${options.encryptNumber === undefined ? '' : ` /Encrypt ${options.encryptNumber} 0 R`} >>\n` +
     `startxref\n${xrefOffset}\n%%EOF\n`;
 

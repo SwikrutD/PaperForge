@@ -92,6 +92,17 @@ export class StagedAssets {
     return { token, fileName, ...placementSize(measured.width, measured.height) };
   }
 
+  /**
+   * Stages any file at all, to be carried inside the document. Its bytes are
+   * never inspected beyond their length: an attachment is cargo, not content.
+   */
+  stageFile(
+    sessionId: string,
+    file: { bytes: Uint8Array; fileName: string; mimeType: string | null; modifiedAt: Date },
+  ): string {
+    return this.keep(sessionId, { kind: 'file', ...file });
+  }
+
   /** Stages bytes PaperForge already has, such as another open document. */
   stageBytes(sessionId: string, bytes: Uint8Array, pageCount: number): string {
     return this.keep(sessionId, { kind: 'pdf', bytes, pageCount });

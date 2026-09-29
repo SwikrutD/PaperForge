@@ -21,6 +21,12 @@
     "src/pdf/mutate/**/*.ts",
     "src/pdf/create/**/*.ts",
     "src/pdf/text/**/*.ts",
+    "src/pdf/metadata/**/*.ts",
+    "src/pdf/attachments/**/*.ts",
+    "src/pdf/sanitize/**/*.ts",
+    // Reading an encryption dictionary needs Node's crypto, so the security
+    // modules are main-process only and the renderer project leaves them out.
+    "src/pdf/security/**/*.ts",
     "src/conversion/**/*.ts"
   ]
 }

@@ -10,6 +10,8 @@ import {
 } from './furniture';
 import { annotationInputSchema, annotationPatchSchema } from './annotation';
 import { pageBoxSchema, pageLabelStyleSchema } from './pages';
+import { customMetadataEntrySchema, documentMetadataSchema } from './metadata';
+import { sanitizeCategorySchema } from './sanitize';
 import { textStyleSchema } from './text';
 import { documentSessionSchema } from './document';
 
@@ -319,6 +321,45 @@ export const addRecognisedTextOperationSchema = z.strictObject({
   pages: z.array(ocrPageResultSchema).min(1).max(5000),
 });
 
+/**
+ * Rewrites the document information dictionary.
+ *
+ * A null field removes that entry rather than writing an empty one, which is
+ * the difference between "this document has no author" and "its author is the
+ * empty string". `custom` replaces every non-standard entry there is.
+ */
+export const setMetadataOperationSchema = z.strictObject({
+  kind: z.literal('setMetadata'),
+  metadata: documentMetadataSchema,
+  custom: z.array(customMetadataEntrySchema).max(500),
+  /** Takes the XMP packet out as well, so the two cannot disagree. */
+  removeXmpMetadata: z.boolean(),
+});
+
+/** Sets or clears the document's language, which readers announce. */
+export const setDocumentLanguageOperationSchema = z.strictObject({
+  kind: z.literal('setDocumentLanguage'),
+  language: z.string().max(100).nullable(),
+});
+
+/** Embeds files the main process has staged, by token. */
+export const addAttachmentsOperationSchema = z.strictObject({
+  kind: z.literal('addAttachments'),
+  tokens: z.array(z.string().min(1).max(200)).min(1).max(100),
+});
+
+/** Takes embedded files out, named as the document files them. */
+export const removeAttachmentsOperationSchema = z.strictObject({
+  kind: z.literal('removeAttachments'),
+  ids: z.array(z.string().min(1).max(500)).min(1).max(500),
+});
+
+/** Removes the hidden information in the categories chosen. */
+export const sanitizeOperationSchema = z.strictObject({
+  kind: z.literal('sanitize'),
+  categories: z.array(sanitizeCategorySchema).min(1),
+});
+
 export const editOperationSchema = z.discriminatedUnion('kind', [
   rotatePagesOperationSchema,
   deletePagesOperationSchema,
@@ -352,6 +393,11 @@ export const editOperationSchema = z.discriminatedUnion('kind', [
   addAnnotationsOperationSchema,
   updateAnnotationsOperationSchema,
   deleteAnnotationsOperationSchema,
+  setMetadataOperationSchema,
+  setDocumentLanguageOperationSchema,
+  addAttachmentsOperationSchema,
+  removeAttachmentsOperationSchema,
+  sanitizeOperationSchema,
 ]);
 export type EditOperation = z.infer<typeof editOperationSchema>;
 

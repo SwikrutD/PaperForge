@@ -1,6 +1,10 @@
 import { PDFDocument, degrees, type PDFImage, type PDFPage } from 'pdf-lib';
+import { UNREADABLE_CONTENT } from '@shared/schemas/metadata';
 import { AppError } from '@shared/errors/appError';
 import type { Annotation, AnnotationInput, AnnotationPatch } from '@shared/schemas/annotation';
+import type { EmbeddedFile } from '@shared/schemas/attachment';
+import type { DocumentContentProperties } from '@shared/schemas/metadata';
+import type { SanitizeReport } from '@shared/schemas/sanitize';
 import type { EditOperation } from '@shared/schemas/edit';
 import { readAnnotations, type AnnotationRecord } from './annotations/read';
 import {
@@ -20,7 +24,28 @@ import { applyFurnitureOperation } from './furniture';
 import { applyFormOperation } from '../forms/write';
 import { applyAuthoringOperation } from '../forms/author';
 import { applyOcrOperation } from '../ocr/apply';
-import type { DocumentFacts, MutationResult, PdfMutationEngine, StagedAsset } from './types';
+import { applyMetadataOperation } from '../metadata/write';
+import { applyAttachmentOperation } from '../attachments/write';
+import { applySanitizeOperation } from '../sanitize/apply';
+import {
+  hasXmpMetadata,
+  isLinearized,
+  isTagged,
+  readCustomMetadata,
+  readFonts,
+  readLanguage,
+  readMetadata,
+  readPageSizes,
+} from '../metadata/read';
+import { readAttachmentBytes, readAttachments } from '../attachments/read';
+import { scanDocument } from '../sanitize/scan';
+import type {
+  DocumentFacts,
+  ExtractedAttachment,
+  MutationResult,
+  PdfMutationEngine,
+  StagedAsset,
+} from './types';
 
 /**
  * The write engine, and the only file that imports pdf-lib.
@@ -50,6 +75,68 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
     const document = await load(bytes);
     try {
       return readAnnotations(document).map((record) => record.annotation);
+    } catch (error) {
+      throw toMutationError(error);
+    }
+  }
+
+  /** What the document says about itself, as far as it can be opened. */
+  async readProperties(bytes: Uint8Array): Promise<DocumentContentProperties> {
+    let document: PDFDocument;
+    try {
+      document = await load(bytes);
+    } catch (error) {
+      const failure = toMutationError(error);
+      if (failure.code !== 'pdf/unsupported-encryption') throw failure;
+      // An encrypted document cannot be read through, but its layout still
+      // says whether it was written for fast web view.
+      return { ...UNREADABLE_CONTENT, linearized: isLinearized(bytes) };
+    }
+
+    try {
+      return {
+        metadata: readMetadata(document),
+        custom: readCustomMetadata(document),
+        pageCount: document.getPageCount(),
+        pageSizes: readPageSizes(document),
+        fonts: readFonts(document),
+        hasXmpMetadata: hasXmpMetadata(document),
+        tagged: isTagged(document),
+        language: readLanguage(document),
+        linearized: isLinearized(bytes),
+      };
+    } catch (error) {
+      throw toMutationError(error);
+    }
+  }
+
+  async readAttachments(bytes: Uint8Array): Promise<EmbeddedFile[]> {
+    const document = await load(bytes);
+    try {
+      return readAttachments(document).map((record) => record.file);
+    } catch (error) {
+      throw toMutationError(error);
+    }
+  }
+
+  async extractAttachment(bytes: Uint8Array, id: string): Promise<ExtractedAttachment | null> {
+    const document = await load(bytes);
+    try {
+      const record = readAttachments(document).find((entry) => entry.file.id === id);
+      if (record === undefined) return null;
+
+      const contents = readAttachmentBytes(document, record.spec);
+      if (contents === null) return null;
+      return { fileName: record.file.fileName, bytes: contents, risky: record.file.risky };
+    } catch (error) {
+      throw toMutationError(error);
+    }
+  }
+
+  async scanHiddenInformation(bytes: Uint8Array): Promise<SanitizeReport> {
+    const document = await load(bytes);
+    try {
+      return scanDocument(document, bytes);
     } catch (error) {
       throw toMutationError(error);
     }
@@ -96,6 +183,18 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
         if (await applyFormOperation(document, operation)) continue;
         if (await applyAuthoringOperation(document, operation)) continue;
         if (await applyOcrOperation(document, operation)) continue;
+        if (applyMetadataOperation(document, operation)) continue;
+
+        // Carrying a file in or taking one out changes the catalogue, and
+        // sanitizing can remove annotations, so both invalidate what was read.
+        if (applyAttachmentOperation(document, operation, assets)) {
+          annotations = null;
+          continue;
+        }
+        if (applySanitizeOperation(document, operation)) {
+          annotations = null;
+          continue;
+        }
         if (isFurnitureOperation(operation)) {
           await applyFurnitureOperation(
             document,

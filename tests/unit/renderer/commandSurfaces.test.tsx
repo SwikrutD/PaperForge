@@ -151,13 +151,17 @@ describe('home screen', () => {
     expect(fillTool).toHaveAttribute('title', 'No document is open.');
     const prepareTool = screen.getByRole('button', { name: /Prepare Form/ });
     expect(prepareTool).toBeDisabled();
-    // Recognise Text needs one too, now that it is built.
-    expect(screen.getAllByText('Needs a document')).toHaveLength(7);
-
-    // A tool whose capability is not built says something different.
+    // As do Recognize Text, Protect, Document Properties and removing hidden
+    // information, all of which act on the document in front of the reader.
     const protectTool = screen.getByRole('button', { name: /Protect PDF/ });
     expect(protectTool).toBeDisabled();
-    expect(protectTool).toHaveAttribute('title', expect.stringContaining('Not available yet'));
+    expect(protectTool).toHaveAttribute('title', 'No document is open.');
+    expect(screen.getAllByText('Needs a document')).toHaveLength(10);
+
+    // A tool whose capability is not built says something different.
+    const redactTool = screen.getByRole('button', { name: /Redact/ });
+    expect(redactTool).toBeDisabled();
+    expect(redactTool).toHaveAttribute('title', expect.stringContaining('Not available yet'));
     expect(screen.getAllByText('Not yet available').length).toBeGreaterThan(3);
   });
 });

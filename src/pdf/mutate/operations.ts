@@ -185,6 +185,16 @@ export function describeOperation(operation: EditOperation): string {
       return 'Delete link';
     case 'addImage':
       return 'Add image';
+    case 'setMetadata':
+      return 'Change document properties';
+    case 'setDocumentLanguage':
+      return operation.language === null ? 'Clear document language' : 'Set document language';
+    case 'addAttachments':
+      return operation.tokens.length === 1 ? 'Attach a file' : 'Attach files';
+    case 'removeAttachments':
+      return operation.ids.length === 1 ? 'Remove an attachment' : 'Remove attachments';
+    case 'sanitize':
+      return 'Remove hidden information';
   }
 }
 

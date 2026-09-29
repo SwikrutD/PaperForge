@@ -3,6 +3,7 @@ import {
   AppWindow,
   ClipboardList,
   FileOutput,
+  FileText,
   ScanText,
   Signature,
   Droplets,
@@ -58,6 +59,8 @@ import {
   Search,
   SearchX,
   Settings as SettingsIcon,
+  ShieldCheck,
+  ShieldX,
   SlidersHorizontal,
   SquareX,
   ZoomIn,
@@ -67,6 +70,7 @@ import {
 } from 'lucide-react';
 import type { AnnotationKind } from '@shared/schemas/annotation';
 import type { LeftPanelId } from '@shared/schemas/settings';
+import { useAdminStore } from '../stores/adminStore';
 import { CommandRegistry } from './registry';
 import type { CommandAvailability, CommandContext, CommandDefinition } from './types';
 
@@ -771,6 +775,52 @@ export function buildCommands(): CommandDefinition[] {
       keywords: ['ocr', 'scan', 'searchable', 'tesseract', 'text'],
       isAvailable: documentRequired,
       run: (context) => context.actions.openDialog('ocr'),
+    },
+    {
+      id: 'tools.properties',
+      title: 'Document Properties',
+      description: 'Inspect and edit the title, author, fonts and security of this document.',
+      category: 'tools',
+      group: 'document',
+      icon: FileText,
+      keywords: ['metadata', 'title', 'author', 'keywords', 'fonts', 'security', 'info'],
+      isAvailable: documentRequired,
+      run: (context) => context.actions.openDialog('properties'),
+    },
+    {
+      id: 'tools.protect',
+      title: 'Protect PDF',
+      description: 'Save a copy with a password and permissions, or take its security off.',
+      category: 'tools',
+      group: 'document',
+      icon: ShieldCheck,
+      keywords: ['password', 'encrypt', 'permissions', 'security', 'lock', 'qpdf'],
+      isAvailable: documentRequired,
+      run: (context) => context.actions.openDialog('protect'),
+    },
+    {
+      id: 'tools.sanitize',
+      title: 'Remove Hidden Information',
+      description: 'Find and remove metadata, attachments, scripts and hidden comments.',
+      category: 'tools',
+      group: 'document',
+      icon: ShieldX,
+      keywords: ['sanitize', 'sanitise', 'clean', 'metadata', 'hidden', 'privacy', 'scrub'],
+      isAvailable: documentRequired,
+      run: (context) => context.actions.openDialog('sanitize'),
+    },
+    {
+      id: 'tools.attachFiles',
+      title: 'Attach Files',
+      description: 'Carry other files inside this document.',
+      category: 'tools',
+      group: 'document',
+      icon: Paperclip,
+      keywords: ['attachment', 'embed', 'file', 'enclose'],
+      isAvailable: documentRequired,
+      run: () => {
+        void useAdminStore.getState().attachFiles();
+      },
     },
     {
       id: 'tools.watermark',

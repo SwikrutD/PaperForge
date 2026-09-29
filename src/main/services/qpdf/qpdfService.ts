@@ -45,6 +45,7 @@ export interface QpdfServiceOptions {
  */
 export class QpdfService {
   private discovery: Promise<string | null> | undefined;
+  private versionCheck: Promise<readonly [number, number] | null> | undefined;
   private configuredPath: string | null;
 
   constructor(private readonly options: QpdfServiceOptions) {
@@ -56,6 +57,7 @@ export class QpdfService {
     if (this.configuredPath === qpdfPath) return;
     this.configuredPath = qpdfPath;
     this.discovery = undefined;
+    this.versionCheck = undefined;
   }
 
   /** The executable to run, or null when qpdf is not installed. */
@@ -119,10 +121,27 @@ export class QpdfService {
     }
   }
 
+  /**
+   * The version qpdf reports, as [major, minor], or null when it is not
+   * installed or says something unrecognisable. Argument spelling changed at
+   * qpdf 11, so this decides which form to use.
+   */
+  async version(): Promise<readonly [number, number] | null> {
+    this.versionCheck ??= this.readVersion();
+    return this.versionCheck;
+  }
+
   /** Runs qpdf with the given arguments. Never goes through a shell. */
   async run(
     args: readonly string[],
-    options: { executable?: string; signal?: AbortSignal; timeoutMs?: number } = {},
+    options: {
+      executable?: string;
+      signal?: AbortSignal;
+      timeoutMs?: number;
+      /** Written to the child's standard input, which is how a password is
+       * handed over without ever appearing in a command line. */
+      stdin?: string;
+    } = {},
   ): Promise<QpdfRunResult> {
     const executable = options.executable ?? (await this.resolve());
     if (executable === null) {
@@ -169,12 +188,27 @@ export class QpdfService {
         },
       );
 
+      if (options.stdin !== undefined) {
+        child.stdin?.end(options.stdin);
+      }
+
       const abort = (): void => {
         child.kill();
       };
       options.signal?.addEventListener('abort', abort, { once: true });
       child.on('close', () => options.signal?.removeEventListener('abort', abort));
     });
+  }
+
+  private async readVersion(): Promise<readonly [number, number] | null> {
+    try {
+      const result = await this.run(['--version']);
+      const match = /qpdf version (\d+)\.(\d+)/i.exec(result.stdout);
+      if (match === null) return null;
+      return [Number.parseInt(match[1] ?? '0', 10), Number.parseInt(match[2] ?? '0', 10)];
+    } catch {
+      return null;
+    }
   }
 
   private async discover(): Promise<string | null> {
@@ -188,6 +222,10 @@ export class QpdfService {
       path.join(this.options.resourcesRoot, 'bundled-tools', 'qpdf', 'bin', 'qpdf.exe'),
     );
     candidates.push(path.join(this.options.resourcesRoot, 'bundled-tools', 'qpdf', 'qpdf.exe'));
+
+    // Then where a Windows installation normally puts it. A version-stamped
+    // folder is the usual shape, so the newest one found wins.
+    if (process.platform === 'win32') candidates.push(...(await windowsInstallations()));
 
     for (const candidate of candidates) {
       if (await isExecutableFile(candidate)) {
@@ -228,6 +266,43 @@ export class QpdfExitError extends Error {
     super(`qpdf exited with ${exitCode}`);
     this.name = 'QpdfExitError';
   }
+}
+
+/**
+ * qpdf.exe under the usual Windows program directories.
+ *
+ * The installer creates a folder named for the version, so the entries are
+ * sorted newest first rather than alphabetically by chance.
+ */
+async function windowsInstallations(): Promise<string[]> {
+  const roots = [
+    process.env['ProgramFiles'],
+    process.env['ProgramFiles(x86)'],
+    process.env['ProgramW6432'],
+    process.env['LOCALAPPDATA'] === undefined
+      ? undefined
+      : path.join(process.env['LOCALAPPDATA'], 'Programs'),
+  ].filter((root): root is string => root !== undefined && root !== '');
+
+  const found: string[] = [];
+  for (const root of roots) {
+    let entries: string[];
+    try {
+      entries = await fs.readdir(root);
+    } catch {
+      continue;
+    }
+
+    const versions = entries
+      .filter((entry) => entry.toLowerCase().startsWith('qpdf'))
+      .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+
+    for (const entry of versions) {
+      found.push(path.join(root, entry, 'bin', 'qpdf.exe'));
+      found.push(path.join(root, entry, 'qpdf.exe'));
+    }
+  }
+  return found;
 }
 
 async function isExecutableFile(candidate: string): Promise<boolean> {

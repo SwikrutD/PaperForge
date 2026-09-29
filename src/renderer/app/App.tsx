@@ -30,6 +30,9 @@ import { SignatureDialog } from '../components/forms/SignatureDialog';
 import { FlattenDialog } from '../components/forms/FlattenDialog';
 import { OcrDialog } from '../components/ocr/OcrDialog';
 import { ExportDialog } from '../components/convert/ExportDialog';
+import { DocumentPropertiesDialog } from '../components/admin/DocumentPropertiesDialog';
+import { ProtectDialog } from '../components/admin/ProtectDialog';
+import { SanitizeDialog } from '../components/admin/SanitizeDialog';
 import { useSignatureStore } from '../stores/signatureStore';
 import { useFormStore } from '../stores/formStore';
 import { WatermarkDialog } from '../components/edit/furniture/WatermarkDialog';
@@ -165,6 +168,9 @@ export function App(): ReactElement {
             {dialog === 'flatten' && <FlattenDialog onClose={closeDialog} />}
             {dialog === 'ocr' && <OcrDialog onClose={closeDialog} />}
             {dialog === 'export' && <ExportDialog onClose={closeDialog} />}
+            {dialog === 'properties' && <DocumentPropertiesDialog onClose={closeDialog} />}
+            {dialog === 'protect' && <ProtectDialog onClose={closeDialog} />}
+            {dialog === 'sanitize' && <SanitizeDialog onClose={closeDialog} />}
             {dialog === 'watermark' && <WatermarkDialog onClose={closeDialog} />}
             {dialog === 'background' && <BackgroundDialog onClose={closeDialog} />}
             {dialog === 'headerFooter' && <HeaderFooterDialog onClose={closeDialog} />}

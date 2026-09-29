@@ -18,5 +18,7 @@
     "src/renderer/**/*.tsx",
     "src/pdf/**/*.ts",
     "src/shared/**/*.ts"
-  ]
+  ],
+  // Security parsing runs in the main process and uses Node's crypto.
+  "exclude": ["src/pdf/security/**/*.ts"]
 }

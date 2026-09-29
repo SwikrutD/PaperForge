@@ -9,6 +9,7 @@ import {
   hardenWebContents,
   rejectInsecureCertificates,
 } from './security/hardening';
+import { DocumentAdmin } from './services/documents/documentAdmin';
 import { DocumentEditor } from './services/documents/documentEditor';
 import { DocumentService } from './services/documents/documentService';
 import { PageExport } from './services/documents/pageExport';
@@ -22,6 +23,7 @@ import { SignatureLibrary } from './services/signatures/signatureLibrary';
 import { TesseractService } from './services/tesseract/tesseractService';
 import { ExportSessions } from './services/conversion/exportSession';
 import { LibreOfficeProvider } from './services/conversion/libreOffice';
+import { QpdfSecurity } from './services/qpdf/qpdfSecurity';
 import { QpdfService } from './services/qpdf/qpdfService';
 import { PdfLibMutationEngine } from '@pdf/mutate/pdfLibEngine';
 import { createLogger, parseLogLevel, type Logger } from './services/logging/logger';
@@ -137,6 +139,17 @@ async function bootstrap(): Promise<void> {
     setDirty: (sessionId, dirty) => documents.setDirty(sessionId, dirty),
     stagedAssets: (sessionId: string) => stagedAssets.assetsFor(sessionId),
   });
+  // Document administration reads the revision the reader is looking at, and
+  // writes protected copies through qpdf without touching the open document.
+  const admin = new DocumentAdmin({
+    engine,
+    security: new QpdfSecurity({ qpdf }),
+    stagedAssets,
+    logger,
+    currentBytes: (sessionId) => editor.currentBytes(sessionId),
+    workspaceDirectory: (sessionId) => workspaces.directoryFor(sessionId),
+  });
+
   // Closing a document throws its working copies away with it.
   documents.onClosed((sessionId) => {
     stagedAssets.dispose(sessionId);
@@ -183,6 +196,7 @@ async function bootstrap(): Promise<void> {
     recentFiles,
     documents,
     editor,
+    admin,
     qpdf,
     stagedAssets,
     signatures,

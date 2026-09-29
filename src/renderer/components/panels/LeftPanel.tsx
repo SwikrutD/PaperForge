@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactElement } from 'react';
 import { Bookmark, Layers, Paperclip, StickyNote, X } from 'lucide-react';
-import type { LoadedPdfDocument, PdfAttachment, PdfLayer, PdfOutlineItem } from '@pdf/render/types';
+import type { LoadedPdfDocument, PdfLayer, PdfOutlineItem } from '@pdf/render/types';
 import type { LeftPanelId } from '@shared/schemas/settings';
 import { useCommands } from '../../commands/useCommands';
 import { IconButton } from '../controls/IconButton';
@@ -51,7 +51,6 @@ interface PanelData {
   /** The document this data was read from, so stale data is never shown. */
   source: LoadedPdfDocument;
   outline: PdfOutlineItem[];
-  attachments: PdfAttachment[];
   layers: PdfLayer[];
 }
 
@@ -68,12 +67,14 @@ function PanelBody({ panel }: { panel: LeftPanelId }): ReactElement {
     if (pdf === null) return;
     let cancelled = false;
 
-    void Promise.all([pdf.getOutline(), pdf.getAttachments(), pdf.getLayers()]).then(
-      ([outline, attachments, layers]) => {
-        if (!cancelled) setLoaded({ source: pdf, outline, attachments, layers });
+    // Attachments are not read here: the panel reads them through the write
+    // engine, which is what knows how to take one out again.
+    void Promise.all([pdf.getOutline(), pdf.getLayers()]).then(
+      ([outline, layers]) => {
+        if (!cancelled) setLoaded({ source: pdf, outline, layers });
       },
       () => {
-        if (!cancelled) setLoaded({ source: pdf, outline: [], attachments: [], layers: [] });
+        if (!cancelled) setLoaded({ source: pdf, outline: [], layers: [] });
       },
     );
     return () => {
@@ -139,15 +140,12 @@ function PanelBody({ panel }: { panel: LeftPanelId }): ReactElement {
   }
 
   if (panel === 'attachments') {
-    if (data === null) return <PanelLoading />;
-    return data.attachments.length === 0 ? (
-      <EmptyPanelState
-        icon={Paperclip}
-        title="No attachments"
-        description="This document carries no embedded files."
+    return (
+      <AttachmentsPanel
+        sessionId={tab.session.id}
+        revision={tab.edit.revision}
+        readOnly={tab.session.file.readOnly}
       />
-    ) : (
-      <AttachmentsPanel attachments={data.attachments} />
     );
   }
 

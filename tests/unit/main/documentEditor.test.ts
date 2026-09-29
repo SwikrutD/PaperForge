@@ -17,6 +17,18 @@ import { threePageDocument } from '../../fixtures/pdf';
 
 const SESSION_ID = 'session-1';
 
+/**
+ * The reads a hand-written engine does not exercise. The editor under test
+ * never calls them, and stating so keeps each stub about the one thing it is
+ * there to prove.
+ */
+const READ_ONLY_STUBS = {
+  readProperties: () => Promise.reject(new Error('not used in this test')),
+  readAttachments: () => Promise.resolve([]),
+  extractAttachment: () => Promise.resolve(null),
+  scanHiddenInformation: () => Promise.reject(new Error('not used in this test')),
+} satisfies Partial<PdfMutationEngine>;
+
 const logger = {
   info: vi.fn(),
   warn: vi.fn(),
@@ -313,6 +325,7 @@ describe('DocumentEditor', () => {
         ),
       apply: () => Promise.resolve({ bytes: new TextEncoder().encode('not a pdf'), pageCount: 0 }),
       readAnnotations: () => Promise.resolve([]),
+      ...READ_ONLY_STUBS,
     };
     const documents = makeDocuments(await makeSession(documentPath));
     const { editor } = makeEditor(documents, { engine: brokenEngine });
@@ -367,6 +380,7 @@ describe('DocumentEditor', () => {
       apply: () =>
         Promise.reject(new AppError('internal/unexpected', { message: 'never reached' })),
       readAnnotations: () => Promise.resolve([]),
+      ...READ_ONLY_STUBS,
     };
     const documents = makeDocuments(await makeSession(documentPath));
     const { editor } = makeEditor(documents, { engine: encrypted });

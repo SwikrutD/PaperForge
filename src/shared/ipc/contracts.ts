@@ -39,6 +39,18 @@ import {
   officeStatusSchema,
 } from '../schemas/convert';
 import { savedSignatureSchema, stageSignatureSchema } from '../schemas/signature';
+import {
+  embeddedFileSchema,
+  saveAttachmentOutcomeSchema,
+  stagedAttachmentSchema,
+} from '../schemas/attachment';
+import { documentPropertiesSchema } from '../schemas/metadata';
+import {
+  protectOutcomeSchema,
+  protectRequestSchema,
+  unprotectRequestSchema,
+} from '../schemas/protect';
+import { sanitizeReportSchema } from '../schemas/sanitize';
 import { recentFilesListSchema } from '../schemas/recentFiles';
 import { settingsPatchSchema, settingsSchema } from '../schemas/settings';
 import { themeStateSchema } from '../schemas/theme';
@@ -374,6 +386,44 @@ export const invokeContracts = {
     request: z.strictObject({ sessionId: z.string().min(1) }),
     response: stampImageSchema.nullable(),
   },
+
+  /** Metadata, fonts, page sizes and the security summary, as they stand now. */
+  'document:properties': {
+    request: z.strictObject({ sessionId: z.string().min(1) }),
+    response: documentPropertiesSchema,
+  },
+
+  'attachments:list': {
+    request: z.strictObject({ sessionId: z.string().min(1) }),
+    response: z.array(embeddedFileSchema),
+  },
+  /** Opens a picker and stages what was chosen. Bytes stay in the main process. */
+  'attachments:choose': {
+    request: z.strictObject({ sessionId: z.string().min(1) }),
+    response: z.array(stagedAttachmentSchema),
+  },
+  /**
+   * Writes one attachment to a place the reader picks. PaperForge never opens
+   * an embedded file; it only hands the bytes to the filesystem.
+   */
+  'attachments:save': {
+    request: z.strictObject({ sessionId: z.string().min(1), id: z.string().min(1).max(500) }),
+    response: saveAttachmentOutcomeSchema,
+  },
+
+  /** What the document carries besides the pages it shows. Changes nothing. */
+  'sanitize:scan': {
+    request: z.strictObject({ sessionId: z.string().min(1) }),
+    response: sanitizeReportSchema,
+  },
+
+  /**
+   * Writes a protected copy. The passwords travel on this one request and are
+   * handed to qpdf; they are never logged, stored or sent back.
+   */
+  'protect:apply': { request: protectRequestSchema, response: protectOutcomeSchema },
+  /** Writes a copy with its security removed, given a password that opens it. */
+  'protect:remove': { request: unprotectRequestSchema, response: protectOutcomeSchema },
 
   'tools:qpdfStatus': { request: z.void(), response: qpdfStatusSchema },
   /** Opens a picker for the qpdf executable, or clears the configured one. */

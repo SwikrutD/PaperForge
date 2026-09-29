@@ -66,3 +66,35 @@
   font-size: var(--pf-font-size-200);
   line-height: var(--pf-line-height-300);
 }
+
+.actions {
+  display: flex;
+  gap: var(--pf-space-100);
+  padding: var(--pf-space-100) var(--pf-space-150);
+  border-bottom: 1px solid var(--pf-color-divider);
+}
+
+.empty {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: var(--pf-space-200) var(--pf-space-150);
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+}
+
+/* Actions stay out of the way until the row is hovered or has focus inside. */
+.itemActions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+  opacity: 0;
+}
+
+.item:hover .itemActions,
+.item:focus-within .itemActions {
+  opacity: 1;
+}
+
+.item[data-pending='true'] {
+  background-color: var(--pf-color-bg-hover);
+}

@@ -12,6 +12,7 @@ import {
   PenLine,
   ScanText,
   ShieldCheck,
+  ShieldX,
   Signature,
   TextCursorInput,
   type LucideIcon,
@@ -105,6 +106,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     title: 'Protect PDF',
     description: 'Add a password and set permissions.',
     icon: ShieldCheck,
+    commandId: 'tools.protect',
     requires: 'document security',
   },
   {
@@ -137,6 +139,14 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     requires: 'form authoring',
   },
   {
+    id: 'sanitize',
+    title: 'Remove Hidden Information',
+    description: 'Find and remove metadata, attachments and scripts.',
+    icon: ShieldX,
+    commandId: 'tools.sanitize',
+    requires: 'document administration',
+  },
+  {
     id: 'accessibility',
     title: 'Accessibility Check',
     description: 'Find missing titles, languages and alt text.',
@@ -148,6 +158,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     title: 'Document Properties',
     description: 'Inspect and edit metadata and security.',
     icon: FileText,
+    commandId: 'tools.properties',
     requires: 'document administration',
   },
 ];

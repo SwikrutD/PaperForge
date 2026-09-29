@@ -1,0 +1,218 @@
+.tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: var(--pf-space-150);
+  border-bottom: 1px solid var(--pf-color-divider);
+}
+
+.tab {
+  padding: var(--pf-space-100) var(--pf-space-150);
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--pf-color-text-secondary);
+  font: inherit;
+  font-size: var(--pf-font-size-300);
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--pf-color-text-primary);
+}
+
+.tabActive {
+  border-bottom-color: var(--pf-color-accent);
+  color: var(--pf-color-text-primary);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--pf-color-focus-ring);
+  outline-offset: -2px;
+}
+
+/* Every tab keeps the dialog roughly the same height, so switching does not
+   make the surface jump under the pointer. */
+.pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-150);
+  min-height: 280px;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: minmax(120px, max-content) 1fr;
+  gap: var(--pf-space-050) var(--pf-space-150);
+  margin: 0;
+}
+
+.fact {
+  display: contents;
+}
+
+.factTerm {
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+}
+
+.factValue {
+  margin: 0;
+  font-size: var(--pf-font-size-200);
+  overflow-wrap: anywhere;
+}
+
+.subheading {
+  margin: var(--pf-space-100) 0 0;
+  font-size: var(--pf-font-size-200);
+  font-weight: var(--pf-font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--pf-color-text-secondary);
+}
+
+.securityBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-150);
+}
+
+.securityState {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--pf-space-150);
+  padding: var(--pf-space-150);
+  border: 1px solid var(--pf-color-border);
+  border-radius: var(--pf-radius-md);
+  background-color: var(--pf-color-bg-subtle);
+}
+
+.securityIcon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--pf-color-text-secondary);
+}
+
+.securityTitle {
+  margin: 0;
+  font-size: var(--pf-font-size-300);
+  font-weight: var(--pf-font-weight-medium);
+}
+
+.securityText {
+  margin: 2px 0 0;
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+  line-height: var(--pf-line-height-300);
+}
+
+.caveat {
+  margin: 0;
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+  line-height: var(--pf-line-height-300);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--pf-font-size-200);
+}
+
+.table th {
+  padding: var(--pf-space-050) var(--pf-space-100);
+  border-bottom: 1px solid var(--pf-color-divider);
+  color: var(--pf-color-text-secondary);
+  font-weight: var(--pf-font-weight-medium);
+  text-align: left;
+}
+
+.table td {
+  padding: var(--pf-space-050) var(--pf-space-100);
+  border-bottom: 1px solid var(--pf-color-divider);
+  overflow-wrap: anywhere;
+}
+
+.scroll {
+  max-height: 260px;
+  overflow: auto;
+}
+
+/* Custom metadata entries, each a name, a value and a way to remove it. */
+.customRow {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-space-100);
+}
+
+.findings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-050);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.finding {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--pf-space-100);
+  padding: var(--pf-space-100);
+  border: 1px solid var(--pf-color-border);
+  border-radius: var(--pf-radius-sm);
+}
+
+.findingEmpty {
+  border-style: dashed;
+  opacity: 0.7;
+}
+
+.findingText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.findingTitle {
+  font-size: var(--pf-font-size-300);
+}
+
+.findingDetail {
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+  overflow-wrap: anywhere;
+}
+
+.count {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 0 var(--pf-space-100);
+  border-radius: var(--pf-radius-sm);
+  background-color: var(--pf-color-bg-subtle);
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+  font-variant-numeric: tabular-nums;
+}
+
+.warningBar {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--pf-space-100);
+  padding: var(--pf-space-100) var(--pf-space-150);
+  border: 1px solid var(--pf-color-warning);
+  border-radius: var(--pf-radius-md);
+  color: var(--pf-color-text-primary);
+  font-size: var(--pf-font-size-200);
+  line-height: var(--pf-line-height-300);
+}
+
+.warningIcon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--pf-color-warning);
+}
