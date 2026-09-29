@@ -920,6 +920,23 @@ Run on Windows 11 x64, Node 24.19.0, npm 11.17.0:
 None beyond `npm install`. On npm 11 the first install asks to approve the Electron install script;
 `package.json` already records the approval (`allowScripts`), so it should not ask again.
 
+## Where Segment 14 starts
+
+Nothing in Segment 14 needs new plumbing; it needs writers on top of what is already here.
+
+- **qpdf** is already discovered, configurable and wrapped in `src/main/services/qpdf/qpdfService.ts`,
+  but only asked for a second opinion on a file just written. Encryption, decryption and the security
+  summary are new calls through that same wrapper — arguments as an array, no shell, as it runs now.
+- **Attachments** are read today: `AttachmentsPanel` lists what `pdfjsEngine` finds, and nothing can
+  be added, saved or removed. There is no write path yet (`src/pdf/attachments` does not exist), and
+  the panel's "never auto-open, warn on executables" rule has to hold for saving too.
+- **Metadata** has no module at all (`src/pdf/metadata` does not exist). Document Properties reads
+  what the render engine already reports; editing and removing fields is new, through
+  `PdfMutationEngine` and the ordinary revision-and-save pipeline.
+- **The gate is about logs.** Passwords reach the main process, are handed to qpdf, and must appear
+  in no log line, no error detail, no recovery journal and no settings file. Worth a test that asserts
+  it rather than a careful review.
+
 ## Next-session instruction
 
 Read CLAUDE.md and execute only the next incomplete segment.
