@@ -31,7 +31,10 @@ src/
     theme/         nativeTheme ownership and broadcast
     services/      settings, documents, recovery, recent files, logging, filesystem, app info
                    documents/ also owns the editor, its revisions and the save pipeline
-                   qpdf/      the optional local sidecar, launched only from here
+                   documents/ also owns document administration: properties, attachments,
+                              hidden information and writing a protected copy
+                   qpdf/      the optional local sidecar, launched only from here, and the
+                              encryption and decryption that go through it
   preload/         contextBridge surface (no dependencies, no Node APIs re-exported)
   renderer/
     app/           App root and error boundaries
@@ -48,7 +51,8 @@ src/
       progress/    progress centre
       shell/       title bar, tabs, command bar, rail, resizer, status bar, drop zone
       viewer/      page column, page rendering, toolbar, password prompt
-      workspace/   document properties
+      admin/       document properties, protect, remove hidden information
+      workspace/   the properties panel
       surfaces/    card, message bar
     design-system/ tokens.css and base.css
     services/      typed IPC client
@@ -65,6 +69,10 @@ src/
     render/        engine contract and its PDF.js implementation
     mutate/        write contract, its pdf-lib implementation, operation arithmetic
       annotations/ annotation geometry, appearances, reading and writing
+    metadata/      the information dictionary, fonts, page sizes, reading and writing
+    attachments/   embedded files and the name trees that hold them
+    sanitize/      what a document carries besides its pages: finding, removing, pruning
+    security/      the encryption dictionary and the standard handler (main process only)
     search/        matching and match geometry, pure and unit-tested
 scripts/           build-time tooling (icon generation)
 tests/unit/        Vitest suites mirroring src/
@@ -260,6 +268,28 @@ Two rules matter architecturally:
   qpdf is launched from one wrapper, with an argument array and no shell.
 - **Only `src/pdf/mutate/pdfLibEngine.ts` imports pdf-lib**, as only `pdfjsEngine.ts` imports
   PDF.js. Everything else talks to `PdfMutationEngine`.
+
+## Document administration
+
+Properties, attachments, hidden information and security are the questions a reader asks about the
+document rather than about its pages, and they share one main-process service, `DocumentAdmin`.
+Everything it reports is read from the revision the reader is looking at, so a panel cannot show
+what the file said two edits ago; every reading in the renderer store is tagged with its revision
+and thrown away when the document changes.
+
+Two things are worth knowing about the shape of it:
+
+- **Security is read from the bytes, not from the loaded document.** An encrypted document is
+  exactly the one the write engine cannot open, and exactly the one whose security is worth
+  describing, so `src/pdf/security/` parses the encryption dictionary textually. That is possible
+  because the dictionary is never itself encrypted. Writing security is the opposite: it needs
+  qpdf, and it always produces a new file rather than replacing the open one.
+- **Removing something deletes the object.** pdf-lib writes every indirect object it holds,
+  reachable or not, so dropping a reference is not removal. `src/pdf/sanitize/prune.ts` deletes
+  what a removal orphans, and the attachment tests assert the bytes are gone from the saved file.
+  Redaction depends on this being true.
+
+`docs/SECURITY.md` has the password handling and the sanitizer's guarantees.
 
 ## Comments
 

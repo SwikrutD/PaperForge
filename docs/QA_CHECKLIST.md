@@ -514,3 +514,92 @@ Run in both light and dark themes:
       are untouched afterwards.
 - [ ] The export dialog is correct in light and dark, at 125% and 150% Windows scaling, and every
       control has a label.
+
+## Segment 14 — properties, attachments, hidden information, security
+
+### Document Properties
+
+- [ ] The Description tab shows the title, author, subject and keywords the document really
+      carries, and says "Not stated" rather than showing an empty box for one it does not.
+- [ ] Created and Modified show the document's own dates, converted from whatever offset it wrote
+      them in.
+- [ ] Typing a title and applying marks the document unsaved; Undo puts the old title back; saving
+      writes the new one, and reopening the file shows it.
+- [ ] Clearing the author removes the entry rather than writing an empty one — checked by reopening
+      in another reader, which should show no author at all.
+- [ ] A title with accents, Cyrillic or CJK survives a save and a reopen.
+- [ ] Custom entries can be added, renamed, edited and removed, and a standard field's name cannot
+      be used for one.
+- [ ] The Fonts tab lists what the pages name, says which travel with the file and which are
+      subsets, and says plainly when a scanned document names none.
+- [ ] The Advanced tab's page sizes match the pages, with rotation applied, and group repeated
+      sizes rather than listing every page.
+- [ ] Removing the XMP packet is only offered when the document has one.
+
+### Security summary
+
+- [ ] An ordinary document says "No security" and does not imply otherwise.
+- [ ] A document with an open password says a password is required to open it.
+- [ ] A document with only an owner password says it opens without one and lists the restrictions.
+- [ ] The algorithm and key length match what the document was made with (checked against another
+      reader's properties dialog).
+- [ ] The permissions list matches what another reader reports, line for line.
+- [ ] The summary appears for a document PaperForge cannot open at all, with the page count and
+      metadata honestly blank rather than invented.
+- [ ] The wording never claims the restrictions are enforced.
+
+### Protect
+
+- [ ] With qpdf missing, Protect explains that qpdf is needed and does nothing else.
+- [ ] An open password produces a file that the reader is asked for a password to open, and the
+      wrong password is refused.
+- [ ] A permissions password with no open password produces a file that opens freely and reports
+      the chosen restrictions.
+- [ ] Each of 256, 128 and 40 bits produces a file another reader opens and describes correctly.
+- [ ] Printing, changing, copying and assistive reading are each honoured by another reader.
+- [ ] "Leave the metadata readable" produces a file whose title Windows Explorer can still show.
+- [ ] Removing security with the correct password produces a file that opens freely; the wrong
+      password is refused with a message that does not contain the password.
+- [ ] Both operations write a **new** file and leave the open document exactly as it was — no
+      unsaved marker, no change of tab title.
+- [ ] Dismissing the file dialog writes nothing and says nothing.
+- [ ] A password with spaces, quotes, an ampersand and non-ASCII characters works.
+- [ ] `%APPDATA%/PaperForge/logs/paperforge.log` contains no password after all of the above, and
+      neither does the settings file or the session journal.
+
+### Attachments
+
+- [ ] The panel lists the files a document carries, with their size and type where the document
+      states them.
+- [ ] Attaching a file marks the document unsaved, and the file is there after a save and a reopen
+      — including in another reader.
+- [ ] A saved attachment's bytes are identical to the original file.
+- [ ] Saving a .exe, .ps1 or .lnk warns first and PaperForge does not open it. Nothing runs.
+- [ ] Attaching such a file warns after it is attached, naming it.
+- [ ] Removing an attachment takes it out; Undo puts it back; after a save the bytes are not
+      anywhere in the file (checked with a hex search for a marker string).
+- [ ] A file name with non-ASCII characters survives attaching, saving and reopening.
+- [ ] An attachment pinned to a page is listed alongside one in the name tree, and can be removed.
+
+### Remove Hidden Information
+
+- [ ] The scan lists only what the document actually carries, and names it — the embedded files by
+      name, the scripts by where they were found.
+- [ ] A clean document says so rather than listing ten empty categories as findings.
+- [ ] Unticking a category leaves it alone; the rescan afterwards shows exactly what is left.
+- [ ] Removing document JavaScript leaves no trace of the script in the saved file.
+- [ ] Removing form values leaves the fields fillable.
+- [ ] Removing hidden comments leaves the visible ones untouched.
+- [ ] "Save a cleaned copy" leaves the open document as it was; "Change this document" is undoable.
+- [ ] A file that has been saved more than once says so, and a PaperForge save afterwards leaves
+      the earlier revisions behind.
+- [ ] Nothing the scan finds is ever performed: a document whose open action starts a program is
+      described and then deleted, and no program starts.
+
+### Everywhere
+
+- [ ] All three dialogs are correct in light and dark, at 125% and 150% Windows scaling.
+- [ ] Every control has a label, a visible focus ring and a sensible tab order; the tabs in
+      Document Properties are reachable from the keyboard.
+- [ ] Each tool is on the home screen, in the command palette and in the menus, and each says
+      "Needs a document" rather than being silently dead when none is open.

@@ -4,10 +4,9 @@
 
 - Last completed segment: **14 — Protect, metadata, sanitize, attachments**
 - Next segment: **15 — True redaction**
-- Build status: `npm run package` succeeded at the end of Segment 13 and has not been re-run since
-- Test status: 698 unit tests (60 files) passing; typecheck, lint and format clean. The Segment 14
-  end-to-end tests (`tests/e2e/admin.e2e.ts`) are written but **have not been run yet** — see
-  "What is not yet verified" below.
+- Build status: `npm run package` succeeds; the end-to-end suite drives the built application
+- Test status: 698 unit tests (60 files) and 145 Playwright end-to-end tests passing; typecheck,
+  lint and format clean. One thing remains unproven — see "What is not yet verified" below.
 
 ## Completed segments
 
@@ -955,14 +954,19 @@ the trailer scan, and links to the full dialog.
 
 ## What is not yet verified
 
-- `tests/e2e/admin.e2e.ts` is written but has not been run. It needs `npm run test:e2e`, which
-  packages the application first. Run it before treating Segment 14 as closed.
-- **Encryption and decryption have not been exercised against a real qpdf**, because qpdf is not
-  installed on the machine this segment was built on. What is tested is the argument construction
-  (both qpdf versions), the password scrubbing, and the whole surrounding pipeline with a stand-in
-  for qpdf. Installing qpdf (`winget install qpdf.qpdf`) and running the Protect dialog end to end
-  is the first thing to do in the next session.
-- `npm run package` has not been re-run since Segment 13.
+**Encryption and decryption have not been exercised against a real qpdf**, because qpdf is not
+installed on the machine this segment was built on. What _is_ tested is the argument construction
+for both qpdf versions, the password scrubbing, and the whole surrounding pipeline — writing the
+working copy, validating what came back, publishing it atomically, cleaning up on failure and
+keeping passwords out of the log — with a stand-in for qpdf in place of the binary.
+
+Reading a document's security needs no qpdf and is tested against real encrypted files, including
+the distinction between a document that needs a password to open and one that only restricts what
+may be done with it.
+
+So: install qpdf (`winget install qpdf.qpdf`), open a document, and walk the Protect section of
+`docs/QA_CHECKLIST.md`. That is the one gap between this segment and done, and it is a run of the
+existing code rather than any more code.
 
 ## Required local tools
 
@@ -982,19 +986,20 @@ Nothing is downloaded at runtime, then or now.
 
 Run on Windows 11 x64, Node 24.19.0, npm 11.17.0:
 
-| Command                     | Result                                                                                                  |
-| --------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                          |
-| `npm run typecheck`         | Pass — four projects, no errors                                                                         |
-| `npm run lint`              | Pass — no errors, no warnings                                                                           |
-| `npm test`                  | Pass — 629 tests in 54 files                                                                            |
-| `npm run test:e2e`          | Pass — 138 Playwright tests against the built application                                               |
-| `npm run format:check`      | Pass — Prettier clean                                                                                   |
-| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                               |
-| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                        |
-| Packaged launch/close smoke | Pass — window ready in ~400 ms, closes cleanly, and `%TEMP%/PaperForge/sessions` is empty afterwards    |
-| Settings upgrade            | Pass — a settings file without the new `session` section is repaired in place                           |
-| Appearance                  | Checked by driving the real application: the export dialog with each format and what it says it carries |
+| Command                     | Result                                                                                                                    |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                                            |
+| `npm run typecheck`         | Pass — four projects, no errors                                                                                           |
+| `npm run lint`              | Pass — no errors, no warnings                                                                                             |
+| `npm test`                  | Pass — 698 tests in 60 files                                                                                              |
+| `npm run test:e2e`          | Pass — 145 Playwright tests against the built application                                                                 |
+| `npm run format:check`      | Pass — Prettier clean                                                                                                     |
+| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                                                 |
+| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                                          |
+| Packaged launch/close smoke | Pass — window ready in ~400 ms, closes cleanly, and `%TEMP%/PaperForge/sessions` is empty afterwards                      |
+| Settings upgrade            | Pass — a settings file without the new `session` section is repaired in place                                             |
+| Appearance                  | Checked by driving the real application: Document Properties in all four tabs, the sanitize report and the Protect dialog |
+| qpdf encryption             | **Not run** — qpdf is not installed here. See "What is not yet verified".                                                 |
 
 ## Manual setup required
 

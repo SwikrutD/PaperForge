@@ -12,7 +12,7 @@ import type { EditOperation } from '@shared/schemas/edit';
 import type { StagedAsset } from '../mutate/types';
 import { deleteAnnotation, deleteFileSpec, embeddedRefs } from '../sanitize/prune';
 import { namesDictionary, readNameTree, writeNameTree, type NameTreeEntry } from './nameTree';
-import { annotationLocation, isAnnotationAttachment, readAttachments } from './read';
+import { annotationLocation, readAttachments } from './read';
 
 /**
  * Adding files to a document and taking them out again.
@@ -156,11 +156,6 @@ export function removeAllAttachments(document: PDFDocument): number {
     document,
     readAttachments(document).map((record) => record.file.id),
   );
-}
-
-/** True when any id names an attachment that lives on a page. */
-export function includesAnnotationAttachment(ids: readonly string[]): boolean {
-  return ids.some(isAnnotationAttachment);
 }
 
 /** The embedded streams the entries that stay still point at. */

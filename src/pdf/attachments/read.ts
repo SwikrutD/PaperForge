@@ -5,7 +5,6 @@ import {
   PDFName,
   PDFNumber,
   PDFRawStream,
-  PDFRef,
   PDFStream,
   PDFString,
   decodePDFRawStream,
@@ -13,7 +12,7 @@ import {
 } from 'pdf-lib';
 import { isRiskyAttachmentName, type EmbeddedFile } from '@shared/schemas/attachment';
 import { parsePdfDate } from '../metadata/read';
-import { namesDictionary, readNameTree } from './nameTree';
+import { readNameTree } from './nameTree';
 
 /**
  * Files carried inside a document.
@@ -81,11 +80,6 @@ export function readAttachmentBytes(document: PDFDocument, spec: PDFDict): Uint8
   return stream instanceof PDFRawStream
     ? decodePDFRawStream(stream).decode()
     : stream.getContents();
-}
-
-/** Finds one attachment by the id a listing gave it. */
-export function findAttachment(document: PDFDocument, id: string): AttachmentRecord | undefined {
-  return readAttachments(document).find((record) => record.file.id === id);
 }
 
 export function isAnnotationAttachment(id: string): boolean {
@@ -172,14 +166,4 @@ function textOf(value: unknown): string | null {
 
 function nameOf(value: unknown): string | null {
   return value instanceof PDFName ? value.decodeText() : null;
-}
-
-/** The catalogue's /Names dictionary, made when a first file is embedded. */
-export function embeddedFilesParent(document: PDFDocument): PDFDict {
-  return namesDictionary(document);
-}
-
-/** True when a value is a reference, which removal has to compare by identity. */
-export function isRef(value: unknown): value is PDFRef {
-  return value instanceof PDFRef;
 }

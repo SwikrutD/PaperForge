@@ -6,7 +6,7 @@ import type {
   DocumentMetadata,
   DocumentProperties,
 } from '@shared/schemas/metadata';
-import type { ProtectRequest, SecuritySummary } from '@shared/schemas/protect';
+import type { ProtectRequest } from '@shared/schemas/protect';
 import type { SanitizeCategory, SanitizeReport } from '@shared/schemas/sanitize';
 import { invoke } from '../services/ipcClient';
 import { useDocumentStore } from './documentStore';
@@ -277,9 +277,4 @@ export const useAdminStore = create<AdminStore>((set, get) => ({
 function revisionOf(sessionId: string): number {
   const state = useDocumentStore.getState();
   return state.tabs.find((tab) => tab.session.id === sessionId)?.edit.revision ?? 0;
-}
-
-/** The security summary of the document being shown, when one has been read. */
-export function securityOf(store: AdminStore): SecuritySummary | null {
-  return store.properties?.security ?? null;
 }

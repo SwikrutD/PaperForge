@@ -97,7 +97,7 @@ test('document properties show what the document says about itself', async () =>
   await dialog().getByRole('tab', { name: 'Advanced' }).click();
   await expect(dialog()).toContainText('612 × 792 pt (2 pages)');
 
-  await dialog().getByRole('button', { name: 'Close' }).click();
+  await dialog().getByRole('button', { name: 'Done' }).click();
 });
 
 test('an unprotected document says so rather than implying otherwise', async () => {
@@ -107,7 +107,7 @@ test('an unprotected document says so rather than implying otherwise', async () 
   await expect(dialog()).toContainText('No security');
   await expect(dialog()).toContainText('Anyone can open this document');
 
-  await dialog().getByRole('button', { name: 'Close' }).click();
+  await dialog().getByRole('button', { name: 'Done' }).click();
 });
 
 test('editing the title is undoable and reaches the file when it is saved', async () => {
@@ -122,7 +122,7 @@ test('editing the title is undoable and reaches the file when it is saved', asyn
   await page.keyboard.press('Control+z');
   await openTool('Document Properties');
   await expect(dialog().getByLabel('Title')).toHaveValue('Draft contract');
-  await dialog().getByRole('button', { name: 'Close' }).click();
+  await dialog().getByRole('button', { name: 'Done' }).click();
 
   await page.keyboard.press('Control+y');
   await page.keyboard.press('Control+s');
@@ -167,9 +167,7 @@ test('the scan says what is hidden, and removes only what was chosen', async () 
   await dialog().getByRole('button', { name: 'Remove', exact: true }).click();
 
   await openTool('Remove Hidden Information');
-  await expect(
-    dialog().getByRole('checkbox', { name: 'Document JavaScript' }),
-  ).toBeDisabled();
+  await expect(dialog().getByRole('checkbox', { name: 'Document JavaScript' })).toBeDisabled();
   await expect(dialog().getByRole('checkbox', { name: 'Document metadata' })).toBeEnabled();
   await dialog().getByRole('button', { name: 'Cancel' }).click();
 });

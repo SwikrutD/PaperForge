@@ -133,10 +133,13 @@ test('lists embedded files without offering to open them', async () => {
   await expect(panel.getByText('Reviewer notes')).toBeVisible();
   await expect(panel.getByText('installer.exe')).toBeVisible();
 
-  // The executable is called out, and no row is something you can activate.
+  // The executable is called out, and no row is something you can activate:
+  // the only thing offered is writing the bytes somewhere, never opening them.
   await expect(panel.getByText('This kind of file can run code.').first()).toBeAttached();
-  await expect(panel.getByRole('button', { name: /notes\.txt/ })).toHaveCount(0);
-  await expect(panel.getByRole('button', { name: /installer\.exe/ })).toHaveCount(0);
+  await expect(panel.getByRole('button', { name: 'notes.txt', exact: true })).toHaveCount(0);
+  await expect(panel.getByRole('button', { name: 'installer.exe', exact: true })).toHaveCount(0);
+  await expect(panel.getByRole('button', { name: 'Save installer.exe' })).toBeAttached();
+  await expect(panel).toContainText('never opens one');
 });
 
 test('hides and restores an optional content group', async () => {

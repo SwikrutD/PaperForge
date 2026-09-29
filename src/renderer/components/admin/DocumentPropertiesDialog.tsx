@@ -150,7 +150,9 @@ export function DocumentPropertiesDialog({ onClose }: { onClose: () => void }): 
       onClose={onClose}
       footer={
         <>
-          <Button onClick={onClose}>Close</Button>
+          {/* Not "Close": the dialog's own corner control already has that
+              name, and two controls in one dialog should not share one. */}
+          <Button onClick={onClose}>Done</Button>
           <Button
             appearance="primary"
             disabled={!changed || saving || !ready}

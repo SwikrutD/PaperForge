@@ -95,6 +95,59 @@ logged and answered with 403. This is covered by unit tests including spaces and
   engine there. It never crosses IPC, is never persisted, and never reaches the
   log.
 
+## Document security and passwords
+
+PaperForge both reads and writes PDF security, and the two work quite differently.
+
+**Reading** needs nothing installed and no password. The encryption dictionary is stored in the
+clear — that is what lets any reader know how to ask for a password — so `src/pdf/security/`
+parses it out of the bytes and reports the algorithm, key length, permission bits and whether
+metadata was left readable. `standardHandler.ts` goes one step further and answers the question the
+dictionary does not state outright: whether a password is needed to open the document at all, or
+only to lift its restrictions. It does that by checking whether the _empty_ user password
+validates, which is exactly what every reader does before it prompts. It implements algorithm 2 and
+algorithm 6 for revisions 2 to 4 and algorithm 2.B for revision 6. It validates and stops; it never
+decrypts a document, and a handler it does not recognise is reported as unknown rather than
+guessed at.
+
+**Writing** goes through qpdf, launched only by `QpdfSecurity` in the main process:
+
+- arguments are an array, never a shell string, and the run never goes through a shell;
+- the input password for `--decrypt` is written to qpdf's standard input via `--password-file=-`
+  where the installed version supports it (qpdf 10.2 and later), so it is not in a command line;
+- the passwords for `--encrypt` have to go on the command line, because that is the only way qpdf
+  accepts them. Another program running as the same user could read them from the process list for
+  the moment qpdf runs. This is stated here rather than glossed over;
+- anything qpdf prints is scrubbed of every password before it becomes an error, so a password
+  cannot reach a toast, a log line or a diagnostics copy;
+- both operations write a **new file**. The document the reader has open is never replaced, because
+  an encrypted document cannot be edited and swapping one in would take their work away.
+
+Passwords are not written to the log, the settings file or the recovery journal, and the store in
+the renderer keeps none after the request is sent. `tests/unit/main/documentAdmin.test.ts` asserts
+this rather than leaving it to review.
+
+PDF permissions are cooperative: they are flags a conforming reader agrees to honour, not
+enforcement. PaperForge writes them accurately and says nothing about what other software will do
+with them.
+
+## Hidden information
+
+`src/pdf/sanitize/` finds what a document carries besides its pages — metadata, XMP, embedded
+files, document JavaScript, launch and submit actions, hidden comments, form values, saved
+thumbnails, hidden layers and alternate images — and removes only the categories the reader chose.
+An action is read far enough to follow its `/Next` chain and is then deleted. Nothing found is ever
+performed.
+
+Removal deletes the objects, not only the references to them. pdf-lib writes every indirect object
+it holds whether or not anything still points at it, so dropping a name-tree entry would hide an
+embedded file while its bytes travelled on into the saved document. `src/pdf/sanitize/prune.ts`
+exists for that reason, and a regression test asserts that the bytes of a removed attachment are
+nowhere in the saved file.
+
+Embedded files are never opened and never executed. Saving one writes the bytes where the reader
+chose and stops there; a name whose extension Windows would run is called out and confirmed first.
+
 ## Logging and privacy
 
 Logs are local only, in `%APPDATA%/PaperForge/logs/paperforge.log`, rotated at 1 MB. The logger
@@ -106,12 +159,5 @@ is bound to `127.0.0.1`.
 
 These belong to later segments and are listed so they are not forgotten:
 
-- Document JavaScript is never executed. PaperForge may detect and remove it (Segments 19–22 of the
-  spec, implemented in Segments 14 and 15).
-- Embedded attachments are never auto-opened; executable and script extensions warn first
-  (Segment 14).
-- External URLs open only after explicit user confirmation, in the system browser (Segment 24 of
-  the spec, implemented alongside links).
-- Native sidecars are launched with `execFile`/`spawn` without a shell, with arguments built from
-  typed fields, into PaperForge-owned temp directories, and are terminated cleanly on cancel
-  (Segments 5, 12 and 13).
+- Redaction must remove content, not cover it, and a test must prove the text cannot be extracted
+  afterwards (Segment 15). The object-deletion work above is the foundation for it.
