@@ -2,10 +2,12 @@
 
 ## Current status
 
-- Last completed segment: **13 — Conversion centre**
-- Next segment: **14 — Protect, metadata, sanitize, attachments**
-- Build status: `npm run package` succeeds; packaged app launches and closes cleanly on Windows 11 x64
-- Test status: 629 unit tests (54 files) and 138 Playwright end-to-end tests passing; typecheck, lint and format clean
+- Last completed segment: **14 — Protect, metadata, sanitize, attachments**
+- Next segment: **15 — True redaction**
+- Build status: `npm run package` succeeded at the end of Segment 13 and has not been re-run since
+- Test status: 698 unit tests (60 files) passing; typecheck, lint and format clean. The Segment 14
+  end-to-end tests (`tests/e2e/admin.e2e.ts`) are written but **have not been run yet** — see
+  "What is not yet verified" below.
 
 ## Completed segments
 
@@ -23,7 +25,7 @@
 - [x] 11 Forms and Fill & Sign
 - [x] 12 OCR
 - [x] 13 Conversion centre
-- [ ] 14 Protect, metadata, sanitize, attachments
+- [x] 14 Protect, metadata, sanitize, attachments
 - [ ] 15 True redaction
 - [ ] 16 Compare, optimize, repair, crop
 - [ ] 17 Accessibility and practical advanced tools
@@ -877,11 +879,90 @@ Recognize Text rather than writing an empty file.
   rename is reported as modified.
 - Tooltips use the native `title` attribute.
 - `resources/bundled-tools` and `resources/tessdata` exist but are empty and git-ignored. qpdf,
-  Tesseract and LibreOffice are not integrated.
+  Tesseract and LibreOffice are not bundled; each is discovered locally or pointed at in Settings.
+- Protecting a document needs qpdf. Without it the dialog explains that and does nothing else;
+  reading a document's security needs nothing at all.
+- A password is passed to qpdf on its command line when the document is being encrypted, because
+  that is the only way qpdf accepts one for `--encrypt`. Another program on the same machine could
+  read it from the process list for the moment qpdf runs. The input password for `--decrypt` goes
+  on standard input instead. Neither is written to a log, a settings file or the recovery journal.
+- PaperForge writes the permissions qpdf writes: printing, how much may be changed, copying, and
+  reading by assistive software. The other permission bits are reported when a document carries
+  them but are not offered as separate choices, because no tool sets them independently.
+- 40-bit RC4 has only four permission bits, so the finer choices are folded into them rather than
+  passed to a qpdf that would refuse the run.
+- `openPasswordRequired` is worked out for the standard security handler at revisions 2 to 6. A
+  document with some other handler reports it as unknown rather than guessing.
+- Fonts are listed from the pages' own resources. A font used only inside a form XObject is not
+  listed, for the same reason text inside one is not editable.
+- The sanitizer removes hidden layers by taking the group out of the catalogue's listing; the
+  marked content stays on the page and simply stops being optional. It is no longer revealable,
+  but it is not deleted, and a page-level removal belongs with redaction in Segment 15.
+- XMP is removed as a whole packet or left alone; PaperForge does not edit XMP, so it cannot keep
+  the two copies of the metadata in step. Removing it is offered where the document carries one.
+- Removing hidden information does not attempt to rewrite an incrementally-updated file's earlier
+  revisions on its own — but every PaperForge save is a full rewrite, which is what leaves them
+  behind. The dialog says so where the file has been written more than once.
 - The Windows installer, file associations and "Open with" are not built (Segment 18); `npm run make`
   produces a zip.
 - Prettier reformatted `CLAUDE.md` once during Segment 0 (whitespace only) before it was added to
   `.prettierignore`.
+
+## Segment 14 — what landed
+
+**Document Properties.** `src/pdf/metadata/` reads the information dictionary, the custom entries
+beyond the standard ones, the fonts the pages name, the page sizes with rotation applied, the
+language, whether the document is tagged and whether it is laid out for fast web view. Writing goes
+through two new edit operations — `setMetadata` and `setDocumentLanguage` — so renaming a title is
+undoable and is not on disk until the document is saved. A cleared field removes the entry rather
+than writing an empty one, and text is written as UTF-16 so a title with an accent survives.
+
+**Security, read without a sidecar.** `src/pdf/security/` parses the encryption dictionary straight
+out of the bytes, which works on a document nothing can open, because that dictionary is never
+itself encrypted. `standardHandler.ts` implements enough of the standard security handler —
+algorithm 2 and 6 for revisions 2 to 4, algorithm 2.B for revision 6 — to answer the one question
+the dictionary does not state: is a password needed to _open_ this document, or only to change it?
+That distinction is what the Protect dialog leads with. Nothing here decrypts anything; it
+validates the empty password and stops.
+
+**Security, written through qpdf.** `QpdfSecurity` builds `--encrypt` and `--decrypt` argument
+arrays — never a shell string — and hands the input password on standard input where the installed
+qpdf supports `--password-file` (10.2 and later). Argument spelling changed at qpdf 11, so both
+forms are built and both are unit-tested. Every protect and unprotect writes a **new file**: an
+encrypted document cannot be edited, so swapping one in for the document the reader has open would
+take their work away.
+
+**Attachments.** `src/pdf/attachments/` reads both places a PDF keeps embedded files — the
+catalogue's name tree and file attachment annotations — and can now add, save out and remove them.
+PaperForge still never opens one: saving writes the bytes where the reader chose, and a file whose
+extension Windows would execute is named and confirmed first.
+
+**Remove Hidden Information.** `src/pdf/sanitize/` scans for metadata, XMP, embedded files,
+document JavaScript, launch and submit actions, hidden comments, form values, saved thumbnails,
+hidden layers and alternate images, reports what it actually found, and removes only the categories
+chosen. An action is read to follow its `/Next` chain and then deleted — never performed.
+
+**Objects, not just references.** pdf-lib writes every indirect object it holds, whether or not
+anything still points at it, so dropping a name-tree entry would hide an embedded file while its
+bytes travelled on into the saved document. `src/pdf/sanitize/prune.ts` deletes the objects as
+well, and a regression test asserts that the bytes of a removed attachment are nowhere in the file.
+This matters more in Segment 15 than it does here.
+
+**Where it shows up.** Document Properties, Protect PDF, Remove Hidden Information and Attach Files
+are commands, command-palette entries and home-screen tool cards; the attachments panel gained its
+own actions; the properties panel now reports security from the encryption dictionary rather than
+the trailer scan, and links to the full dialog.
+
+## What is not yet verified
+
+- `tests/e2e/admin.e2e.ts` is written but has not been run. It needs `npm run test:e2e`, which
+  packages the application first. Run it before treating Segment 14 as closed.
+- **Encryption and decryption have not been exercised against a real qpdf**, because qpdf is not
+  installed on the machine this segment was built on. What is tested is the argument construction
+  (both qpdf versions), the password scrubbing, and the whole surrounding pipeline with a stand-in
+  for qpdf. Installing qpdf (`winget install qpdf.qpdf`) and running the Protect dialog end to end
+  is the first thing to do in the next session.
+- `npm run package` has not been re-run since Segment 13.
 
 ## Required local tools
 
@@ -920,7 +1001,25 @@ Run on Windows 11 x64, Node 24.19.0, npm 11.17.0:
 None beyond `npm install`. On npm 11 the first install asks to approve the Electron install script;
 `package.json` already records the approval (`allowScripts`), so it should not ask again.
 
-## Where Segment 14 starts
+## Where Segment 15 starts
+
+Redaction is where the object-graph work of Segment 14 pays off. `src/pdf/sanitize/prune.ts`
+already deletes objects rather than only the references to them, and the attachment tests prove
+removed bytes are not in the saved file — the same proof redaction's gate demands, applied to page
+content instead.
+
+- **Marking** is annotation work that already exists: a rectangle and a text-markup geometry, drawn
+  as a pending overlay rather than written as a comment.
+- **Applying** needs the content-stream parser in `src/pdf/content/`, which Segment 9 built and
+  Segment 10 extended. Removing a run of text from a stream is the same operation as rewriting one,
+  with nothing put back.
+- **The raster fallback** for a page whose content cannot be safely cut is a render at DPI followed
+  by `insertImagePages`-style replacement; the renderer already does both halves for export.
+- **The gate is extraction.** A test must search the saved file for the redacted phrase through
+  PDF.js text extraction and find nothing. `tests/unit/shared/attachments.test.ts` has the shape of
+  that assertion for embedded files.
+
+## Where Segment 14 started
 
 Nothing in Segment 14 needs new plumbing; it needs writers on top of what is already here.
 
