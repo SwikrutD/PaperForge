@@ -150,7 +150,6 @@ export function BookmarkEditor({ tab }: { tab: DocumentTab }): ReactElement {
           onClick={() =>
             selected !== null &&
             void store().restyle(sessionId, selected, {
-              ...selected.style,
               bold: !selected.style.bold,
             })
           }
@@ -164,7 +163,6 @@ export function BookmarkEditor({ tab }: { tab: DocumentTab }): ReactElement {
           onClick={() =>
             selected !== null &&
             void store().restyle(sessionId, selected, {
-              ...selected.style,
               italic: !selected.style.italic,
             })
           }
@@ -178,7 +176,7 @@ export function BookmarkEditor({ tab }: { tab: DocumentTab }): ReactElement {
           onChange={(event) => {
             const colour = COLOURS.find((entry) => entry.name === event.target.value);
             if (selected === null || colour === undefined) return;
-            void store().restyle(sessionId, selected, { ...selected.style, color: colour.value });
+            void store().restyle(sessionId, selected, { color: colour.value });
           }}
         >
           {COLOURS.map((colour) => (
