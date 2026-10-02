@@ -2,11 +2,12 @@
 
 ## Current status
 
-- Last completed segment: **14 — Protect, metadata, sanitize, attachments**
-- Next segment: **15 — True redaction**
+- Last completed segment: **15 — True redaction**
+- Next segment: **16 — Compare, optimize, repair, crop**
 - Build status: `npm run package` succeeds; the end-to-end suite drives the built application
-- Test status: 698 unit tests (60 files) and 145 Playwright end-to-end tests passing; typecheck,
-  lint and format clean. One thing remains unproven — see "What is not yet verified" below.
+- Test status: 724 unit tests (61 files) and 150 Playwright end-to-end tests passing; typecheck,
+  lint and format clean. qpdf is now installed on the build machine, so every save in the
+  end-to-end suite was also checked by qpdf; the Protect walkthrough is still a manual step.
 
 ## Completed segments
 
@@ -25,7 +26,7 @@
 - [x] 12 OCR
 - [x] 13 Conversion centre
 - [x] 14 Protect, metadata, sanitize, attachments
-- [ ] 15 True redaction
+- [x] 15 True redaction
 - [ ] 16 Compare, optimize, repair, crop
 - [ ] 17 Accessibility and practical advanced tools
 - [ ] 18 Printing and Windows integration
@@ -907,6 +908,25 @@ Recognize Text rather than writing an empty file.
 - Prettier reformatted `CLAUDE.md` once during Segment 0 (whitespace only) before it was added to
   `.prettierignore`.
 
+- Redaction marks are pending renderer state: they are not written into the file and are lost if
+  the document is closed before they are applied. Applied redactions are an ordinary undoable edit
+  until the document is saved.
+- Redaction cuts the page's own content stream. Text or pictures inside a reusable group (form
+  XObject) that a mark only partly covers, text in a font whose widths are unknown (Type 3, a
+  non-standard font without `/Widths`, a non-Identity or vertical composite font), inline images,
+  and JPEG, masked or predictor-compressed pictures only partly covered make that page a picture
+  instead (200 dpi JPEG, marks painted on). Its text is then no longer selectable until Recognize
+  Text is run. The review dialog lists such pages and the reason.
+- A path that crosses the edge of a mark is painted over, not cut; only paths wholly under a mark
+  are removed. Shadings and patterns are not cut.
+- Redaction by area does not change bookmark titles or descriptions in a tagged document's
+  structure tree (the review says so when present). Metadata and other hidden information are
+  removed only when "Also remove hidden information" is chosen.
+- Find text to mark searches the page's own text; it does not look inside reusable groups or read
+  scans (those pages are reported, and can be marked by area or recognised first).
+- A widget under a mark removes its whole form field, on every page, because the value belongs to
+  the field.
+
 ## Segment 14 — what landed
 
 **Document Properties.** `src/pdf/metadata/` reads the information dictionary, the custom entries
@@ -952,27 +972,74 @@ are commands, command-palette entries and home-screen tool cards; the attachment
 own actions; the properties panel now reports security from the encryption dictionary rather than
 the trailer scan, and links to the full dialog.
 
+## Segment 15 — what landed
+
+**Removal, not cover.** `src/pdf/redact/` cuts what lies under each mark out of the page's own
+drawing. A glyph whose middle — or 30% of whose box — is under a mark is deleted from its show
+operation and replaced by a `TJ` offset of the same advance, so the rest of the line stays exactly
+where it was; this works for any font that says how wide its glyphs are, including composite
+fonts PaperForge could never write new text in. `/ActualText` around cut text goes too. Pictures
+wholly under a mark are removed; pictures partly under one are repainted in their own samples
+(plain or deflated 8-bit grey/RGB/CMYK) and written as a new image. Paths wholly under a mark go.
+Annotations under a mark go with their pop-ups; a widget takes its whole field. Thumbnails of
+redacted pages are deleted.
+
+**Refuse rather than half-do.** Anything the engine cannot cut safely — an unmeasurable font, a
+partly covered form XObject or JPEG, an inline image, an undecodable stream — makes the page need a
+picture. The window draws it upright without annotations, paints the marks onto the pixels and
+stages it; the page is replaced with fresh resources. A page that needs a picture and was not given
+one fails the whole edit. Every cut page is then read back, and the edit is refused if anything is
+still under a mark.
+
+**Nothing removed travels on.** Pictures and groups no longer drawn by any page are deleted even
+when shared resources still list them, then every object unreachable from the trailer is deleted —
+pdf-lib would otherwise write orphaned content streams (including the pre-edit page) into the file.
+
+**In the workspace.** Redact (Tools menu, palette, home card) switches the other tools off and
+shows the redaction toolbar and the list of marks. Marks come from a text selection, a dragged
+area, or Find text to mark, which searches the same glyph model the cut uses, so a match marks
+exactly the glyphs that will go. Apply Redactions reviews what each mark will remove and which pages
+become pictures and why, optionally removes hidden information in the same step, applies one
+undoable edit, and by default saves the result as "name redacted.pdf", leaving the opened file as
+it was. Box colour and an optional reason label are chosen in the panel.
+
+**Fixed on the way.** The PDF.js text layer never applied the CSS variables its spans are sized by,
+so every span was smaller than its glyphs and selections covered the wrong characters
+(`PdfPageView.module.css`, `pdfjsEngine.renderTextLayer`). The qpdf discovery tests now empty the
+Program Files variables as well as PATH, since an installed qpdf made them fail; one admin e2e test
+now waits for redo to land before saving.
+
+| Area     | Files                                                                                          |
+| -------- | ---------------------------------------------------------------------------------------------- |
+| Engine   | `src/pdf/redact/{geometry,text,graphics,pixels,annotations,page,plan,search,garbage,apply}.ts` |
+| Shared   | `src/shared/schemas/redaction.ts`, the `applyRedactions` operation, `redact/failed`            |
+| Main     | `main/ipc/handlers/redactionHandlers.ts`; `files:save` takes a name suffix                     |
+| Renderer | `renderer/stores/redactionStore.ts`, `renderer/services/redactionRender.ts`, `redact/*`        |
+| Tests    | `tests/unit/shared/redaction.test.ts` (the extraction gate), `tests/e2e/redact.e2e.ts`         |
+
+**The gate.** 25 unit tests build documents with the marked phrase drawn in awkward ways — split
+across runs, kerned arrays, the quote operators, a composite font, invisible OCR text, ActualText,
+an earlier edit's leftover stream, inside a group, in an annotation, in a form field — apply the
+redaction, and assert the phrase is neither returned by PDF.js text extraction nor present anywhere
+in the saved file, with every stream decompressed and every string decoded. The end-to-end suite
+does the same against the file the application saved.
+
 ## What is not yet verified
 
-**Encryption and decryption have not been exercised against a real qpdf**, because qpdf is not
-installed on the machine this segment was built on. What _is_ tested is the argument construction
-for both qpdf versions, the password scrubbing, and the whole surrounding pipeline — writing the
-working copy, validating what came back, publishing it atomically, cleaning up on failure and
-keeping passwords out of the log — with a stand-in for qpdf in place of the binary.
+**Protect PDF against a real qpdf.** qpdf 12.4.2 is now installed on the build machine, and every
+save in the end-to-end suite was checked by it, but the Protect walkthrough in
+`docs/QA_CHECKLIST.md` (encrypt, reopen with the wrong and the right password, remove security) has
+still not been run by hand. It needs no new code.
 
-Reading a document's security needs no qpdf and is tested against real encrypted files, including
-the distinction between a document that needs a password to open and one that only restricts what
-may be done with it.
-
-So: install qpdf (`winget install qpdf.qpdf`), open a document, and walk the Protect section of
-`docs/QA_CHECKLIST.md`. That is the one gap between this segment and done, and it is a run of the
-existing code rather than any more code.
+**Redaction on third-party files.** The redaction gate is proven on generated documents covering
+the shapes listed above. Walk the Segment 15 section of `docs/QA_CHECKLIST.md` on a few real
+documents (a Word export, a scanned and recognised file, a form) before relying on it.
 
 ## Required local tools
 
 - qpdf: optional. Saved files are checked with it when it is installed; Settings → Local tools
-  reports what was found and can point at a different one. Encryption and repair follow in
-  Segment 14.
+  reports what was found and can point at a different one. Protect PDF needs it; repair follows
+  in Segment 16.
 - Tesseract: optional, and needed for Recognize Text. PaperForge looks in the usual Windows
   locations and on the PATH; Settings → Text recognition says what was found and can point at
   another copy or another tessdata folder. Nothing is downloaded.
@@ -986,60 +1053,39 @@ Nothing is downloaded at runtime, then or now.
 
 Run on Windows 11 x64, Node 24.19.0, npm 11.17.0:
 
-| Command                     | Result                                                                                                                    |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                                            |
-| `npm run typecheck`         | Pass — four projects, no errors                                                                                           |
-| `npm run lint`              | Pass — no errors, no warnings                                                                                             |
-| `npm test`                  | Pass — 698 tests in 60 files                                                                                              |
-| `npm run test:e2e`          | Pass — 145 Playwright tests against the built application                                                                 |
-| `npm run format:check`      | Pass — Prettier clean                                                                                                     |
-| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                                                 |
-| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                                          |
-| Packaged launch/close smoke | Pass — window ready in ~400 ms, closes cleanly, and `%TEMP%/PaperForge/sessions` is empty afterwards                      |
-| Settings upgrade            | Pass — a settings file without the new `session` section is repaired in place                                             |
-| Appearance                  | Checked by driving the real application: Document Properties in all four tabs, the sanitize report and the Protect dialog |
-| qpdf encryption             | **Not run** — qpdf is not installed here. See "What is not yet verified".                                                 |
+| Command                     | Result                                                                                                             |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                                     |
+| `npm run typecheck`         | Pass — four projects, no errors                                                                                    |
+| `npm run lint`              | Pass — no errors, no warnings                                                                                      |
+| `npm test`                  | Pass — 724 tests in 61 files                                                                                       |
+| `npm run test:e2e`          | Pass — 150 Playwright tests against the built application                                                          |
+| `npm run format:check`      | Pass — Prettier clean                                                                                              |
+| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                                          |
+| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                                   |
+| Packaged launch/close smoke | Pass — window ready in ~700 ms                                                                                     |
+| Settings upgrade            | Pass — unchanged this segment                                                                                      |
+| Appearance                  | Checked by driving the real application: redaction marks, panel, review dialog and applied boxes in light and dark |
+| qpdf                        | Installed (12.4.2); saves in the e2e suite were qpdf-checked. Protect walkthrough not yet run by hand.             |
 
 ## Manual setup required
 
 None beyond `npm install`. On npm 11 the first install asks to approve the Electron install script;
 `package.json` already records the approval (`allowScripts`), so it should not ask again.
 
-## Where Segment 15 starts
+## Where Segment 16 starts
 
-Redaction is where the object-graph work of Segment 14 pays off. `src/pdf/sanitize/prune.ts`
-already deletes objects rather than only the references to them, and the attachment tests prove
-removed bytes are not in the saved file — the same proof redaction's gate demands, applied to page
-content instead.
-
-- **Marking** is annotation work that already exists: a rectangle and a text-markup geometry, drawn
-  as a pending overlay rather than written as a comment.
-- **Applying** needs the content-stream parser in `src/pdf/content/`, which Segment 9 built and
-  Segment 10 extended. Removing a run of text from a stream is the same operation as rewriting one,
-  with nothing put back.
-- **The raster fallback** for a page whose content cannot be safely cut is a render at DPI followed
-  by `insertImagePages`-style replacement; the renderer already does both halves for export.
-- **The gate is extraction.** A test must search the saved file for the redacted phrase through
-  PDF.js text extraction and find nothing. `tests/unit/shared/attachments.test.ts` has the shape of
-  that assertion for embedded files.
-
-## Where Segment 14 started
-
-Nothing in Segment 14 needs new plumbing; it needs writers on top of what is already here.
-
-- **qpdf** is already discovered, configurable and wrapped in `src/main/services/qpdf/qpdfService.ts`,
-  but only asked for a second opinion on a file just written. Encryption, decryption and the security
-  summary are new calls through that same wrapper — arguments as an array, no shell, as it runs now.
-- **Attachments** are read today: `AttachmentsPanel` lists what `pdfjsEngine` finds, and nothing can
-  be added, saved or removed. There is no write path yet (`src/pdf/attachments` does not exist), and
-  the panel's "never auto-open, warn on executables" rule has to hold for saving too.
-- **Metadata** has no module at all (`src/pdf/metadata` does not exist). Document Properties reads
-  what the render engine already reports; editing and removing fields is new, through
-  `PdfMutationEngine` and the ordinary revision-and-save pipeline.
-- **The gate is about logs.** Passwords reach the main process, are handed to qpdf, and must appear
-  in no log line, no error detail, no recovery journal and no settings file. Worth a test that asserts
-  it rather than a careful review.
+- **Compare** renders pages the way OCR and export already do (one page in flight) and needs a
+  worker for the pixel difference; text differences can use the glyph model in `src/pdf/content/`,
+  which redaction's search already turns into reading-order text with boxes
+  (`src/pdf/redact/search.ts`).
+- **Optimize** will rewrite images; `src/pdf/redact/pixels.ts` already decodes and re-encodes plain
+  and deflated samples, and `src/pdf/redact/garbage.ts` deletes unreachable objects — a clean-up an
+  optimizer should run too. Every destructive optimization must work on a temporary copy (the
+  revision pipeline already does).
+- **Repair** goes through `QpdfService`, which is now exercised against a real qpdf on this machine.
+- **Crop** has a foundation in Segment 7 (`cropPages`, page boxes); the crop tool needs a drag
+  rectangle, which `RedactionLayer` and `FieldDesignLayer` already implement.
 
 ## Next-session instruction
 
