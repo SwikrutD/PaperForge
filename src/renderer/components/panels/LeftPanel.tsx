@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactElement } from 'react';
 import { Bookmark, Layers, Paperclip, StickyNote, X } from 'lucide-react';
-import type { LoadedPdfDocument, PdfLayer, PdfOutlineItem } from '@pdf/render/types';
+import type { LoadedPdfDocument, PdfLayerEntry, PdfOutlineItem } from '@pdf/render/types';
 import type { LeftPanelId } from '@shared/schemas/settings';
 import { useCommands } from '../../commands/useCommands';
 import { IconButton } from '../controls/IconButton';
@@ -9,6 +9,7 @@ import { AttachmentsPanel } from './AttachmentsPanel';
 import { BookmarksPanel } from './BookmarksPanel';
 import { BookmarkEditor } from './BookmarkEditor';
 import { useBookmarkStore } from '../../stores/bookmarkStore';
+import { useDocumentStore } from '../../stores/documentStore';
 import { EmptyPanelState } from './EmptyPanelState';
 import { LayersPanel } from './LayersPanel';
 import { PagesPanel } from './PagesPanel';
@@ -53,7 +54,7 @@ interface PanelData {
   /** The document this data was read from, so stale data is never shown. */
   source: LoadedPdfDocument;
   outline: PdfOutlineItem[];
-  layers: PdfLayer[];
+  layers: PdfLayerEntry[];
 }
 
 function PanelBody({ panel }: { panel: LeftPanelId }): ReactElement {
@@ -159,14 +160,24 @@ function PanelBody({ panel }: { panel: LeftPanelId }): ReactElement {
   }
 
   if (data === null) return <PanelLoading />;
-  return data.layers.length === 0 ? (
+  return data.layers.every((entry) => entry.kind !== 'layer') ? (
     <EmptyPanelState
       icon={Layers}
       title="No layers"
       description="This document defines no optional content groups."
     />
   ) : (
-    <LayersPanel layers={data.layers} onToggle={setLayerVisible} />
+    <LayersPanel
+      layers={data.layers}
+      onToggle={setLayerVisible}
+      saveProblem={pdf.info.encrypted ? 'An encrypted document cannot be changed.' : null}
+      onSaveDefaults={(layers) =>
+        void useDocumentStore.getState().applyEdit(tab.session.id, {
+          label: 'Set which layers show when the document opens',
+          operations: [{ kind: 'setLayerDefaults', layers }],
+        })
+      }
+    />
   );
 }
 

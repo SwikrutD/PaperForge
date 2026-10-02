@@ -189,3 +189,22 @@ async function snapshot(name: string): Promise<void> {
   if (screenshots === undefined) return;
   await page.screenshot({ path: path.join(screenshots, `${name}.png`) });
 }
+
+test('saves the layers shown now as what the document opens with', async () => {
+  await page.getByRole('button', { name: 'Layers' }).click();
+  const layers = page.getByRole('region', { name: 'Layers' });
+  await expect(layers.getByText('Watermark layer')).toBeVisible();
+
+  await layers.getByRole('button', { name: 'Hide all' }).click();
+  await expect(layers.getByRole('checkbox', { name: 'Watermark layer' })).not.toBeChecked();
+  await layers.getByRole('button', { name: 'Save as default' }).click();
+  await expect(page.getByLabel('Unsaved changes')).toBeVisible();
+  await page.keyboard.press('Control+s');
+  await expect(page.getByLabel('Unsaved changes')).toHaveCount(0);
+
+  const document = await PDFDocument.load(await fs.readFile(documentPath));
+  const properties = document.catalog.lookup(PDFName.of('OCProperties'), PDFDict);
+  const defaults = properties.lookup(PDFName.of('D'), PDFDict);
+  expect(defaults.lookup(PDFName.of('OFF'), PDFArray).size()).toBe(1);
+  expect(defaults.lookup(PDFName.of('ON'), PDFArray).size()).toBe(0);
+});

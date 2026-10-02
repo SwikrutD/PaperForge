@@ -9,13 +9,14 @@ import {
   type PDFPageProxy,
 } from 'pdfjs-dist';
 import type { OptionalContentConfig } from 'pdfjs-dist/types/src/display/optional_content_config';
+import { orderRows } from './layerOrder';
 import { AppError } from '@shared/errors/appError';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import type {
   LoadDocumentOptions,
   LoadedPdfDocument,
   PdfAttachment,
-  PdfLayer,
+  PdfLayerEntry,
   PdfLink,
   PdfLinkTarget,
   PdfOutlineItem,
@@ -63,19 +64,6 @@ interface RawTextItem {
   width: number;
   height: number;
   hasEOL?: boolean;
-}
-
-/** The order array may nest groups under headings; only ids matter here. */
-function flattenOrder(order: readonly unknown[]): string[] {
-  const ids: string[] = [];
-  for (const entry of order) {
-    if (typeof entry === 'string') ids.push(entry);
-    else if (Array.isArray(entry)) ids.push(...flattenOrder(entry));
-    else if (entry !== null && typeof entry === 'object' && 'order' in entry) {
-      ids.push(...flattenOrder((entry as { order: unknown[] }).order));
-    }
-  }
-  return ids;
 }
 
 /** Outline colours arrive as three components in 0–255. */
@@ -320,22 +308,30 @@ class PdfjsDocument implements LoadedPdfDocument {
     });
   }
 
-  getLayers(): Promise<PdfLayer[]> {
+  getLayers(): Promise<PdfLayerEntry[]> {
     const config = this.optionalContent;
     if (config === null) return Promise.resolve([]);
 
-    // getOrder returns the authored display order, flattened here because the
-    // panel lists groups rather than their nesting.
     const order = (config.getOrder() as unknown[] | null) ?? [];
-    const ids = flattenOrder(order);
-
-    const layers: PdfLayer[] = [];
-    for (const id of ids) {
-      const group = config.getGroup(id) as { name?: string | null; visible?: boolean } | null;
-      if (group === null) continue;
-      layers.push({ id, name: group.name ?? id, visible: group.visible !== false });
+    const entries: PdfLayerEntry[] = [];
+    const seen = new Set<string>();
+    for (const row of orderRows(order, 0)) {
+      if ('heading' in row) {
+        entries.push({ kind: 'heading', name: row.heading, depth: row.depth });
+        continue;
+      }
+      const group = config.getGroup(row.id) as { name?: string | null; visible?: boolean } | null;
+      if (group === null || seen.has(row.id)) continue;
+      seen.add(row.id);
+      entries.push({
+        kind: 'layer',
+        id: row.id,
+        name: group.name ?? row.id,
+        visible: group.visible !== false,
+        depth: row.depth,
+      });
     }
-    return Promise.resolve(layers);
+    return Promise.resolve(entries);
   }
 
   setLayerVisible(id: string, visible: boolean): void {

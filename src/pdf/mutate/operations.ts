@@ -223,6 +223,8 @@ export function describeOperation(operation: EditOperation): string {
       return `Delete bookmark "${shorten(operation.expectTitle)}"`;
     case 'moveBookmark':
       return `Move bookmark "${shorten(operation.expectTitle)}"`;
+    case 'setLayerDefaults':
+      return 'Set which layers show when the document opens';
     case 'addAttachments':
       return operation.tokens.length === 1 ? 'Attach a file' : 'Attach files';
     case 'removeAttachments':

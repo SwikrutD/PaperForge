@@ -110,10 +110,23 @@ export interface PdfAttachment {
 
 /** An optional content group — what other tools call a layer. */
 export interface PdfLayer {
+  kind: 'layer';
   id: string;
   name: string;
   visible: boolean;
+  /** How far the document nests it under other layers or headings. */
+  depth: number;
 }
+
+/** A label the document groups layers under, which is not a layer itself. */
+export interface PdfLayerHeading {
+  kind: 'heading';
+  name: string;
+  depth: number;
+}
+
+/** The layers panel, in the order and nesting the document gives. */
+export type PdfLayerEntry = PdfLayer | PdfLayerHeading;
 
 /** One run of text as the document lays it out, in PDF user space. */
 export interface PdfTextItem {
@@ -145,7 +158,7 @@ export interface LoadedPdfDocument {
   getOutline(): Promise<PdfOutlineItem[]>;
   getAttachments(): Promise<PdfAttachment[]>;
   /** Optional content groups; empty when the document defines none. */
-  getLayers(): Promise<PdfLayer[]>;
+  getLayers(): Promise<PdfLayerEntry[]>;
   setLayerVisible(id: string, visible: boolean): void;
   /** Text of one page, used by search and by the no-text-layer check. */
   getPageText(pageNumber: number): Promise<PdfPageText>;

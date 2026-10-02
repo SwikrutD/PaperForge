@@ -57,6 +57,7 @@ import { readingOrderOf } from '../accessibility/readingOrder';
 import { readStructureTree } from '../accessibility/structure';
 import { applyAccessibilityOperation } from '../accessibility/write';
 import { applyBookmarkOperation, readBookmarks } from '../bookmarks/bookmarks';
+import { applyLayerOperation } from '../layers/defaults';
 import type { BookmarkNode } from '@shared/schemas/bookmark';
 import type { AccessibilityReport, ReadingOrder } from '@shared/schemas/accessibility';
 import type { SecuritySummary } from '@shared/schemas/protect';
@@ -306,6 +307,7 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
         if (applyMetadataOperation(document, operation)) continue;
         if (applyAccessibilityOperation(document, operation)) continue;
         if (applyBookmarkOperation(document, operation)) continue;
+        if (applyLayerOperation(document, operation)) continue;
 
         // Carrying a file in or taking one out changes the catalogue, and
         // sanitizing can remove annotations, so both invalidate what was read.

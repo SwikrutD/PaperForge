@@ -440,6 +440,18 @@ export const moveBookmarkOperationSchema = z.strictObject({
   index: z.number().int().min(0).max(100_000),
 });
 
+/**
+ * Sets which layers the document shows when it is opened. Layers are named the
+ * way the viewer names them: "12R" for the group stored as object 12.
+ */
+export const setLayerDefaultsOperationSchema = z.strictObject({
+  kind: z.literal('setLayerDefaults'),
+  layers: z
+    .array(z.strictObject({ id: z.string().regex(/^\d+R\d*$/), visible: z.boolean() }))
+    .min(1)
+    .max(5000),
+});
+
 /** Embeds files the main process has staged, by token. */
 export const addAttachmentsOperationSchema = z.strictObject({
   kind: z.literal('addAttachments'),
@@ -525,6 +537,7 @@ export const editOperationSchema = z.discriminatedUnion('kind', [
   updateBookmarkOperationSchema,
   deleteBookmarkOperationSchema,
   moveBookmarkOperationSchema,
+  setLayerDefaultsOperationSchema,
   addAttachmentsOperationSchema,
   removeAttachmentsOperationSchema,
   sanitizeOperationSchema,
