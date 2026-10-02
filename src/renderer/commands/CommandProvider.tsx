@@ -18,6 +18,7 @@ import { useSearchStore } from '../stores/searchStore';
 import { marksFor, useRedactionStore } from '../stores/redactionStore';
 import { useCropStore } from '../stores/cropStore';
 import { useAccessibilityStore } from '../stores/accessibilityStore';
+import { useMeasureStore } from '../stores/measureStore';
 import { useCompareStore } from '../stores/compareStore';
 import { useUiStore } from '../stores/uiStore';
 import { buildDiagnosticsText } from '../utils/diagnostics';
@@ -45,6 +46,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
   const redacting = useRedactionStore((state) => state.active);
   const cropping = useCropStore((state) => state.active);
   const checkingAccessibility = useAccessibilityStore((state) => state.active);
+  const measuring = useMeasureStore((state) => state.active);
   const comparing = useCompareStore((state) => state.open);
   const redactionMarkCount = useRedactionStore(
     (state) => marksFor(state.marks, activeTabId).length,
@@ -69,6 +71,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     const redaction = useRedactionStore.getState;
     const crop = useCropStore.getState;
     const accessibility = useAccessibilityStore.getState;
+    const measurement = useMeasureStore.getState;
     const compare = useCompareStore.getState;
 
     const activeSessionId = (): string | null => documents().activeId;
@@ -190,6 +193,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
           redaction().setActive(false);
           crop().setActive(false);
           accessibility().setActive(false);
+          measurement().setActive(false);
           void app().patchSettings({
             layout: { activeRightPanel: 'properties', rightPanel: { visible: true } },
           });
@@ -204,6 +208,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
           organize().setActive(false);
           crop().setActive(false);
           accessibility().setActive(false);
+          measurement().setActive(false);
           redaction().setActive(false);
           void app().patchSettings({
             layout: { activeRightPanel: 'properties', rightPanel: { visible: true } },
@@ -222,6 +227,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
           organize().setActive(false);
           crop().setActive(false);
           accessibility().setActive(false);
+          measurement().setActive(false);
           textEditor().setActive(false);
           redaction().setActive(false);
           void app().patchSettings({
@@ -242,6 +248,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
           organize().setActive(false);
           crop().setActive(false);
           accessibility().setActive(false);
+          measurement().setActive(false);
           textEditor().setActive(false);
           if (forms().active) void forms().commitDrafts();
           forms().setActive(false);
@@ -256,6 +263,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         // The frame takes the pointer on every page, so nothing else may.
         if (next) {
           accessibility().setActive(false);
+          measurement().setActive(false);
           ui().setCommenting(false);
           annotations().setTool('select');
           organize().setActive(false);
@@ -288,6 +296,25 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         }
         accessibility().setActive(next);
       },
+      toggleMeasuring: () => {
+        const next = !measurement().active;
+        // Each click places a point, so no other tool may take the pointer.
+        if (next) {
+          ui().setCommenting(false);
+          annotations().setTool('select');
+          organize().setActive(false);
+          crop().setActive(false);
+          accessibility().setActive(false);
+          textEditor().setActive(false);
+          redaction().setActive(false);
+          if (forms().active) void forms().commitDrafts();
+          forms().setActive(false);
+          void app().patchSettings({
+            layout: { activeRightPanel: 'properties', rightPanel: { visible: true } },
+          });
+        }
+        measurement().setActive(next);
+      },
       toggleComparing: () => {
         const next = !compare().open;
         // Comparing is a workspace of its own, like making a document.
@@ -296,6 +323,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
           organize().setActive(false);
           crop().setActive(false);
           accessibility().setActive(false);
+          measurement().setActive(false);
           redaction().setActive(false);
         }
         compare().setOpen(next);
@@ -308,6 +336,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
           organize().setActive(false);
           crop().setActive(false);
           accessibility().setActive(false);
+          measurement().setActive(false);
           textEditor().setActive(false);
           redaction().setActive(false);
           void app().patchSettings({
@@ -388,6 +417,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
       redactionMarkCount,
       cropping,
       checkingAccessibility,
+      measuring,
       comparing,
       annotationTool: annotationTool === 'select' ? null : annotationTool,
       annotationSelected,
@@ -414,6 +444,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     redactionMarkCount,
     cropping,
     checkingAccessibility,
+    measuring,
     comparing,
     annotationTool,
     annotationSelected,

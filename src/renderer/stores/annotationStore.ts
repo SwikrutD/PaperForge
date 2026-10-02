@@ -10,7 +10,7 @@ import {
   type BuiltInStamp,
   type StampImage,
 } from '@shared/schemas/annotation';
-import { describeKind } from '@pdf/mutate/operations';
+import { describeInput } from '@pdf/mutate/operations';
 import { invoke } from '../services/ipcClient';
 import { useDocumentStore } from './documentStore';
 import { useUiStore } from './uiStore';
@@ -146,7 +146,7 @@ export const useAnnotationStore = create<AnnotationStore>((set, get) => ({
 
     const label =
       inputs.length === 1
-        ? `Add ${describeKind(inputs[0]?.geometry.kind)}`
+        ? `Add ${describeInput(inputs[0])}`
         : `Add ${String(inputs.length)} comments`;
 
     await useDocumentStore.getState().applyEdit(sessionId, {

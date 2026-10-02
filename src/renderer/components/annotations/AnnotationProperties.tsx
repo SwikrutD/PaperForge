@@ -7,6 +7,7 @@ import type {
 } from '@shared/schemas/annotation';
 import { BUILT_IN_STAMPS } from '@shared/schemas/annotation';
 import { describeKind } from '@pdf/mutate/operations';
+import { formatMeasurement, measure, measuredPoints } from '@shared/utils/measure';
 import { useAnnotationStore } from '../../stores/annotationStore';
 import { formatRelativeTime } from '../../utils/time';
 import { cx } from '../../utils/classNames';
@@ -89,13 +90,40 @@ export function AnnotationProperties({ annotation }: AnnotationPropertiesProps):
   return (
     <div className={styles.panel}>
       <header className={styles.header}>
-        <p className={styles.title}>{annotation === null ? 'New comments' : describeKind(kind)}</p>
+        <p className={styles.title}>
+          {annotation === null
+            ? 'New comments'
+            : annotation.measure !== undefined
+              ? `${annotation.measure.kind[0]?.toUpperCase() ?? ''}${annotation.measure.kind.slice(1)} measurement`
+              : describeKind(kind)}
+        </p>
         <p className={styles.subtitle}>
           {annotation === null
             ? 'Settings for the next mark you make.'
             : `${annotation.author === '' ? 'Unknown' : annotation.author} · page ${annotation.pageNumber}`}
         </p>
       </header>
+
+      {annotation?.measure !== undefined && (
+        <dl className={styles.measurement} data-measurement>
+          <dt>Measures</dt>
+          <dd>
+            {formatMeasurement(
+              measure(
+                annotation.measure.kind,
+                measuredPoints(annotation.geometry),
+                annotation.measure.scale,
+              ),
+              annotation.measure.kind,
+              annotation.measure.scale.unit,
+            )}
+          </dd>
+          <dt>Scale</dt>
+          <dd>
+            {annotation.measure.scale.label === '' ? 'Not stated' : annotation.measure.scale.label}
+          </dd>
+        </dl>
+      )}
 
       {!editable && (
         <p className={styles.warning}>

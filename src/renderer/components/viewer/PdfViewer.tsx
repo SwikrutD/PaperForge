@@ -46,6 +46,9 @@ import { useCropStore } from '../../stores/cropStore';
 import { useAccessibilityStore } from '../../stores/accessibilityStore';
 import { AccessibilityLayer } from '../accessibility/AccessibilityLayer';
 import { AccessibilityToolbar } from '../accessibility/AccessibilityToolbar';
+import { useMeasureStore } from '../../stores/measureStore';
+import { MeasureLayer } from '../measure/MeasureLayer';
+import { MeasureToolbar } from '../measure/MeasureToolbar';
 import { highlightsByPage } from '../search/searchNavigation';
 import { cssPointToPdf, pdfRectToCss, quarterTurns } from './pageGeometry';
 import { usePdfDocumentContext } from './pdfDocumentContextValue';
@@ -116,6 +119,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const cropping = useCropStore((store) => store.active);
   const cropFrame = useCropStore((store) => store.frame);
   const checkingAccessibility = useAccessibilityStore((store) => store.active);
+  const measuring = useMeasureStore((store) => store.active);
   const showReadingOrder = useAccessibilityStore((store) => store.showReadingOrder);
   const readingOrders = useAccessibilityStore((store) => store.orders);
   const readingOrderFor = useAccessibilityStore((store) => store.orderFor);
@@ -406,11 +410,13 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
       {redacting && <RedactionToolbar disabled={state.status !== 'ready'} />}
       {cropping && <CropToolbar />}
       {checkingAccessibility && <AccessibilityToolbar />}
+      {measuring && <MeasureToolbar />}
       {!editing &&
         !filling &&
         !redacting &&
         !cropping &&
         !checkingAccessibility &&
+        !measuring &&
         (commenting || toolActive) && <AnnotationToolbar disabled={state.status !== 'ready'} />}
 
       <div className={styles.scroller} ref={scrollerRef} onScroll={onScroll} tabIndex={0}>
@@ -434,7 +440,14 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                   hideFormFields={filling}
                   highlights={highlights.get(pageNumber)}
                   overlay={
-                    state.document === null ? null : checkingAccessibility ? (
+                    state.document === null ? null : measuring ? (
+                      <MeasureLayer
+                        sessionId={sessionId}
+                        geometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}
+                        scale={scale}
+                        rotation={view.rotation}
+                      />
+                    ) : checkingAccessibility ? (
                       <AccessibilityLayer
                         geometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}
                         scale={scale}

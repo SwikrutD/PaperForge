@@ -37,6 +37,8 @@ export interface AppearanceContext {
   imageSize?: { width: number; height: number } | undefined;
   /** A built-in stamp's label, already measured and placed. */
   stampText?: { text: string; size: number; x: number; y: number } | undefined;
+  /** A measurement's value, placed beside the shape it measures. */
+  caption?: { text: string; size: number; x: number; y: number } | undefined;
 }
 
 function number(value: number): string {
@@ -398,6 +400,18 @@ export function buildAppearance(geometry: AnnotationGeometry, context: Appearanc
       }
       break;
     }
+  }
+
+  const caption = context.caption;
+  if (caption !== undefined) {
+    operators.push(
+      'BT',
+      `/${context.fontName} ${number(caption.size)} Tf`,
+      fillColor(style.color),
+      `1 0 0 1 ${number(caption.x)} ${number(caption.y)} Tm`,
+      `(${escapePdfText(caption.text)}) Tj`,
+      'ET',
+    );
   }
 
   operators.push('Q');

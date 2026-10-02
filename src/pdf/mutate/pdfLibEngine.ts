@@ -472,6 +472,7 @@ function applyUpdates(
       author: patch.author ?? current.author,
       subject: patch.subject ?? current.subject,
       ...(current.stampLabel === undefined ? {} : { stampLabel: current.stampLabel }),
+      ...(current.measure === undefined ? {} : { measure: current.measure }),
     };
 
     rewriteAnnotation(context.write, record.dict, input, { ...current, resolved }, new Date());

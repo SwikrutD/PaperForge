@@ -20,6 +20,7 @@ import type {
   AnnotationStyle,
 } from '@shared/schemas/annotation';
 import { buildAppearance } from './appearance';
+import { measureDrawing, unionRect, type MeasureDrawing } from './measure';
 import { boundsOf } from './geometry';
 import { toPdfDate } from './pdfDate';
 import { wrapText, toSingleLine } from '../../text/layout';
@@ -89,6 +90,7 @@ function appearanceStream(
   input: AnnotationInput,
   rect: { x: number; y: number; width: number; height: number },
   image: PDFImage | undefined,
+  measured: MeasureDrawing | null,
 ): PDFRef {
   const { document, font } = context;
   const textLines =
@@ -107,6 +109,7 @@ function appearanceStream(
     textLines,
     ...(image === undefined ? {} : { imageName: 'Im0' }),
     ...(stampText === undefined ? {} : { stampText }),
+    ...(measured === null ? {} : { caption: measured.caption }),
   });
 
   const resources: PdfDictLiteral = {};
@@ -114,7 +117,7 @@ function appearanceStream(
     // Multiply keeps the words under a highlight readable.
     resources['ExtGState'] = { GSH: { Type: 'ExtGState', BM: 'Multiply' } };
   }
-  if (textLines.length > 0 || stampText !== undefined) {
+  if (textLines.length > 0 || stampText !== undefined || measured !== null) {
     resources['Font'] = { Helv: font.ref };
   }
   if (image !== undefined) {
@@ -230,9 +233,10 @@ export function writeAnnotation(
   timestamps: { createdAt: Date; modifiedAt: Date },
 ): void {
   const { document } = context;
-  const rect = boundsOf(input.geometry, input.style.borderWidth);
+  const measured = measureDrawing(input, context.font);
+  const rect = boxFor(input, measured);
   const image = input.imageToken === undefined ? undefined : context.images.get(input.imageToken);
-  const appearance = appearanceStream(context, input, rect, image);
+  const appearance = appearanceStream(context, input, rect, image, measured);
 
   const entries: PdfDictLiteral = {
     Type: 'Annot',
@@ -248,16 +252,28 @@ export function writeAnnotation(
     P: page.ref,
     ...borderEntries(input.style),
     ...geometryEntries(input.geometry, input.style, rect),
+    ...((measured?.entries ?? {}) as PdfDictLiteral),
   };
 
+  // A measurement's comment is its value.
+  const contents = measured?.text ?? input.contents;
   if (input.style.fillColor !== null) entries['IC'] = colorArray(input.style.fillColor);
-  if (input.contents !== '') entries['Contents'] = textValue(input.contents);
+  if (contents !== '') entries['Contents'] = textValue(contents);
   if (input.author !== '') entries['T'] = textValue(input.author);
   if (input.subject !== '') entries['Subj'] = textValue(input.subject);
   if (input.stampLabel !== undefined) entries['Name'] = PDFName.of(stampName(input.stampLabel));
 
   const dict = document.context.obj(entries);
   page.node.addAnnot(document.context.register(dict));
+}
+
+/** The annotation's rectangle: its shape, and a measurement's caption beside it. */
+function boxFor(
+  input: AnnotationInput,
+  measured: MeasureDrawing | null,
+): { x: number; y: number; width: number; height: number } {
+  const shape = boundsOf(input.geometry, input.style.borderWidth);
+  return measured === null ? shape : unionRect(shape, measured.captionBox);
 }
 
 /**
@@ -312,7 +328,8 @@ export function rewriteAnnotation(
   modifiedAt: Date,
 ): void {
   const { document } = context;
-  const rect = boundsOf(input.geometry, input.style.borderWidth);
+  const measured = measureDrawing(input, context.font);
+  const rect = boxFor(input, measured);
   const image = input.imageToken === undefined ? undefined : context.images.get(input.imageToken);
 
   /**
@@ -332,7 +349,7 @@ export function rewriteAnnotation(
   set('Rect', [rect.x, rect.y, rect.x + rect.width, rect.y + rect.height]);
   set('C', colorArray(input.style.color));
   set('CA', input.style.opacity);
-  if (canRedraw) set('AP', { N: appearanceStream(context, input, rect, image) });
+  if (canRedraw) set('AP', { N: appearanceStream(context, input, rect, image, measured) });
   set('M', PDFString.of(toPdfDate(modifiedAt)));
   for (const [key, value] of Object.entries(borderEntries(input.style))) set(key, value);
   for (const [key, value] of Object.entries(geometryEntries(input.geometry, input.style, rect))) {
@@ -342,7 +359,13 @@ export function rewriteAnnotation(
   if (input.style.fillColor === null) dict.delete(PDFName.of('IC'));
   else set('IC', colorArray(input.style.fillColor));
 
-  setOrDelete(dict, 'Contents', input.contents === '' ? null : textValue(input.contents));
+  if (measured !== null) {
+    for (const [key, value] of Object.entries(measured.entries)) {
+      set(key, value as PdfValue | PdfObjectValue);
+    }
+  }
+  const contents = measured?.text ?? input.contents;
+  setOrDelete(dict, 'Contents', contents === '' ? null : textValue(contents));
   setOrDelete(dict, 'T', input.author === '' ? null : textValue(input.author));
   setOrDelete(dict, 'Subj', input.subject === '' ? null : textValue(input.subject));
   setOrDelete(dict, 'PFStatus', annotation.resolved ? PDFString.of('resolved') : null);

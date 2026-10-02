@@ -129,7 +129,7 @@ export function describeOperation(operation: EditOperation): string {
       return `Delete ${plural(operation.pages)} ${formatPageList(operation.pages)}`;
     case 'addAnnotations':
       return operation.annotations.length === 1
-        ? `Add ${describeKind(operation.annotations[0]?.geometry.kind)}`
+        ? `Add ${describeInput(operation.annotations[0])}`
         : `Add ${String(operation.annotations.length)} comments`;
     case 'updateAnnotations':
       return operation.updates.length === 1 ? 'Change comment' : 'Change comments';
@@ -242,6 +242,14 @@ function shorten(text: string): string {
 
 function plural(pages: readonly number[]): string {
   return pages.length === 1 ? 'page' : 'pages';
+}
+
+/** What a new annotation is called, telling a measurement from a plain shape. */
+export function describeInput(
+  input: { geometry: { kind: AnnotationKind }; measure?: { kind: string } | undefined } | undefined,
+): string {
+  if (input?.measure !== undefined) return `${input.measure.kind} measurement`;
+  return describeKind(input?.geometry.kind);
 }
 
 /** The words a reader would use for an annotation kind. */

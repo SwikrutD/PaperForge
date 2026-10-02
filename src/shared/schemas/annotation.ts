@@ -142,6 +142,31 @@ export const DEFAULT_ANNOTATION_STYLE: AnnotationStyle = {
   textColor: { r: 0.1, g: 0.1, b: 0.1 },
 };
 
+export const measurementKindSchema = z.enum(['distance', 'perimeter', 'area']);
+export type MeasurementKind = z.infer<typeof measurementKindSchema>;
+
+/**
+ * How many real units one PDF point stands for, written into the annotation's
+ * `/Measure` dictionary so other readers measure with the same scale.
+ */
+export const measurementScaleSchema = z.strictObject({
+  factor: z.number().finite().positive().max(1e12),
+  unit: z.string().min(1).max(12),
+  /** The scale as a drawing states it, e.g. "1 in = 4 ft". */
+  label: z.string().max(80),
+});
+export type MeasurementScale = z.infer<typeof measurementScaleSchema>;
+
+/**
+ * A measurement: a line (distance), polyline (perimeter) or polygon (area)
+ * annotation with `/IT` saying which and `/Measure` saying at what scale.
+ */
+export const measurementSchema = z.strictObject({
+  kind: measurementKindSchema,
+  scale: measurementScaleSchema,
+});
+export type Measurement = z.infer<typeof measurementSchema>;
+
 /** What is needed to create one annotation. */
 export const annotationInputSchema = z.strictObject({
   pageNumber: z.number().int().min(1).max(100_000),
@@ -158,6 +183,8 @@ export const annotationInputSchema = z.strictObject({
    * out. The bytes never travel over IPC.
    */
   imageToken: z.string().max(200).optional(),
+  /** Makes the line, polyline or polygon a measurement. */
+  measure: measurementSchema.optional(),
 });
 export type AnnotationInput = z.infer<typeof annotationInputSchema>;
 

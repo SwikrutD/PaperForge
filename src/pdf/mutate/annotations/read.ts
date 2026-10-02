@@ -17,9 +17,11 @@ import {
   type AnnotationKind,
   type AnnotationPoint,
   type AnnotationStyle,
+  type Measurement,
 } from '@shared/schemas/annotation';
 import { boundsOf } from './geometry';
 import { fromPdfDate } from './pdfDate';
+import { MEASURE_INTENTS } from './measure';
 
 /**
  * Reading annotations back out of a document.
@@ -333,9 +335,42 @@ function toRecord(dict: PDFDict, pageIndex: number, ref: string): AnnotationReco
     // PaperForge does not know what it looks like.
     editable: geometry !== null,
     ...(stampLabelOf(dict) === undefined ? {} : { stampLabel: stampLabelOf(dict) }),
+    ...(measurementOf(dict, kind) === null
+      ? {}
+      : { measure: measurementOf(dict, kind) as Measurement }),
   };
 
   return { annotation, dict, ref, pageIndex };
+}
+
+/**
+ * The measurement a dimension annotation carries: its kind from `/IT`, its
+ * scale from the first `/X` number format of a rectilinear `/Measure`.
+ */
+function measurementOf(dict: PDFDict, kind: AnnotationKind): Measurement | null {
+  const intent = MEASURE_INTENTS.get(nameOf(dict, 'IT') ?? '');
+  if (intent === undefined) return null;
+  const expected = intent === 'distance' ? 'line' : intent === 'perimeter' ? 'polyline' : 'polygon';
+  if (kind !== expected) return null;
+
+  const measure = dict.lookup(PDFName.of('Measure'));
+  if (!(measure instanceof PDFDict) || nameOf(measure, 'Subtype') !== 'RL') return null;
+  const formats = measure.lookup(PDFName.of('X'));
+  const format = formats instanceof PDFArray ? formats.lookup(0) : undefined;
+  if (!(format instanceof PDFDict)) return null;
+
+  const factor = numberOf(format, 'C');
+  const unit = stringOf(format, 'U');
+  if (factor === undefined || !(factor > 0) || unit === undefined || unit.trim() === '')
+    return null;
+  return {
+    kind: intent,
+    scale: {
+      factor,
+      unit: unit.trim().slice(0, 12),
+      label: (stringOf(measure, 'R') ?? '').slice(0, 80),
+    },
+  };
 }
 
 /** The label of a stamp PaperForge wrote, from its `/Name`. */

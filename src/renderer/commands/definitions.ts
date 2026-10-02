@@ -1,6 +1,7 @@
 import {
   Accessibility,
   Activity,
+  Ruler,
   GitCompare,
   Minimize2,
   Wrench,
@@ -839,6 +840,19 @@ export function buildCommands(): CommandDefinition[] {
       isChecked: (context) => context.checkingAccessibility,
       isAvailable: documentRequired,
       run: (context) => context.actions.toggleAccessibility(),
+    },
+    {
+      id: 'tools.measure',
+      title: 'Measure',
+      description:
+        'Measure distances, perimeters and areas, at the page size or a calibrated scale.',
+      category: 'tools',
+      group: 'comment',
+      icon: Ruler,
+      keywords: ['measure', 'distance', 'area', 'perimeter', 'scale', 'calibrate', 'ruler'],
+      isChecked: (context) => context.measuring,
+      isAvailable: documentRequired,
+      run: (context) => context.actions.toggleMeasuring(),
     },
     {
       id: 'redact.apply',

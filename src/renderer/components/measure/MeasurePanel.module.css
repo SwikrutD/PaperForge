@@ -1,0 +1,114 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-150);
+  padding: var(--pf-space-150);
+}
+
+.header,
+.list,
+.calibration {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-050);
+}
+
+.calibration {
+  gap: var(--pf-space-100);
+  padding: var(--pf-space-100);
+  border: 1px solid var(--pf-color-accent);
+  border-radius: var(--pf-radius-md);
+}
+
+.title {
+  margin: 0;
+  color: var(--pf-color-text-primary);
+  font-size: var(--pf-font-size-300);
+  font-weight: var(--pf-font-weight-medium);
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-100);
+  font-weight: var(--pf-font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.note,
+.hint {
+  margin: 0;
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+}
+
+.scale {
+  margin: 0;
+  color: var(--pf-color-text-primary);
+  font-size: var(--pf-font-size-300);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--pf-space-100);
+}
+
+.items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-025);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  border-radius: var(--pf-radius-sm);
+  background-color: var(--pf-color-bg-subtle);
+}
+
+.itemSelected {
+  background-color: var(--pf-color-bg-selected);
+}
+
+.itemButton {
+  display: flex;
+  align-items: baseline;
+  flex: 1 1 auto;
+  gap: var(--pf-space-100);
+  min-width: 0;
+  padding: var(--pf-space-050) var(--pf-space-100);
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.itemButton:focus-visible {
+  outline: 2px solid var(--pf-color-focus-ring);
+  outline-offset: -2px;
+}
+
+.itemKind {
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+  text-transform: capitalize;
+}
+
+.itemValue {
+  flex: 1 1 auto;
+  color: var(--pf-color-text-primary);
+  font-size: var(--pf-font-size-200);
+  font-variant-numeric: tabular-nums;
+}
+
+.itemPage {
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-100);
+}

@@ -61,6 +61,8 @@ export interface CommandContext {
   readonly cropping: boolean;
   /** True while the Accessibility Check has the properties panel. */
   readonly checkingAccessibility: boolean;
+  /** True while the measuring tools are on. */
+  readonly measuring: boolean;
   /** True while the find bar is on screen. */
   readonly findOpen: boolean;
   /** How many matches the current search found. */
@@ -105,6 +107,7 @@ export interface CommandActions {
   toggleRedacting(): void;
   toggleCropping(): void;
   toggleAccessibility(): void;
+  toggleMeasuring(): void;
   toggleComparing(): void;
   openCreateWorkspace(intent: 'create' | 'combine'): void;
   closeCreateWorkspace(): void;

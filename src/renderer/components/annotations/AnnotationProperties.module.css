@@ -137,3 +137,25 @@
   color: var(--pf-color-text-secondary);
   font-size: var(--pf-font-size-100);
 }
+
+.measurement {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--pf-space-050) var(--pf-space-150);
+  margin: 0;
+  padding: var(--pf-space-100) var(--pf-space-150);
+  border: 1px solid var(--pf-color-border);
+  border-radius: var(--pf-radius-md);
+  background-color: var(--pf-color-bg-subtle);
+  font-size: var(--pf-font-size-200);
+}
+
+.measurement dt {
+  color: var(--pf-color-text-secondary);
+}
+
+.measurement dd {
+  margin: 0;
+  color: var(--pf-color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
