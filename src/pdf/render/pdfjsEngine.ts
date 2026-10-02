@@ -199,6 +199,13 @@ class PdfjsDocument implements LoadedPdfDocument {
     container.replaceChildren();
     container.style.width = `${Math.floor(viewport.width)}px`;
     container.style.height = `${Math.floor(viewport.height)}px`;
+    // PDF.js sizes and stretches each span through these variables; without
+    // them the spans keep the browser's default size and drift away from the
+    // glyphs they stand for, so a selection would not cover what it shows.
+    const userUnit = (viewport as { userUnit?: number }).userUnit ?? 1;
+    container.style.setProperty('--total-scale-factor', String(viewport.scale * userUnit));
+    container.style.setProperty('--scale-round-x', '1px');
+    container.style.setProperty('--scale-round-y', '1px');
 
     const layer = new TextLayer({
       textContentSource: page.streamTextContent(),

@@ -30,6 +30,9 @@
   transform-origin: 0 0;
   caret-color: currentColor;
   z-index: 2;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
 }
 
 .textLayer :global(span),
@@ -39,6 +42,16 @@
   color: transparent;
   cursor: text;
   transform-origin: 0% 0%;
+}
+
+/* What PDF.js expects of a span: its font height and horizontal stretch come
+   in as variables, so the span covers exactly the glyphs it stands for. */
+.textLayer :global(span) {
+  --font-height: 0;
+  --scale-x: 1;
+  --rotate: 0deg;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
 }
 
 .textLayer :global(.markedContent) {
