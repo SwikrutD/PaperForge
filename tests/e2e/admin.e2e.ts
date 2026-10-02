@@ -125,6 +125,9 @@ test('editing the title is undoable and reaches the file when it is saved', asyn
   await dialog().getByRole('button', { name: 'Done' }).click();
 
   await page.keyboard.press('Control+y');
+  // Redo is a round trip to the main process; Save is only offered once the
+  // document is dirty again.
+  await expect(page.getByLabel('Unsaved changes')).toBeVisible();
   await page.keyboard.press('Control+s');
   await expect(page.getByText(/Contract\.pdf was saved/)).toBeVisible();
 
