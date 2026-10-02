@@ -39,6 +39,20 @@ export function readOutline(document: PDFDocument): OutlineNode[] {
   return readSiblings(document, first, { pageIndexes, names, seen: new Set(), depth: 0 });
 }
 
+/**
+ * Resolves an outline entry to the page it goes to, with the document's named
+ * destinations read once for every entry asked about.
+ */
+export function outlinePageResolver(document: PDFDocument): (item: PDFDict) => number | null {
+  const context: ReadContext = {
+    pageIndexes: pageIndexByRef(document),
+    names: destinationNames(document),
+    seen: new Set(),
+    depth: 0,
+  };
+  return (item) => resolvePage(document, destinationOf(item), context);
+}
+
 interface ReadContext {
   pageIndexes: Map<string, number>;
   names: Map<string, unknown>;

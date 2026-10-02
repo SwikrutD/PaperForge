@@ -56,6 +56,8 @@ import { checkAccessibility } from '../accessibility/check';
 import { readingOrderOf } from '../accessibility/readingOrder';
 import { readStructureTree } from '../accessibility/structure';
 import { applyAccessibilityOperation } from '../accessibility/write';
+import { applyBookmarkOperation, readBookmarks } from '../bookmarks/bookmarks';
+import type { BookmarkNode } from '@shared/schemas/bookmark';
 import type { AccessibilityReport, ReadingOrder } from '@shared/schemas/accessibility';
 import type { SecuritySummary } from '@shared/schemas/protect';
 import type {
@@ -168,6 +170,15 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
     const document = await load(bytes);
     try {
       return await checkAccessibility(document, security);
+    } catch (error) {
+      throw toMutationError(error);
+    }
+  }
+
+  async readBookmarks(bytes: Uint8Array): Promise<BookmarkNode[]> {
+    const document = await load(bytes);
+    try {
+      return readBookmarks(document);
     } catch (error) {
       throw toMutationError(error);
     }
@@ -294,6 +305,7 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
         if (await applyOcrOperation(document, operation)) continue;
         if (applyMetadataOperation(document, operation)) continue;
         if (applyAccessibilityOperation(document, operation)) continue;
+        if (applyBookmarkOperation(document, operation)) continue;
 
         // Carrying a file in or taking one out changes the catalogue, and
         // sanitizing can remove annotations, so both invalidate what was read.

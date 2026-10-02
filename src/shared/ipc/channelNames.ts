@@ -72,6 +72,7 @@ export const INVOKE_CHANNEL_NAMES = [
   'sanitize:scan',
   'accessibility:check',
   'accessibility:readingOrder',
+  'bookmarks:list',
   'redaction:find',
   'redaction:plan',
   'redaction:stagePage',

@@ -47,7 +47,7 @@ import { useAccessibilityStore } from '../../stores/accessibilityStore';
 import { AccessibilityLayer } from '../accessibility/AccessibilityLayer';
 import { AccessibilityToolbar } from '../accessibility/AccessibilityToolbar';
 import { highlightsByPage } from '../search/searchNavigation';
-import { pdfRectToCss } from './pageGeometry';
+import { cssPointToPdf, pdfRectToCss, quarterTurns } from './pageGeometry';
 import { usePdfDocumentContext } from './pdfDocumentContextValue';
 import { PasswordPrompt } from './PasswordPrompt';
 import { PdfPageView } from './PdfPageView';
@@ -210,8 +210,12 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
     if (element === null) return;
     const scrollTop = element.scrollTop;
     const page = currentPageOf(layout, scrollTop, element.clientHeight);
-    updateView(sessionId, { scrollTop, pageNumber: page });
-  }, [layout, sessionId, updateView]);
+    updateView(sessionId, {
+      scrollTop,
+      pageNumber: page,
+      viewTop: viewTopOf(layout.boxes[page - 1], pages[page - 1], scrollTop, scale, view.rotation),
+    });
+  }, [layout, pages, scale, view.rotation, sessionId, updateView]);
 
   const goToPage = useCallback(
     (pageNumber: number) => {
@@ -660,4 +664,22 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
       )}
     </div>
   );
+}
+
+/**
+ * The height on a page at the top of the window, in PDF units: where a
+ * bookmark set to the current view should land. Null when the page starts
+ * below the top of the window, or is turned so that its height runs across.
+ */
+function viewTopOf(
+  box: { top: number } | undefined,
+  geometry: PdfPageGeometry | undefined,
+  scrollTop: number,
+  scale: number,
+  rotation: number,
+): number | null {
+  if (box === undefined || geometry === undefined) return null;
+  const offset = scrollTop - box.top;
+  if (offset <= 0 || quarterTurns(geometry.rotation + rotation) !== 0) return null;
+  return Math.round(cssPointToPdf({ x: 0, y: offset }, geometry, scale, rotation).y * 100) / 100;
 }

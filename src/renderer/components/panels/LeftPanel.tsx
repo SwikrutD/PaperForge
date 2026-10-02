@@ -7,6 +7,8 @@ import { IconButton } from '../controls/IconButton';
 import { usePdfDocumentContext } from '../viewer/pdfDocumentContextValue';
 import { AttachmentsPanel } from './AttachmentsPanel';
 import { BookmarksPanel } from './BookmarksPanel';
+import { BookmarkEditor } from './BookmarkEditor';
+import { useBookmarkStore } from '../../stores/bookmarkStore';
 import { EmptyPanelState } from './EmptyPanelState';
 import { LayersPanel } from './LayersPanel';
 import { PagesPanel } from './PagesPanel';
@@ -57,6 +59,10 @@ interface PanelData {
 function PanelBody({ panel }: { panel: LeftPanelId }): ReactElement {
   const { document: pdf, tab, status, layersVersion, setLayerVisible } = usePdfDocumentContext();
   const [loaded, setLoaded] = useState<PanelData | null>(null);
+  const bookmarksEditable = useBookmarkStore(
+    (state) =>
+      tab !== null && !(state.listFor === tab.session.id && state.list?.editable === false),
+  );
 
   // Data from a previous document is ignored rather than cleared, which keeps
   // the switch to another tab free of an extra render pass.
@@ -127,6 +133,9 @@ function PanelBody({ panel }: { panel: LeftPanelId }): ReactElement {
   }
 
   if (panel === 'bookmarks') {
+    // Bookmarks are edited through the write engine; a document it cannot
+    // open, such as an encrypted one, shows the outline the viewer read.
+    if (bookmarksEditable) return <BookmarkEditor tab={tab} />;
     if (data === null) return <PanelLoading />;
     return data.outline.length === 0 ? (
       <EmptyPanelState

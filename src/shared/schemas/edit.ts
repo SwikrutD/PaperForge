@@ -15,6 +15,7 @@ import { sanitizeCategorySchema } from './sanitize';
 import { rasterPageSchema, redactionAppearanceSchema, redactionRectSchema } from './redaction';
 import { textStyleSchema } from './text';
 import { structurePathSchema } from './accessibility';
+import { bookmarkStyleSchema, bookmarkTargetSchema, outlinePathSchema } from './bookmark';
 import { documentSessionSchema } from './document';
 
 /**
@@ -394,6 +395,51 @@ export const setTabOrderOperationSchema = z.strictObject({
   pages: pageListSchema.nullable(),
 });
 
+/**
+ * Adds a bookmark under `parent` (null for the top level) at `index` among its
+ * siblings, or at the end when the index is null.
+ */
+export const addBookmarkOperationSchema = z.strictObject({
+  kind: z.literal('addBookmark'),
+  parent: outlinePathSchema.nullable(),
+  index: z.number().int().min(0).max(100_000).nullable(),
+  title: z.string().min(1).max(2000),
+  target: bookmarkTargetSchema,
+  style: bookmarkStyleSchema,
+});
+
+/** Renames, restyles or re-points a bookmark. A null field is left as it is. */
+export const updateBookmarkOperationSchema = z.strictObject({
+  kind: z.literal('updateBookmark'),
+  path: outlinePathSchema,
+  expectTitle: z.string().max(2000),
+  title: z.string().min(1).max(2000).nullable(),
+  style: bookmarkStyleSchema.nullable(),
+  target: bookmarkTargetSchema.nullable(),
+  /** Whether the entry starts open, showing its children. */
+  open: z.boolean().nullable(),
+});
+
+/** Removes a bookmark and everything nested under it. */
+export const deleteBookmarkOperationSchema = z.strictObject({
+  kind: z.literal('deleteBookmark'),
+  path: outlinePathSchema,
+  expectTitle: z.string().max(2000),
+});
+
+/**
+ * Moves a bookmark, with what is nested under it, to `index` among the
+ * children of `parent`. Both are read before the move, the way a drop target
+ * is chosen.
+ */
+export const moveBookmarkOperationSchema = z.strictObject({
+  kind: z.literal('moveBookmark'),
+  path: outlinePathSchema,
+  expectTitle: z.string().max(2000),
+  parent: outlinePathSchema.nullable(),
+  index: z.number().int().min(0).max(100_000),
+});
+
 /** Embeds files the main process has staged, by token. */
 export const addAttachmentsOperationSchema = z.strictObject({
   kind: z.literal('addAttachments'),
@@ -475,6 +521,10 @@ export const editOperationSchema = z.discriminatedUnion('kind', [
   setAltTextOperationSchema,
   setFieldTooltipsOperationSchema,
   setTabOrderOperationSchema,
+  addBookmarkOperationSchema,
+  updateBookmarkOperationSchema,
+  deleteBookmarkOperationSchema,
+  moveBookmarkOperationSchema,
   addAttachmentsOperationSchema,
   removeAttachmentsOperationSchema,
   sanitizeOperationSchema,

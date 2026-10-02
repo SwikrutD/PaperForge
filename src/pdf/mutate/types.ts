@@ -5,6 +5,7 @@ import type { DocumentContentProperties } from '@shared/schemas/metadata';
 import type { SanitizeReport } from '@shared/schemas/sanitize';
 import type { SecuritySummary } from '@shared/schemas/protect';
 import type { AccessibilityReport, ReadingOrder } from '@shared/schemas/accessibility';
+import type { BookmarkNode } from '@shared/schemas/bookmark';
 import type { OptimizeAnalysis, OptimizeReport, OptimizeSettings } from '@shared/schemas/optimize';
 import type { ImageCodec } from '../optimize/pixels';
 import type {
@@ -86,6 +87,8 @@ export interface PdfMutationEngine {
     bytes: Uint8Array,
     security: SecuritySummary,
   ): Promise<Omit<AccessibilityReport, 'revision'>>;
+  /** The document outline, addressed the way the bookmark operations address it. */
+  readBookmarks(bytes: Uint8Array): Promise<BookmarkNode[]>;
   /** One page's content in the order its tags read it. */
   readReadingOrder(bytes: Uint8Array, page: number): Promise<Omit<ReadingOrder, 'revision'>>;
   /**

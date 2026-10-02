@@ -68,6 +68,7 @@ import { settingsPatchSchema, settingsSchema } from '../schemas/settings';
 import { themeStateSchema } from '../schemas/theme';
 import { windowRuntimeStateSchema } from '../schemas/windowState';
 import { accessibilityReportSchema, readingOrderSchema } from '../schemas/accessibility';
+import { bookmarkListSchema } from '../schemas/bookmark';
 import {
   EVENT_CHANNEL_NAMES,
   INVOKE_CHANNEL_NAMES,
@@ -447,6 +448,12 @@ export const invokeContracts = {
       page: z.number().int().min(1).max(100_000),
     }),
     response: readingOrderSchema,
+  },
+
+  /** The bookmarks, addressed the way the bookmark operations address them. */
+  'bookmarks:list': {
+    request: z.strictObject({ sessionId: z.string().min(1) }),
+    response: bookmarkListSchema,
   },
 
   /** Finds text to mark, as the boxes of the glyphs redaction would remove. */

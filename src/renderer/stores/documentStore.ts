@@ -18,6 +18,12 @@ export interface DocumentViewState {
   rotation: 0 | 90 | 180 | 270;
   pageNumber: number;
   scrollTop: number;
+  /**
+   * The height on the current page at the top of the window, in PDF units, or
+   * null when the page starts below it or is turned. A bookmark set "to the
+   * current view" goes here.
+   */
+  viewTop: number | null;
   /** Set by a command; the viewer scrolls there and clears it. */
   pendingPage: number | null;
 }
@@ -28,6 +34,7 @@ export const DEFAULT_VIEW_STATE: DocumentViewState = {
   rotation: 0,
   pageNumber: 1,
   scrollTop: 0,
+  viewTop: null,
   pendingPage: null,
 };
 

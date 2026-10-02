@@ -1,3 +1,4 @@
+import { AppError } from '@shared/errors/appError';
 import { readSecuritySummary } from '@pdf/security/summary';
 import type { PdfMutationEngine } from '@pdf/mutate/types';
 import type { DocumentEditor } from '../../services/documents/documentEditor';
@@ -24,6 +25,24 @@ export function registerStructureHandlers(
     const revision = deps.editor.revisionOf(sessionId);
     const report = await deps.engine.checkAccessibility(bytes, readSecuritySummary(bytes));
     return { ...report, revision };
+  });
+
+  /**
+   * The outline as the bookmark operations address it. A document the write
+   * engine cannot open — an encrypted one — has bookmarks that can be read in
+   * the viewer but not changed, which is what `editable` says.
+   */
+  registerInvoke('bookmarks:list', async ({ sessionId }) => {
+    const bytes = await deps.editor.currentBytes(sessionId);
+    const revision = deps.editor.revisionOf(sessionId);
+    try {
+      return { revision, editable: true, bookmarks: await deps.engine.readBookmarks(bytes) };
+    } catch (error) {
+      if (AppError.isAppError(error) && error.code === 'pdf/unsupported-encryption') {
+        return { revision, editable: false, bookmarks: [] };
+      }
+      throw error;
+    }
   });
 
   registerInvoke('accessibility:readingOrder', async ({ sessionId, page }) => {

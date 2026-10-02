@@ -213,6 +213,16 @@ export function describeOperation(operation: EditOperation): string {
         : `Name ${String(operation.fields.length)} fields`;
     case 'setTabOrder':
       return 'Set the tab order to follow the tags';
+    case 'addBookmark':
+      return `Add bookmark "${shorten(operation.title)}"`;
+    case 'updateBookmark':
+      return operation.title !== null && operation.title !== operation.expectTitle
+        ? `Rename bookmark to "${shorten(operation.title)}"`
+        : `Change bookmark "${shorten(operation.expectTitle)}"`;
+    case 'deleteBookmark':
+      return `Delete bookmark "${shorten(operation.expectTitle)}"`;
+    case 'moveBookmark':
+      return `Move bookmark "${shorten(operation.expectTitle)}"`;
     case 'addAttachments':
       return operation.tokens.length === 1 ? 'Attach a file' : 'Attach files';
     case 'removeAttachments':
@@ -224,6 +234,10 @@ export function describeOperation(operation: EditOperation): string {
         ? 'Apply a redaction'
         : `Apply ${String(operation.marks.length)} redactions`;
   }
+}
+
+function shorten(text: string): string {
+  return text.length > 40 ? `${text.slice(0, 39)}…` : text;
 }
 
 function plural(pages: readonly number[]): string {
