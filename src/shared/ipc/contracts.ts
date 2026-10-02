@@ -57,6 +57,7 @@ import {
   redactionSearchResultSchema,
   redactionSearchSchema,
 } from '../schemas/redaction';
+import { repairDiagnosisSchema, repairOutcomeSchema } from '../schemas/repair';
 import { recentFilesListSchema } from '../schemas/recentFiles';
 import { settingsPatchSchema, settingsSchema } from '../schemas/settings';
 import { themeStateSchema } from '../schemas/theme';
@@ -463,6 +464,17 @@ export const invokeContracts = {
   'protect:apply': { request: protectRequestSchema, response: protectOutcomeSchema },
   /** Writes a copy with its security removed, given a password that opens it. */
   'protect:remove': { request: unprotectRequestSchema, response: protectOutcomeSchema },
+
+  /** What qpdf and PaperForge's own engine make of the document's structure. */
+  'repair:diagnose': {
+    request: z.strictObject({ sessionId: z.string().min(1) }),
+    response: repairDiagnosisSchema,
+  },
+  /** Asks where to put a repaired copy, writes it, and says how. */
+  'repair:save': {
+    request: z.strictObject({ sessionId: z.string().min(1) }),
+    response: repairOutcomeSchema,
+  },
 
   'tools:qpdfStatus': { request: z.void(), response: qpdfStatusSchema },
   /** Opens a picker for the qpdf executable, or clears the configured one. */

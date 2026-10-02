@@ -88,6 +88,13 @@ export interface PdfMutationEngine {
     search: RedactionSearch,
   ): Promise<Omit<RedactionSearchResult, 'revision'>>;
   /**
+   * Reads the document object by object — without trusting its
+   * cross-reference table — and writes it out whole, keeping only what the
+   * document still reaches. This is how a damaged file is repaired when qpdf
+   * is not installed; the input bytes are not modified.
+   */
+  rewrite(bytes: Uint8Array): Promise<MutationResult>;
+  /**
    * Applies operations in order and returns the new document. The input bytes
    * are never modified: a caller keeps its own copy either way.
    *

@@ -1,5 +1,6 @@
 import {
   Activity,
+  Wrench,
   Crop,
   AppWindow,
   ClipboardList,
@@ -840,6 +841,17 @@ export function buildCommands(): CommandDefinition[] {
           : { enabled: false, reason: 'Nothing is marked for redaction.' };
       },
       run: (context) => context.actions.openDialog('applyRedactions'),
+    },
+    {
+      id: 'tools.repair',
+      title: 'Check and Repair',
+      description: 'Check how the document is put together and save a repaired copy.',
+      category: 'tools',
+      group: 'document',
+      icon: Wrench,
+      keywords: ['repair', 'fix', 'damaged', 'corrupt', 'broken', 'recover', 'qpdf', 'check'],
+      isAvailable: documentRequired,
+      run: (context) => context.actions.openDialog('repair'),
     },
     {
       id: 'tools.sanitize',

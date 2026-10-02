@@ -1,0 +1,22 @@
+.details {
+  font-size: var(--pf-font-size-200);
+}
+
+.details summary {
+  cursor: pointer;
+  color: var(--pf-color-text-secondary);
+}
+
+.messages {
+  max-height: 180px;
+  margin: var(--pf-space-100) 0 0;
+  padding: var(--pf-space-100) var(--pf-space-150);
+  overflow: auto;
+  border: 1px solid var(--pf-color-border);
+  border-radius: var(--pf-radius-sm);
+  background-color: var(--pf-color-bg-subtle);
+  font-family: var(--pf-font-family-mono);
+  font-size: var(--pf-font-size-100);
+  list-style: none;
+  overflow-wrap: anywhere;
+}

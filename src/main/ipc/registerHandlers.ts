@@ -5,6 +5,7 @@ import { eventContracts, type EventChannel, type EventPayload } from '@shared/ip
 import { buildAppInfo } from '../services/appInfo';
 import type { DocumentAdmin } from '../services/documents/documentAdmin';
 import type { DocumentEditor } from '../services/documents/documentEditor';
+import type { DocumentRepair } from '../services/documents/documentRepair';
 import type { DocumentService } from '../services/documents/documentService';
 import type { QpdfService } from '../services/qpdf/qpdfService';
 import type { StagedAssets } from '../services/documents/stagedAssets';
@@ -28,6 +29,7 @@ import { registerCreationHandlers } from './handlers/creationHandlers';
 import { registerOrganizeHandlers } from './handlers/organizeHandlers';
 import { registerTextHandlers } from './handlers/textHandlers';
 import { registerRedactionHandlers } from './handlers/redactionHandlers';
+import { registerRepairHandlers } from './handlers/repairHandlers';
 import { registerImageHandlers } from './handlers/imageHandlers';
 import { registerLinkHandlers } from './handlers/linkHandlers';
 import { registerFormHandlers } from './handlers/formHandlers';
@@ -43,6 +45,7 @@ export interface IpcDependencies {
   documents: DocumentService;
   editor: DocumentEditor;
   admin: DocumentAdmin;
+  repair: DocumentRepair;
   qpdf: QpdfService;
   stagedAssets: StagedAssets;
   signatures: SignatureLibrary;
@@ -130,6 +133,12 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
   registerAdminHandlers(registerInvoke, {
     documents: deps.documents,
     admin: deps.admin,
+    senderWindow,
+  });
+
+  registerRepairHandlers(registerInvoke, {
+    documents: deps.documents,
+    repair: deps.repair,
     senderWindow,
   });
 

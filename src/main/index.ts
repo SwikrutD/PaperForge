@@ -10,6 +10,7 @@ import {
   rejectInsecureCertificates,
 } from './security/hardening';
 import { DocumentAdmin } from './services/documents/documentAdmin';
+import { DocumentRepair } from './services/documents/documentRepair';
 import { DocumentEditor } from './services/documents/documentEditor';
 import { DocumentService } from './services/documents/documentService';
 import { PageExport } from './services/documents/pageExport';
@@ -150,6 +151,15 @@ async function bootstrap(): Promise<void> {
     workspaceDirectory: (sessionId) => workspaces.directoryFor(sessionId),
   });
 
+  // Repair reads the revision being shown and writes a new file beside it.
+  const repair = new DocumentRepair({
+    engine,
+    qpdf,
+    logger,
+    currentBytes: (sessionId) => editor.currentBytes(sessionId),
+    workspaceDirectory: (sessionId) => workspaces.directoryFor(sessionId),
+  });
+
   // Closing a document throws its working copies away with it.
   documents.onClosed((sessionId) => {
     stagedAssets.dispose(sessionId);
@@ -197,6 +207,7 @@ async function bootstrap(): Promise<void> {
     documents,
     editor,
     admin,
+    repair,
     qpdf,
     stagedAssets,
     signatures,

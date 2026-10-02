@@ -342,9 +342,14 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
       <div className={styles.centered}>
         <div className={styles.message}>
           <ErrorMessageBar error={state.error} />
-          <Button appearance="primary" onClick={state.reload}>
-            Try again
-          </Button>
+          <div className={styles.messageActions}>
+            <Button onClick={() => useUiStore.getState().openDialog('repair')}>
+              Check and repair…
+            </Button>
+            <Button appearance="primary" onClick={state.reload}>
+              Try again
+            </Button>
+          </div>
         </div>
       </div>
     );

@@ -138,3 +138,43 @@ test('reset crop shows the whole page again', async () => {
   await page.getByRole('button', { name: 'Done' }).click();
   await expect(page.getByRole('toolbar', { name: 'Crop tools' })).toHaveCount(0);
 });
+
+test('Check and Repair describes a damaged file and writes a repaired copy', async () => {
+  // Every object is pushed along by a comment nobody accounted for: readers
+  // still open it, by scanning, but its index is wrong.
+  const bytes = threePageDocument();
+  const header = bytes.indexOf('\n') + 1;
+  const damagedPath = path.join(sandbox, 'Damaged.pdf');
+  await fs.writeFile(
+    damagedPath,
+    Buffer.concat([
+      bytes.subarray(0, header),
+      Buffer.from('% padding nobody accounted for\n', 'latin1'),
+      bytes.subarray(header),
+    ]),
+  );
+  await app.evaluate(({ dialog: electronDialog }, target: string) => {
+    electronDialog.showOpenDialog = () => Promise.resolve({ canceled: false, filePaths: [target] });
+  }, damagedPath);
+  await page.keyboard.press('Control+o');
+  await expect(page.getByRole('tab', { name: /Damaged\.pdf/ })).toBeVisible();
+  await expect(onPage(1).getByText('PaperForge alpha page')).toBeVisible();
+
+  await runCommand('Check and Repair');
+  const dialog = page.getByRole('dialog', { name: 'Check and Repair' });
+  await expect(dialog.locator('[data-repair-verdict="warnings"]')).toBeVisible();
+  await expect(dialog).toContainText('not where the file says');
+
+  const target = path.join(sandbox, 'Damaged repaired.pdf');
+  await app.evaluate(({ dialog: electronDialog }, chosen: string) => {
+    electronDialog.showSaveDialog = () => Promise.resolve({ canceled: false, filePath: chosen });
+  }, target);
+  await dialog.getByRole('button', { name: 'Save a repaired copy…' }).click();
+  await expect(page.getByText(/A repaired copy of 3 pages was written/)).toBeVisible();
+  await expect(page.getByRole('tab', { name: /Damaged repaired\.pdf/ })).toBeVisible();
+
+  const repaired = await PDFDocument.load(await fs.readFile(target));
+  expect(repaired.getPageCount()).toBe(3);
+  // The opened file is as it was.
+  expect((await fs.readFile(damagedPath)).toString('latin1')).toContain('% padding nobody');
+});

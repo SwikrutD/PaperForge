@@ -36,6 +36,7 @@ import { applySanitizeOperation } from '../sanitize/apply';
 import { applyRedactionOperation } from '../redact/apply';
 import { planRedactions } from '../redact/plan';
 import { findForRedaction } from '../redact/search';
+import { collectGarbage } from '../redact/garbage';
 import {
   hasXmpMetadata,
   isLinearized,
@@ -170,6 +171,19 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
     const document = await load(bytes);
     try {
       return await findForRedaction(document, search);
+    } catch (error) {
+      throw toMutationError(error);
+    }
+  }
+
+  async rewrite(bytes: Uint8Array): Promise<MutationResult> {
+    const document = await load(bytes);
+    try {
+      // pdf-lib parses a file object by object rather than through its
+      // cross-reference table, so a broken table does not stop it; what the
+      // catalogue no longer reaches is left behind.
+      collectGarbage(document);
+      return { bytes: await save(document), pageCount: document.getPageCount() };
     } catch (error) {
       throw toMutationError(error);
     }

@@ -37,6 +37,11 @@
   max-width: 560px;
 }
 
+.messageActions {
+  display: flex;
+  gap: var(--pf-space-100);
+}
+
 .spinner {
   width: 26px;
   height: 26px;

@@ -75,6 +75,8 @@ export const INVOKE_CHANNEL_NAMES = [
   'redaction:stagePage',
   'protect:apply',
   'protect:remove',
+  'repair:diagnose',
+  'repair:save',
   'tools:qpdfStatus',
   'tools:locateQpdf',
   'recovery:list',

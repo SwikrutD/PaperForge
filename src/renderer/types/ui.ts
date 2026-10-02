@@ -11,7 +11,8 @@ export type DialogId =
   | 'properties'
   | 'protect'
   | 'sanitize'
-  | 'applyRedactions';
+  | 'applyRedactions'
+  | 'repair';
 
 /** A question the user must answer before something irreversible happens. */
 export interface ConfirmationRequest {
