@@ -182,6 +182,20 @@ Not reached by redaction by area: bookmark titles, document metadata (offered as
 information" option in the same step), and descriptions kept in a tagged document's structure
 tree. The review dialog says so when the document has them.
 
+## Comparison, optimisation and repair
+
+- **Comparing** happens entirely in the window: the two documents are read through the same
+  `pfdoc` scheme the viewer uses, and pixels go to a module worker built into the bundle
+  (`worker-src 'self'`). A document that needs a password is refused rather than prompted for
+  twice; the viewer keeps the password it was given to itself.
+- **Optimising** decodes and encodes pictures in memory with Chromium's codecs (`nativeImage`); no
+  image library is added and nothing is written outside the session's working directory until the
+  reader saves. qpdf receives a copy in that directory, with an argument array and no shell, and
+  its output is read back before it is used.
+- **Repairing** never writes over the file that was opened — the destination is compared with it
+  and refused — and the copy is published through the same reopen-and-check path as a save.
+  qpdf's messages are shown with the working copy's path replaced by "the document".
+
 ## Logging and privacy
 
 Logs are local only, in `%APPDATA%/PaperForge/logs/paperforge.log`, rotated at 1 MB. The logger

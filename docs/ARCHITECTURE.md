@@ -33,6 +33,9 @@ src/
                    documents/ also owns the editor, its revisions and the save pipeline
                    documents/ also owns document administration: properties, attachments,
                               hidden information and writing a protected copy
+                   documents/ also owns Check and Repair (documentRepair.ts)
+                   optimize/  Optimize PDF: the optimizer service and the JPEG codec it borrows
+                              from Chromium (nativeImage)
                    qpdf/      the optional local sidecar, launched only from here, and the
                               encryption and decryption that go through it
   preload/         contextBridge surface (no dependencies, no Node APIs re-exported)
@@ -52,6 +55,10 @@ src/
       shell/       title bar, tabs, command bar, rail, resizer, status bar, drop zone
       viewer/      page column, page rendering, toolbar, password prompt
       admin/       document properties, protect, remove hidden information
+      compare/     the comparison workspace: toolbar, panes, overlay, differences list
+      crop/        the crop frame on the page, its toolbar and its panel
+      optimize/    the Optimize PDF dialog
+      repair/      the Check and Repair dialog
       workspace/   the properties panel
       surfaces/    card, message bar
     design-system/ tokens.css and base.css
@@ -74,15 +81,18 @@ src/
     sanitize/      what a document carries besides its pages: finding, removing, pruning
     security/      the encryption dictionary and the standard handler (main process only)
     search/        matching and match geometry, pure and unit-tested
+    compare/       word differences, pixel differences, and the model that joins them
+    optimize/      measuring how pictures are drawn, resampling, re-encoding, compressing
+    structure/     reading a file's cross-reference table without a sidecar
+  workers/         Web Workers; compare.worker.ts compares two pages' pixels
 scripts/           build-time tooling (icon generation)
 tests/unit/        Vitest suites mirroring src/
 tests/e2e/         Playwright tests that drive the built application
 resources/         icons and, later, staged local sidecars and tessdata
 ```
 
-Folders named in `CLAUDE.md` section 4 that have no code yet (`src/pdf`, `src/conversion`,
-`src/workers`, panels, tools) are created by the segment that introduces them, so the tree never
-carries empty scaffolding.
+Folders named in `CLAUDE.md` section 4 that have no code yet are created by the segment that
+introduces them, so the tree never carries empty scaffolding.
 
 ## Cross-process contract
 
@@ -302,6 +312,54 @@ ordinary revision pipeline, so it is undoable until saved, optionally preceded b
 operation. The engine (`src/pdf/redact/`) refuses rather than half-does: a page that needs a
 picture and was not given one fails the whole transaction, and so does a page that still has
 anything under a mark when read back. See `docs/SECURITY.md` for what is removed and how.
+
+## Comparing documents
+
+Compare Files is a workspace of its own (`compareStore`, `components/compare/`), like Create:
+it works on documents that are open but is not about any one of them. It loads its own PDF.js
+copies of the two revisions (`services/compareDocuments.ts`) so the viewer's document is never
+disturbed, pairs pages by position with an offset, and for each pair:
+
+- diffs the words PDF.js gives with Myers' algorithm (`src/pdf/compare/textDiff.ts`), grouping
+  adjacent deletions and insertions into changes;
+- draws both pages at one scale onto paper of the larger size and sends the pixels — transferred,
+  not copied — to `src/workers/compare.worker.ts`, which groups differing pixels into regions;
+- lists the regions no text change explains as picture or layout changes, and unpaired pages and
+  changed page sizes as differences of their own (`src/pdf/compare/model.ts`).
+
+Only regions and rectangles are kept per pair. The overlay picture is drawn on demand for the pair
+on screen, so a long comparison holds no pixels. Nothing is written anywhere.
+
+## Optimizing
+
+`DocumentOptimizer` (main process) works on the revision being shown: PaperForge's engine
+(`src/pdf/optimize/`) measures how large every picture is drawn — through groups, and treating a
+picture drawn where it cannot be measured as unmeasurable rather than guessing — resamples
+pictures far above the target resolution by area averaging, re-encodes JPEGs and photographs with
+Chromium's codec through `nativeImage`, compresses unfiltered streams and removes thumbnails,
+unused objects and optionally metadata. qpdf, when installed, then packs objects into compressed
+streams and can linearise. Only a result that came out smaller (or that the reader asked to grey
+or linearise) becomes the next revision, through `DocumentEditor.applyBytes`, so optimising is one
+undoable step and nothing reaches the reader's file until Save. The JPEG codec is injected, so the
+engine stays testable without Electron.
+
+## Checking and repairing
+
+`DocumentRepair` reports three readings of the current revision: qpdf's `--check`, whether
+PaperForge's engine can read it, and PaperForge's own reading of the cross-reference table
+(`src/pdf/structure/xrefCheck.ts`), which needs no sidecar and is what reports damage on a machine
+without qpdf. A repaired copy is written by qpdf where it is installed and by the engine's
+`rewrite` (object-by-object parse, unreachable objects dropped) otherwise, published like every
+other file PaperForge writes, opened in a new tab, and refused outright when the destination is the
+file that was opened. The viewer's error screen offers the same dialog.
+
+## Cropping
+
+The crop tool is a mode of the viewer (`cropStore`, `components/crop/`), with the same overlay
+slot the redaction and form layers use. A frame drawn on one page becomes margins measured from
+what that page shows (`src/shared/utils/cropBoxes.ts`, shared with the page grid), and the margins
+are applied to the pages in scope as one `cropPages` transaction. The panel shows all five page
+boxes as the page declares them.
 
 ## Comments
 

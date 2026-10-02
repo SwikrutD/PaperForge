@@ -316,7 +316,7 @@ so reverting is itself undoable — a reader who reverts by mistake has not lost
 - **Reflow is not attempted.** A run keeps its own position; changing its length moves what follows
   it only as far as the stream's own positioning does.
 - **A rewritten page's content is written as one uncompressed stream.** It is what PaperForge can
-  read back, and the optimizer in Segment 16 is where compression belongs.
+  read back. Optimize PDF compresses it (and every other unfiltered stream) when asked.
 - **Every change rewrites the whole file.** That is what makes a revision a plain PDF that can be
   reopened and checked, and it is why an annotation carries `/NM` to keep its identity across the
   rewrite. Byte-level incremental update is not used, and PaperForge does not claim it.

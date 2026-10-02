@@ -624,3 +624,37 @@ Run in both light and dark themes:
 - [ ] Comments and form fields under a mark are gone after applying.
 - [ ] Box colour and "write the reason on each box" show in the saved file.
 - [ ] Light and dark themes; keyboard focus reaches every mark and control.
+
+## Segment 16 — compare, optimize, repair, crop
+
+- [ ] Compare Files (Tools menu, palette, home card) opens the comparison workspace with or without
+      a document open; Open… on either side opens a file and puts it on that side.
+- [ ] Two versions of a real document: changed words are listed as “old” → “new”, added and removed
+      words as such, a moved or replaced picture as a picture or layout change, and an extra page
+      as a page only one document has.
+- [ ] A page offset of 1 lines a revision that gained a cover page up with the original.
+- [ ] Choosing a difference goes to its page pair and outlines it on both pages; Previous and Next
+      walk every difference across pairs; the Text and Pictures filters hide and show their kinds.
+- [ ] Scroll together keeps both pages level; Overlay shows one picture with red, blue and amber
+      ink and the legend explains it.
+- [ ] Stop halts a long comparison and keeps what was found so far; the progress centre shows it.
+- [ ] A password-protected document is refused with a plain sentence, not a second prompt.
+- [ ] Optimize PDF on a document with large photographs: the dialog states the size and the
+      sharpest picture's resolution; Balanced makes the file smaller and says by how much; the
+      pictures look right at fit width; Undo puts the document back; Save writes the smaller file.
+- [ ] On a document that is already compact, Optimize says nothing came out smaller and leaves the
+      document unchanged (no unsaved marker).
+- [ ] With qpdf installed, Fast web view produces a file Document Properties reports as linearised.
+- [ ] Check and Repair on a sound file reports no problems; on a file whose cross-reference table
+      is wrong it says so, with and without qpdf installed.
+- [ ] Save a repaired copy suggests "name repaired.pdf", refuses the original's own name, and opens
+      the copy in a new tab; the opened file is unchanged.
+- [ ] A document the viewer cannot open offers Check and repair… beside Try again.
+- [ ] Crop Pages: dragging on a page draws a frame; its edges, corners and the arrow keys adjust
+      it; the panel's margins follow, and typing a margin moves the frame.
+- [ ] Apply crop to the page, all pages and a range; Reset crop shows the whole page again; Undo
+      takes either back. "Change the page size as well" changes the media box and says what it
+      discards.
+- [ ] The panel lists MediaBox, CropBox, BleedBox, TrimBox and ArtBox, "Not set" where absent.
+- [ ] Light and dark themes for the comparison workspace, the crop frame and both dialogs;
+      keyboard focus reaches every control.

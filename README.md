@@ -47,7 +47,19 @@ in [`CLAUDE.md`](./CLAUDE.md):
   apply — the content under the marks is removed from the file, not covered, and each page is read
   back to prove it.
 
-Comparison, optimisation and repair arrive in later segments.
+- comparing two versions: word by word and pixel by pixel, side by side or overlaid, with every
+  difference listed — worked out in a background worker in the window, never uploaded.
+
+- optimising: pictures brought down to the resolution they are drawn at, photographs stored as
+  JPEG, streams compressed and the file packed and linearised by a local qpdf — measured before and
+  after, and undoable until saved.
+
+- checking and repairing: what qpdf and PaperForge make of a damaged file, and a repaired copy
+  written beside it; the file that was opened is never replaced.
+
+- cropping by a frame drawn on the page, applied to one page, all of them or a range.
+
+Accessibility checking, printing and Windows integration arrive in later segments.
 
 [`PROGRESS.md`](./PROGRESS.md) is the authoritative status file.
 

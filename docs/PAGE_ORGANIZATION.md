@@ -103,7 +103,8 @@ separate checkbox that says what it discards.
   throw away the numbering of the body.
 - **Splitting by bookmark uses top-level bookmarks that resolve to a page**, in page order. A
   bookmark that points at a named destination PDF.js cannot resolve is not offered as a boundary.
-- **The crop rectangle is numeric.** Dragging a crop frame on the page, and editing the other boxes,
-  belong with the crop and page-box tools in Segment 16.
+- **The crop rectangle is numeric in the page grid.** Crop Pages in the viewer draws the frame on
+  the page and applies the same margins; both share `src/shared/utils/cropBoxes.ts`. Bleed, trim
+  and art boxes are shown but not edited.
 - **Insertion takes the whole of the chosen document.** Choosing which of its pages to insert is
   part of the Combine workspace in Segment 8, which is where a file-and-range list belongs.
