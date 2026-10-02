@@ -28,6 +28,7 @@ const evenFont: FontMetrics = {
   codeFor: (character) => character.codePointAt(0) ?? null,
   ascent: 750,
   descent: -250,
+  positionsKnown: true,
 };
 
 function runsOf(source: string): TextRun[] {

@@ -52,6 +52,13 @@ export interface FontMetrics {
   ascent: number;
   /** Depth below the baseline, in thousandths, as a negative number. */
   descent: number;
+  /**
+   * True when the font states the widths of its characters in a way that is
+   * read here, so where each glyph sits is known rather than estimated. A
+   * Type 3 font, a vertical or non-Identity composite font, and a simple font
+   * with no widths that is not one of the standard fourteen are estimates.
+   */
+  positionsKnown: boolean;
 }
 
 export type FontLookup = (name: string) => FontMetrics | undefined;
@@ -86,7 +93,10 @@ async function readFont(document: PDFDocument, name: string, dict: PDFDict): Pro
   if (subtype === 'Type0') {
     return readCompositeFont(document, name, baseFont, dict, toUnicode);
   }
-  return readSimpleFont(document, name, baseFont, dict, toUnicode);
+  const font = await readSimpleFont(document, name, baseFont, dict, toUnicode);
+  // A Type 3 font measures its glyphs through a matrix of its own, which is
+  // not applied here: its widths are a guess.
+  return subtype === 'Type3' ? { ...font, positionsKnown: false } : font;
 }
 
 /** A one-byte font: an encoding, a width array, and maybe a `ToUnicode`. */
@@ -141,6 +151,7 @@ async function readSimpleFont(
     },
     ascent: numberValue(descriptor?.lookup(PDFName.of('Ascent')), DEFAULT_ASCENT),
     descent: numberValue(descriptor?.lookup(PDFName.of('Descent')), DEFAULT_DESCENT),
+    positionsKnown: widths.length > 0 || standard !== null,
   };
 }
 
@@ -193,6 +204,9 @@ function readCompositeFont(
     codeFor: (character) => (identity ? (byCharacter.get(character) ?? null) : null),
     ascent: numberValue(descriptor?.lookup(PDFName.of('Ascent')), DEFAULT_ASCENT),
     descent: numberValue(descriptor?.lookup(PDFName.of('Descent')), DEFAULT_DESCENT),
+    // Two bytes to a code is only certain for Identity-H; a vertical font
+    // moves down the page rather than along it, which is not measured here.
+    positionsKnown: encodingName === 'Identity-H',
   };
 }
 
@@ -451,6 +465,7 @@ export function unknownFont(name: string): FontMetrics {
     codeFor: () => null,
     ascent: DEFAULT_ASCENT,
     descent: DEFAULT_DESCENT,
+    positionsKnown: false,
   };
 }
 

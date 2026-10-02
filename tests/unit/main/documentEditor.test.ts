@@ -27,6 +27,8 @@ const READ_ONLY_STUBS = {
   readAttachments: () => Promise.resolve([]),
   extractAttachment: () => Promise.resolve(null),
   scanHiddenInformation: () => Promise.reject(new Error('not used in this test')),
+  planRedactions: () => Promise.reject(new Error('not used in this test')),
+  findForRedaction: () => Promise.reject(new Error('not used in this test')),
 } satisfies Partial<PdfMutationEngine>;
 
 const logger = {

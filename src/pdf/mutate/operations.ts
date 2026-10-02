@@ -89,6 +89,16 @@ export function validateTransaction(
       pages += operation.pages?.length ?? 1;
     }
 
+    if (operation.kind === 'applyRedactions') {
+      const outside = operation.marks.filter((mark) => mark.page > pages);
+      if (outside.length > 0) {
+        throw new AppError('internal/unexpected', {
+          message: 'A marked area belongs to a page this document does not have.',
+          details: `applyRedactions: ${outside.length} of ${operation.marks.length} outside 1-${pages}`,
+        });
+      }
+    }
+
     if (operation.kind === 'addAnnotations') {
       const outside = operation.annotations.filter(
         (annotation) => annotation.pageNumber < 1 || annotation.pageNumber > pages,
@@ -195,6 +205,10 @@ export function describeOperation(operation: EditOperation): string {
       return operation.ids.length === 1 ? 'Remove an attachment' : 'Remove attachments';
     case 'sanitize':
       return 'Remove hidden information';
+    case 'applyRedactions':
+      return operation.marks.length === 1
+        ? 'Apply a redaction'
+        : `Apply ${String(operation.marks.length)} redactions`;
   }
 }
 

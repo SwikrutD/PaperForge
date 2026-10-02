@@ -47,7 +47,7 @@ export function neutralizeRun(content: Uint8Array, run: TextRun): Uint8Array {
 }
 
 /** What `'` and `"` do before they show, written as operators of their own. */
-function lineMoveFor(run: TextRun): string {
+export function lineMoveFor(run: TextRun): string {
   if (run.operator === "'") return 'T* ';
   if (run.operator === '"') {
     return `${formatNumber(run.wordSpacing)} Tw ${formatNumber(run.charSpacing)} Tc T* `;

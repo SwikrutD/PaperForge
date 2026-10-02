@@ -3,6 +3,12 @@ import type { EmbeddedFile } from '@shared/schemas/attachment';
 import type { EditOperation } from '@shared/schemas/edit';
 import type { DocumentContentProperties } from '@shared/schemas/metadata';
 import type { SanitizeReport } from '@shared/schemas/sanitize';
+import type {
+  RedactionMark,
+  RedactionPlan,
+  RedactionSearch,
+  RedactionSearchResult,
+} from '@shared/schemas/redaction';
 
 /**
  * The mutation contract the editing features are written against.
@@ -68,6 +74,19 @@ export interface PdfMutationEngine {
   extractAttachment(bytes: Uint8Array, id: string): Promise<ExtractedAttachment | null>;
   /** What the document carries besides the pages it shows. */
   scanHiddenInformation(bytes: Uint8Array): Promise<SanitizeReport>;
+  /**
+   * What applying marks would remove, and which pages cannot be cut without
+   * being drawn as pictures. Nothing is changed.
+   */
+  planRedactions(
+    bytes: Uint8Array,
+    marks: readonly RedactionMark[],
+  ): Promise<Omit<RedactionPlan, 'revision'>>;
+  /** Where text occurs, as the boxes of the glyphs redaction would remove. */
+  findForRedaction(
+    bytes: Uint8Array,
+    search: RedactionSearch,
+  ): Promise<Omit<RedactionSearchResult, 'revision'>>;
   /**
    * Applies operations in order and returns the new document. The input bytes
    * are never modified: a caller keeps its own copy either way.

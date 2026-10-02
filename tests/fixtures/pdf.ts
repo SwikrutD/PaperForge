@@ -25,6 +25,11 @@ export interface PageSpec {
   /** An image drawn on the page, as its own XObject. */
   image?: ImagePlacementSpec;
   /**
+   * A form XObject in the page's resources as /Fm0. The page's `content`
+   * draws it with `/Fm0 Do` where the test wants it.
+   */
+  form?: { content: string; bbox: [number, number, number, number] };
+  /**
    * Annotation dictionaries, written out as given. A test that needs a link
    * or a widget the writer does not build can state one exactly.
    */
@@ -56,6 +61,8 @@ export interface FontSpec {
   toUnicode?: Record<number, string>;
   /** Makes a two-byte composite font instead of a simple one. */
   composite?: boolean;
+  /** The simple font's /BaseFont; Helvetica unless a test needs another. */
+  baseFont?: string;
   /** Widths by CID for a composite font. */
   cidWidths?: Record<number, number>;
 }
@@ -174,7 +181,7 @@ function addFont(add: (body: string | Buffer) => number, font: FontSpec): number
       : `<< /Type /Encoding /BaseEncoding /WinAnsiEncoding /Differences [${differences}] >>`;
 
   return add(
-    `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding ${encoding}` +
+    `<< /Type /Font /Subtype /Type1 /BaseFont /${font.baseFont ?? 'Helvetica'} /Encoding ${encoding}` +
       `${
         font.widths === undefined
           ? ''
@@ -234,6 +241,16 @@ export function buildPdf(spec: PdfSpec): Buffer {
   const pageNumbers: number[] = [];
   for (const page of spec.pages) {
     const imageNumber = page.image === undefined ? undefined : addImage(add, page.image);
+    const formNumber =
+      page.form === undefined
+        ? undefined
+        : add(
+            `<< /Type /XObject /Subtype /Form /BBox [${page.form.bbox.join(' ')}] ` +
+              `/Resources << /Font << /F1 ${fontNumber} 0 R >> >> /Length ${page.form.content.length} >>
+` +
+              `stream
+${page.form.content}endstream`,
+          );
     const width = page.width ?? LETTER.width;
     const height = page.height ?? LETTER.height;
     const text = page.text ?? '';
@@ -269,7 +286,11 @@ export function buildPdf(spec: PdfSpec): Buffer {
         `<< /Type /Page /Parent ${pagesNumber} 0 R /MediaBox [0 0 ${width} ${height}]` +
           `${page.rotate === undefined ? '' : ` /Rotate ${page.rotate}`}` +
           ` /Resources << ${
-            imageNumber === undefined ? '' : `/XObject << /Im0 ${imageNumber} 0 R >> `
+            imageNumber === undefined && formNumber === undefined
+              ? ''
+              : `/XObject << ${imageNumber === undefined ? '' : `/Im0 ${imageNumber} 0 R `}${
+                  formNumber === undefined ? '' : `/Fm0 ${formNumber} 0 R `
+                }>> `
           }/Font << /F1 ${fontNumber} 0 R${[...extraFonts]
             .map(([name, number]) => ` /${name} ${number} 0 R`)
             .join('')} >>${properties} >>` +

@@ -6,6 +6,12 @@ import type { EmbeddedFile } from '@shared/schemas/attachment';
 import type { DocumentContentProperties } from '@shared/schemas/metadata';
 import type { SanitizeReport } from '@shared/schemas/sanitize';
 import type { EditOperation } from '@shared/schemas/edit';
+import type {
+  RedactionMark,
+  RedactionPlan,
+  RedactionSearch,
+  RedactionSearchResult,
+} from '@shared/schemas/redaction';
 import { readAnnotations, type AnnotationRecord } from './annotations/read';
 import {
   embedAppearanceFont,
@@ -27,6 +33,9 @@ import { applyOcrOperation } from '../ocr/apply';
 import { applyMetadataOperation } from '../metadata/write';
 import { applyAttachmentOperation } from '../attachments/write';
 import { applySanitizeOperation } from '../sanitize/apply';
+import { applyRedactionOperation } from '../redact/apply';
+import { planRedactions } from '../redact/plan';
+import { findForRedaction } from '../redact/search';
 import {
   hasXmpMetadata,
   isLinearized,
@@ -142,6 +151,30 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
     }
   }
 
+  async planRedactions(
+    bytes: Uint8Array,
+    marks: readonly RedactionMark[],
+  ): Promise<Omit<RedactionPlan, 'revision'>> {
+    const document = await load(bytes);
+    try {
+      return await planRedactions(document, marks);
+    } catch (error) {
+      throw toMutationError(error);
+    }
+  }
+
+  async findForRedaction(
+    bytes: Uint8Array,
+    search: RedactionSearch,
+  ): Promise<Omit<RedactionSearchResult, 'revision'>> {
+    const document = await load(bytes);
+    try {
+      return await findForRedaction(document, search);
+    } catch (error) {
+      throw toMutationError(error);
+    }
+  }
+
   async apply(
     bytes: Uint8Array,
     operations: readonly EditOperation[],
@@ -192,6 +225,11 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
           continue;
         }
         if (applySanitizeOperation(document, operation)) {
+          annotations = null;
+          continue;
+        }
+        // Redaction takes annotations off the pages it touches.
+        if (await applyRedactionOperation(document, operation, assets)) {
           annotations = null;
           continue;
         }

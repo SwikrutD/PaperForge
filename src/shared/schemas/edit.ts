@@ -12,6 +12,7 @@ import { annotationInputSchema, annotationPatchSchema } from './annotation';
 import { pageBoxSchema, pageLabelStyleSchema } from './pages';
 import { customMetadataEntrySchema, documentMetadataSchema } from './metadata';
 import { sanitizeCategorySchema } from './sanitize';
+import { rasterPageSchema, redactionAppearanceSchema, redactionRectSchema } from './redaction';
 import { textStyleSchema } from './text';
 import { documentSessionSchema } from './document';
 
@@ -360,6 +361,29 @@ export const sanitizeOperationSchema = z.strictObject({
   categories: z.array(sanitizeCategorySchema).min(1),
 });
 
+/**
+ * Removes what lies under the marked areas and paints over where it was.
+ *
+ * Pages the window has drawn as pictures are named in `rasterPages`; any other
+ * page is cut natively, and a page that cannot be cut safely without a
+ * picture is refused rather than half-done.
+ */
+export const applyRedactionsOperationSchema = z.strictObject({
+  kind: z.literal('applyRedactions'),
+  marks: z
+    .array(
+      z.strictObject({
+        page: pageNumberSchema,
+        rects: z.array(redactionRectSchema).min(1).max(500),
+        reason: z.string().max(120).nullable(),
+      }),
+    )
+    .min(1)
+    .max(5000),
+  appearance: redactionAppearanceSchema,
+  rasterPages: z.array(rasterPageSchema).max(5000),
+});
+
 export const editOperationSchema = z.discriminatedUnion('kind', [
   rotatePagesOperationSchema,
   deletePagesOperationSchema,
@@ -398,6 +422,7 @@ export const editOperationSchema = z.discriminatedUnion('kind', [
   addAttachmentsOperationSchema,
   removeAttachmentsOperationSchema,
   sanitizeOperationSchema,
+  applyRedactionsOperationSchema,
 ]);
 export type EditOperation = z.infer<typeof editOperationSchema>;
 
