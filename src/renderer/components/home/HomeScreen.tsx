@@ -32,9 +32,8 @@ export function HomeScreen({
       <p className={styles.note}>
         <Info className={styles.noteIcon} aria-hidden="true" strokeWidth={1.75} />
         <span>
-          This build contains the workspace shell, settings and command system. Opening and viewing
-          documents arrives with the viewer, and each tool below switches on when its capability is
-          built.
+          Open a PDF or drop one on the window to start. A tool below that is not built yet is shown
+          greyed out, with what it is waiting for.
         </span>
       </p>
 

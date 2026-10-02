@@ -55,6 +55,8 @@ export interface CommandContext {
   readonly redacting: boolean;
   /** Marks waiting to be applied to the active document. */
   readonly redactionMarkCount: number;
+  /** True while the crop frame is being drawn. */
+  readonly cropping: boolean;
   /** True while the find bar is on screen. */
   readonly findOpen: boolean;
   /** How many matches the current search found. */
@@ -97,6 +99,7 @@ export interface CommandActions {
   toggleFilling(): void;
   togglePreparingForm(): void;
   toggleRedacting(): void;
+  toggleCropping(): void;
   openCreateWorkspace(intent: 'create' | 'combine'): void;
   closeCreateWorkspace(): void;
   setAnnotationTool(tool: AnnotationKind | 'eraser' | 'select'): void;

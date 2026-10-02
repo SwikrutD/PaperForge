@@ -1,0 +1,47 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-150);
+  padding: var(--pf-space-150);
+}
+
+.header,
+.boxes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-050);
+}
+
+.title {
+  margin: 0;
+  color: var(--pf-color-text-primary);
+  font-size: var(--pf-font-size-300);
+  font-weight: var(--pf-font-weight-medium);
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-100);
+  font-weight: var(--pf-font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.note,
+.empty {
+  margin: 0;
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+}
+
+.unit {
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--pf-space-100);
+}

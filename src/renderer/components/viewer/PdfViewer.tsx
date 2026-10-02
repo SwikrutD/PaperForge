@@ -40,6 +40,9 @@ import { RedactionLayer } from '../redact/RedactionLayer';
 import { RedactionToolbar } from '../redact/RedactionToolbar';
 import { useRedactionMarking } from '../redact/useRedactionMarking';
 import { marksFor, useRedactionStore } from '../../stores/redactionStore';
+import { CropLayer } from '../crop/CropLayer';
+import { CropToolbar } from '../crop/CropToolbar';
+import { useCropStore } from '../../stores/cropStore';
 import { highlightsByPage } from '../search/searchNavigation';
 import { pdfRectToCss } from './pageGeometry';
 import { usePdfDocumentContext } from './pdfDocumentContextValue';
@@ -107,6 +110,8 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const redactionTool = useRedactionStore((store) => store.tool);
   const redactionMarks = useRedactionStore((store) => marksFor(store.marks, sessionId));
   const redactionSelected = useRedactionStore((store) => store.selectedId);
+  const cropping = useCropStore((store) => store.active);
+  const cropFrame = useCropStore((store) => store.frame);
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
@@ -224,6 +229,12 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
     const load = useTextEditStore.getState().load;
     for (const pageNumber of mounted) void load(sessionId, pageNumber, tab.edit.revision);
   }, [editing, state.status, mounted, sessionId, tab.edit.revision]);
+
+  // The crop tool measures from the boxes each page declares, at this revision.
+  useEffect(() => {
+    if (!cropping || state.status !== 'ready') return;
+    void useCropStore.getState().loadBoxes(sessionId, tab.edit.revision);
+  }, [cropping, state.status, sessionId, tab.edit.revision]);
 
   // The form is read whole, because a field can be drawn on several pages.
   useEffect(() => {
@@ -362,7 +373,8 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
       {filling && preparing && <PrepareToolbar disabled={state.status !== 'ready'} />}
       {filling && !preparing && <FillSignToolbar disabled={state.status !== 'ready'} />}
       {redacting && <RedactionToolbar disabled={state.status !== 'ready'} />}
-      {!editing && !filling && !redacting && (commenting || toolActive) && (
+      {cropping && <CropToolbar />}
+      {!editing && !filling && !redacting && !cropping && (commenting || toolActive) && (
         <AnnotationToolbar disabled={state.status !== 'ready'} />
       )}
 
@@ -387,7 +399,21 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                   hideFormFields={filling}
                   highlights={highlights.get(pageNumber)}
                   overlay={
-                    state.document === null ? null : redacting ? (
+                    state.document === null ? null : cropping ? (
+                      <CropLayer
+                        geometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}
+                        scale={scale}
+                        rotation={view.rotation}
+                        frame={
+                          cropFrame?.sessionId === sessionId && cropFrame.page === pageNumber
+                            ? cropFrame.rect
+                            : null
+                        }
+                        onChange={(rect) =>
+                          useCropStore.getState().setFrame({ sessionId, page: pageNumber, rect })
+                        }
+                      />
+                    ) : redacting ? (
                       <RedactionLayer
                         geometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}
                         scale={scale}

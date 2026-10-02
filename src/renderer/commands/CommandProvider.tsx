@@ -16,6 +16,7 @@ import { useFormStore } from '../stores/formStore';
 import { useOrganizeStore } from '../stores/organizeStore';
 import { useSearchStore } from '../stores/searchStore';
 import { marksFor, useRedactionStore } from '../stores/redactionStore';
+import { useCropStore } from '../stores/cropStore';
 import { useUiStore } from '../stores/uiStore';
 import { buildDiagnosticsText } from '../utils/diagnostics';
 import { CommandApiContext, type CommandApi } from './commandApiContext';
@@ -40,6 +41,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
   const filling = useFormStore((state) => state.active);
   const preparingForm = useFormStore((state) => state.preparing);
   const redacting = useRedactionStore((state) => state.active);
+  const cropping = useCropStore((state) => state.active);
   const redactionMarkCount = useRedactionStore(
     (state) => marksFor(state.marks, activeTabId).length,
   );
@@ -61,6 +63,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     const textEditor = useTextEditStore.getState;
     const forms = useFormStore.getState;
     const redaction = useRedactionStore.getState;
+    const crop = useCropStore.getState;
 
     const activeSessionId = (): string | null => documents().activeId;
 
@@ -179,6 +182,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         if (next) {
           ui().setCommenting(false);
           redaction().setActive(false);
+          crop().setActive(false);
           void app().patchSettings({
             layout: { activeRightPanel: 'properties', rightPanel: { visible: true } },
           });
@@ -191,6 +195,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
           ui().setCommenting(false);
           annotations().setTool('select');
           organize().setActive(false);
+          crop().setActive(false);
           redaction().setActive(false);
           void app().patchSettings({
             layout: { activeRightPanel: 'properties', rightPanel: { visible: true } },
@@ -207,6 +212,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
           ui().setCommenting(false);
           annotations().setTool('select');
           organize().setActive(false);
+          crop().setActive(false);
           textEditor().setActive(false);
           redaction().setActive(false);
           void app().patchSettings({
@@ -225,6 +231,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
           ui().setCommenting(false);
           annotations().setTool('select');
           organize().setActive(false);
+          crop().setActive(false);
           textEditor().setActive(false);
           if (forms().active) void forms().commitDrafts();
           forms().setActive(false);
@@ -234,12 +241,30 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         }
         redaction().setActive(next);
       },
+      toggleCropping: () => {
+        const next = !crop().active;
+        // The frame takes the pointer on every page, so nothing else may.
+        if (next) {
+          ui().setCommenting(false);
+          annotations().setTool('select');
+          organize().setActive(false);
+          textEditor().setActive(false);
+          redaction().setActive(false);
+          if (forms().active) void forms().commitDrafts();
+          forms().setActive(false);
+          void app().patchSettings({
+            layout: { activeRightPanel: 'properties', rightPanel: { visible: true } },
+          });
+        }
+        crop().setActive(next);
+      },
       togglePreparingForm: () => {
         const next = !forms().preparing;
         if (next) {
           ui().setCommenting(false);
           annotations().setTool('select');
           organize().setActive(false);
+          crop().setActive(false);
           textEditor().setActive(false);
           redaction().setActive(false);
           void app().patchSettings({
@@ -253,11 +278,13 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         // Making a document is its own workspace: the page grid has nothing to
         // act on while it is open.
         organize().setActive(false);
+        crop().setActive(false);
         creation().openWorkspace(intent);
       },
       closeCreateWorkspace: () => creation().closeWorkspace(),
       setAnnotationTool: (tool) => {
         redaction().setActive(false);
+        crop().setActive(false);
         ui().setCommenting(true);
         annotations().setTool(tool);
       },
@@ -313,6 +340,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
       preparingForm,
       redacting,
       redactionMarkCount,
+      cropping,
       annotationTool: annotationTool === 'select' ? null : annotationTool,
       annotationSelected,
       findOpen,
@@ -336,6 +364,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     preparingForm,
     redacting,
     redactionMarkCount,
+    cropping,
     annotationTool,
     annotationSelected,
     findOpen,

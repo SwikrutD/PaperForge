@@ -26,6 +26,7 @@ import { useDocumentStore, type DocumentViewState } from '../stores/documentStor
 import { useCreateStore } from '../stores/createStore';
 import { useOrganizeStore } from '../stores/organizeStore';
 import { useTextEditStore } from '../stores/textEditStore';
+import { useCropStore } from '../stores/cropStore';
 import { SignatureDialog } from '../components/forms/SignatureDialog';
 import { FlattenDialog } from '../components/forms/FlattenDialog';
 import { OcrDialog } from '../components/ocr/OcrDialog';
@@ -129,6 +130,7 @@ export function App(): ReactElement {
     if (organizing) setOrganizing(false);
     if (editingText) setEditingText(false);
     if (filling) setFilling(false);
+    useCropStore.getState().setActive(false);
   }, [activeId, organizing, setOrganizing, editingText, setEditingText, filling, setFilling]);
 
   const resolvedTheme = theme?.resolved ?? null;

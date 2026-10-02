@@ -1,5 +1,6 @@
 import {
   Activity,
+  Crop,
   AppWindow,
   ClipboardList,
   FileOutput,
@@ -810,6 +811,18 @@ export function buildCommands(): CommandDefinition[] {
       isChecked: (context) => context.redacting,
       isAvailable: documentRequired,
       run: (context) => context.actions.toggleRedacting(),
+    },
+    {
+      id: 'tools.crop',
+      title: 'Crop Pages',
+      description: 'Draw a frame on a page and trim what the pages show to it.',
+      category: 'tools',
+      group: 'document',
+      icon: Crop,
+      keywords: ['crop', 'trim', 'margins', 'page box', 'cropbox', 'mediabox'],
+      isChecked: (context) => context.cropping,
+      isAvailable: documentRequired,
+      run: (context) => context.actions.toggleCropping(),
     },
     {
       id: 'redact.apply',

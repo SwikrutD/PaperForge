@@ -12,6 +12,8 @@ import { FieldDesignProperties } from '../forms/FieldDesignProperties';
 import { useFormStore } from '../../stores/formStore';
 import { useRedactionStore } from '../../stores/redactionStore';
 import { RedactionPanel } from '../redact/RedactionPanel';
+import { CropPanel } from '../crop/CropPanel';
+import { useCropStore } from '../../stores/cropStore';
 import { useUiStore } from '../../stores/uiStore';
 import { DocumentProperties } from '../workspace/DocumentProperties';
 import { AnnotationProperties } from '../annotations/AnnotationProperties';
@@ -49,6 +51,7 @@ export function RightPanel({ panel }: { panel: RightPanelId }): ReactElement {
   const filling = useFormStore((state) => state.active);
   const preparing = useFormStore((state) => state.preparing);
   const redacting = useRedactionStore((state) => state.active);
+  const cropping = useCropStore((state) => state.active);
   const selected = selectedAnnotation({ annotations, selectedId });
 
   const select = (id: RightPanelId): void => {
@@ -109,6 +112,8 @@ export function RightPanel({ panel }: { panel: RightPanelId }): ReactElement {
               title="Nothing selected"
               description="Open a document, then select text, an image, an annotation or a form field."
             />
+          ) : cropping ? (
+            <CropPanel />
           ) : redacting ? (
             // While redacting, this panel is the list of what is marked.
             <RedactionPanel />

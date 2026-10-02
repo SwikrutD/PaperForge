@@ -1,10 +1,13 @@
 import { useMemo } from 'react';
 import type { EditOperation } from '@shared/schemas/edit';
-import type { PageBoxes, PageBoxRect, PageLabelStyle, SplitPart } from '@shared/schemas/pages';
+import type { PageLabelStyle, SplitPart } from '@shared/schemas/pages';
+import { cropOperations, ZERO_MARGINS, type CropMargins } from '@shared/utils/cropBoxes';
 import { describeOperation } from '@pdf/mutate/operations';
 import { useOrganizeStore } from '../../stores/organizeStore';
 import { formatPageRange } from '@shared/utils/pageRange';
 import { allPages, orderAfterMove } from './organizeSelection';
+
+export type { CropMargins };
 
 /** What the organize toolbar and its dialogs can ask for. */
 export interface OrganizeActions {
@@ -30,61 +33,8 @@ export interface OrganizeActions {
   renumber: (style: PageLabelStyle, prefix: string, start: number) => void;
 }
 
-/** How far in each edge moves, in points. */
-export interface CropMargins {
-  left: number;
-  bottom: number;
-  right: number;
-  top: number;
-}
-
-const ZERO_MARGINS: CropMargins = { left: 0, bottom: 0, right: 0, top: 0 };
-
 function describeCount(count: number): string {
   return `${String(count)} page${count === 1 ? '' : 's'}`;
-}
-
-/**
- * Crop operations for the chosen pages.
- *
- * Margins are relative to what each page shows now, so pages of different
- * sizes end up with the same margins rather than the same rectangle. Pages
- * that would end up with the same rectangle share one operation.
- */
-function cropOperations(
-  boxes: readonly PageBoxes[],
-  pages: readonly number[],
-  margins: CropMargins,
-  target: 'crop' | 'media',
-  /** Which box the margins are measured from. */
-  from: 'crop' | 'media',
-): EditOperation[] {
-  const grouped = new Map<string, { box: PageBoxRect; pages: number[] }>();
-
-  for (const pageNumber of pages) {
-    const entry = boxes.find((candidate) => candidate.pageNumber === pageNumber);
-    if (entry === undefined) continue;
-
-    const source = from === 'media' ? entry.media : (entry.crop ?? entry.media);
-    const box: PageBoxRect = {
-      x: source.x + margins.left,
-      y: source.y + margins.bottom,
-      width: Math.max(1, source.width - margins.left - margins.right),
-      height: Math.max(1, source.height - margins.bottom - margins.top),
-    };
-
-    const key = `${box.x}:${box.y}:${box.width}:${box.height}`;
-    const existing = grouped.get(key);
-    if (existing === undefined) grouped.set(key, { box, pages: [pageNumber] });
-    else existing.pages.push(pageNumber);
-  }
-
-  return [...grouped.values()].map((group) => ({
-    kind: 'cropPages' as const,
-    pages: group.pages,
-    box: group.box,
-    target,
-  }));
 }
 
 /**

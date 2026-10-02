@@ -53,14 +53,7 @@ export function PageProperties(): ReactElement {
         <p className={styles.empty}>The boxes of this page have not been read yet.</p>
       ) : (
         <>
-          <dl className={styles.list}>
-            {BOXES.map((box) => (
-              <div className={styles.row} key={box.key}>
-                <dt className={styles.label}>{box.label}</dt>
-                <dd className={styles.value}>{describeBox(entry[box.key])}</dd>
-              </div>
-            ))}
-          </dl>
+          <PageBoxesList entry={entry} />
 
           <dl className={styles.list}>
             <div className={styles.row}>
@@ -79,6 +72,20 @@ export function PageProperties(): ReactElement {
         </>
       )}
     </div>
+  );
+}
+
+/** The five boxes a page may declare, the absent ones said to be absent. */
+export function PageBoxesList({ entry }: { entry: PageBoxes }): ReactElement {
+  return (
+    <dl className={styles.list}>
+      {BOXES.map((box) => (
+        <div className={styles.row} key={box.key}>
+          <dt className={styles.label}>{box.label}</dt>
+          <dd className={styles.value}>{describeBox(entry[box.key])}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 

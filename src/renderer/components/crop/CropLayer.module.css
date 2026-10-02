@@ -1,0 +1,81 @@
+/* Over everything else on the page: while cropping, the frame is the only
+   thing the pointer acts on. */
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  overflow: hidden;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+/* A box the size of the frame whose shadow dims the rest of the page; the
+   layer clips the shadow at the page's edge. */
+.shade {
+  position: absolute;
+  box-shadow: 0 0 0 100000px rgb(0 0 0 / 38%);
+  pointer-events: none;
+}
+
+.frame {
+  position: absolute;
+  border: 1.5px dashed var(--pf-color-accent);
+  outline: 1px solid rgb(255 255 255 / 70%);
+  cursor: move;
+}
+
+.frame:focus-visible {
+  outline: 2px solid var(--pf-color-focus-ring);
+  outline-offset: 2px;
+}
+
+.handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border: 1.5px solid var(--pf-color-accent);
+  border-radius: 2px;
+  background-color: var(--pf-color-bg-surface);
+}
+
+.handle[data-handle='nw'] {
+  left: 0;
+  top: 0;
+  cursor: nwse-resize;
+}
+.handle[data-handle='n'] {
+  left: 50%;
+  top: 0;
+  cursor: ns-resize;
+}
+.handle[data-handle='ne'] {
+  left: 100%;
+  top: 0;
+  cursor: nesw-resize;
+}
+.handle[data-handle='e'] {
+  left: 100%;
+  top: 50%;
+  cursor: ew-resize;
+}
+.handle[data-handle='se'] {
+  left: 100%;
+  top: 100%;
+  cursor: nwse-resize;
+}
+.handle[data-handle='s'] {
+  left: 50%;
+  top: 100%;
+  cursor: ns-resize;
+}
+.handle[data-handle='sw'] {
+  left: 0;
+  top: 100%;
+  cursor: nesw-resize;
+}
+.handle[data-handle='w'] {
+  left: 0;
+  top: 50%;
+  cursor: ew-resize;
+}
