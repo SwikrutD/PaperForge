@@ -46,7 +46,7 @@
 }
 
 .reason {
-  width: 150px;
+  width: 120px;
   margin-left: var(--pf-space-050);
   padding: 0 var(--pf-space-100);
 }
@@ -55,7 +55,7 @@
   display: flex;
   align-items: center;
   gap: var(--pf-space-050);
-  width: 220px;
+  width: 170px;
   padding: 0 var(--pf-space-100);
 }
 
@@ -87,6 +87,11 @@
 
 .input::-webkit-search-cancel-button {
   display: none;
+}
+
+.apply {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .count {

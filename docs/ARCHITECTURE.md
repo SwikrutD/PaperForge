@@ -291,6 +291,18 @@ Two things are worth knowing about the shape of it:
 
 `docs/SECURITY.md` has the password handling and the sanitizer's guarantees.
 
+## Redaction
+
+Marks are renderer state (`redactionStore`): pending, per document, never written to the file.
+The main process answers three questions over IPC, all from the current revision — where text
+occurs (`redaction:find`, searching the same glyph model that redaction cuts), what applying would
+remove and which pages cannot be cut (`redaction:plan`), and it stages a page the window has drawn
+as a picture (`redaction:stagePage`). Applying is one `applyRedactions` edit operation through the
+ordinary revision pipeline, so it is undoable until saved, optionally preceded by a `sanitize`
+operation. The engine (`src/pdf/redact/`) refuses rather than half-does: a page that needs a
+picture and was not given one fails the whole transaction, and so does a page that still has
+anything under a mark when read back. See `docs/SECURITY.md` for what is removed and how.
+
 ## Comments
 
 A comment is a real PDF annotation with an appearance stream PaperForge draws, so every reader

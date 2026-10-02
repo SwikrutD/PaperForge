@@ -148,6 +148,40 @@ nowhere in the saved file.
 Embedded files are never opened and never executed. Saving one writes the bytes where the reader
 chose and stops there; a name whose extension Windows would run is called out and confirmed first.
 
+## Redaction
+
+Redaction removes content; it does not cover it (`src/pdf/redact/`). Applying a mark:
+
+- **Text** — each glyph whose middle, or at least 30% of whose box, lies under a mark is deleted
+  from its show operation and replaced by a `TJ` offset of the same advance, so what stays does not
+  move. This needs nothing of the font beyond how it splits a string into codes. `/ActualText`,
+  `/Alt` and `/E` on marked content around cut text are deleted too.
+- **Pictures** — one wholly under a mark is removed; one partly under it is repainted in its own
+  samples when it is stored plain or deflated (8-bit grey, RGB or CMYK, no mask), and written as a
+  new image. A picture or group no longer drawn anywhere is deleted from the file, even when
+  another page's resources still list it.
+- **Drawings** — a path wholly under a mark is removed; one crossing the edge is painted over.
+- **Comments and fields** — an annotation under a mark goes, with its pop-up; a widget takes its
+  whole field, value and all.
+- **Thumbnails** of redacted pages are deleted.
+
+Where a page holds something under a mark that PaperForge cannot cut safely — a font that does not
+state its widths, a reusable group (form XObject) only partly covered, a JPEG or masked picture
+only partly covered, an inline image, an undecodable content stream — the engine refuses to cut it
+natively. The window then draws the page (upright, without annotations, with the marks painted
+onto the pixels) and the page is replaced by that picture with fresh resources; nothing of the old
+page is kept. The reader sees which pages this applies to, and why, before anything happens.
+
+After cutting, each page is read back with the same model and the whole change is refused if any
+glyph, picture or group is still under a mark. Finally every object the document no longer reaches
+from its trailer is deleted, because pdf-lib would otherwise write orphaned content streams into
+the file. `tests/unit/shared/redaction.test.ts` proves, per case, that the marked text is neither
+returned by PDF.js extraction nor present anywhere in the saved bytes, decompressed or not.
+
+Not reached by redaction by area: bookmark titles, document metadata (offered as a "remove hidden
+information" option in the same step), and descriptions kept in a tagged document's structure
+tree. The review dialog says so when the document has them.
+
 ## Logging and privacy
 
 Logs are local only, in `%APPDATA%/PaperForge/logs/paperforge.log`, rotated at 1 MB. The logger
@@ -158,6 +192,3 @@ is bound to `127.0.0.1`.
 ## Planned controls
 
 These belong to later segments and are listed so they are not forgotten:
-
-- Redaction must remove content, not cover it, and a test must prove the text cannot be extracted
-  afterwards (Segment 15). The object-deletion work above is the foundation for it.

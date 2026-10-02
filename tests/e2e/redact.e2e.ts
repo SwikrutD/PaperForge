@@ -193,8 +193,7 @@ test('a page that cannot be cut is drawn as a picture and saved as a new file', 
 
   const target = path.join(sandbox, 'Statement redacted.pdf');
   await app.evaluate(({ dialog: electronDialog }, chosen: string) => {
-    electronDialog.showSaveDialog = () =>
-      Promise.resolve({ canceled: false, filePath: chosen });
+    electronDialog.showSaveDialog = () => Promise.resolve({ canceled: false, filePath: chosen });
   }, target);
   await expect(dialog().getByRole('radio', { name: /Save the redacted document/ })).toBeChecked();
   await dialog().getByRole('button', { name: 'Apply Redactions' }).click();

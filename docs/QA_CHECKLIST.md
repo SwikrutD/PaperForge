@@ -603,3 +603,24 @@ Run in both light and dark themes:
       Document Properties are reachable from the keyboard.
 - [ ] Each tool is on the home screen, in the command palette and in the menus, and each says
       "Needs a document" rather than being silently dead when none is open.
+
+## Segment 15 — redaction
+
+- [ ] Redact (Tools menu, palette, home card) shows the redaction tools and the list of marks;
+      other tools switch off.
+- [ ] Marks are outlined only; nothing is dirty until Apply Redactions.
+- [ ] Find text to mark marks every occurrence, including words drawn as separate runs; a scan or
+      text inside a group is reported as unsearchable rather than silently skipped.
+- [ ] Mark text marks what was selected; Mark area marks what was dragged over; Delete removes a
+      focused mark.
+- [ ] The review lists the text each mark will remove, and names any page that must be drawn as a
+      picture and why.
+- [ ] After applying, the text is gone from the page, from Find, and from copy and paste; the rest
+      of each line has not moved.
+- [ ] Undo restores everything until save; after Save the text is not in the file (open it in
+      another reader and search).
+- [ ] "Save as a new file" leaves the opened file as it was and suggests "name redacted.pdf".
+- [ ] A partly covered photograph is blacked out in the picture itself, not only covered.
+- [ ] Comments and form fields under a mark are gone after applying.
+- [ ] Box colour and "write the reason on each box" show in the saved file.
+- [ ] Light and dark themes; keyboard focus reaches every mark and control.

@@ -206,7 +206,7 @@ export const useRedactionStore = create<RedactionState>((set, get) => ({
             ? undefined
             : `${String(skipped.length)} ${
                 skipped.length === 1 ? 'page has' : 'pages have'
-              } no text PaperForge can read, such as a scan. Recognize Text first, or mark areas on ${
+              } no text PaperForge can search, such as a scan or text drawn inside a group. Recognize Text first, or mark areas on ${
                 skipped.length === 1 ? 'it' : 'them'
               } by hand.`,
         intent: result.matches.length === 0 ? 'info' : 'success',

@@ -117,13 +117,15 @@ export function RedactionToolbar({ disabled }: { disabled: boolean }): ReactElem
       <span className={styles.count} aria-live="polite">
         {count === 0 ? 'Nothing marked' : `${String(count)} marked`}
       </span>
-      <Button
-        appearance="primary"
-        disabled={disabled || count === 0}
-        onClick={() => execute('redact.apply')}
-      >
-        Apply Redactions…
-      </Button>
+      <span className={styles.apply}>
+        <Button
+          appearance="primary"
+          disabled={disabled || count === 0}
+          onClick={() => execute('redact.apply')}
+        >
+          Apply Redactions…
+        </Button>
+      </span>
     </div>
   );
 }

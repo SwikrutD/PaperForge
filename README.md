@@ -40,7 +40,14 @@ in [`CLAUDE.md`](./CLAUDE.md):
   each one saying what it carries and what it loses — and Office documents converted by a local
   LibreOffice when there is one.
 
-Protection, redaction and comparison arrive in later segments.
+- document administration: properties and metadata, attachments, removing hidden information,
+  and password protection through a local qpdf.
+
+- redaction: mark text, areas or every occurrence of a phrase, review what each mark takes, and
+  apply — the content under the marks is removed from the file, not covered, and each page is read
+  back to prove it.
+
+Comparison, optimisation and repair arrive in later segments.
 
 [`PROGRESS.md`](./PROGRESS.md) is the authoritative status file.
 
