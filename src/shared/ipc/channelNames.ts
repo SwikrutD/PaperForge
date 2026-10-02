@@ -93,6 +93,12 @@ export const INVOKE_CHANNEL_NAMES = [
   'print:page',
   'print:finish',
   'print:cancel',
+  'files:openLaunchPaths',
+  'window:setProgress',
+  'window:notify',
+  'system:fileAssociation',
+  'system:setOpenWith',
+  'system:openDefaultApps',
 ] as const;
 
 export type InvokeChannel = (typeof INVOKE_CHANNEL_NAMES)[number];
@@ -103,6 +109,7 @@ export const EVENT_CHANNEL_NAMES = [
   'recentFiles:changed',
   'window:stateChanged',
   'files:changed',
+  'files:launchPathsWaiting',
 ] as const;
 
 export type EventChannel = (typeof EVENT_CHANNEL_NAMES)[number];

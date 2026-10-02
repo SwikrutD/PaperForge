@@ -73,6 +73,8 @@ export interface DocumentStore {
   openWithDialog: () => Promise<void>;
   openPaths: (paths: readonly string[]) => Promise<void>;
   restoreSession: () => Promise<void>;
+  /** Opens files Explorer, Open With or the jump list handed PaperForge. */
+  openLaunchPaths: () => Promise<void>;
   close: (sessionId: string) => Promise<void>;
   closeOthers: (sessionId: string) => Promise<void>;
   closeToRight: (sessionId: string) => Promise<void>;
@@ -230,7 +232,10 @@ export const useDocumentStore = create<DocumentStore>((set, get) => {
 
     initialize: async () => {
       unsubscribe?.();
-      unsubscribe = subscribe('files:changed', (event) => {
+      const stopLaunches = subscribe('files:launchPathsWaiting', () => {
+        void get().openLaunchPaths();
+      });
+      const stopChanges = subscribe('files:changed', (event) => {
         set((state) => ({
           tabs: state.tabs.map((tab) =>
             tab.session.id === event.sessionId
@@ -243,6 +248,10 @@ export const useDocumentStore = create<DocumentStore>((set, get) => {
           ),
         }));
       });
+      unsubscribe = () => {
+        stopLaunches();
+        stopChanges();
+      };
 
       const sessions = await invoke('files:list');
       if (sessions.length > 0) {
@@ -258,6 +267,8 @@ export const useDocumentStore = create<DocumentStore>((set, get) => {
         : runOpen(() => invoke('files:openPaths', { paths: [...paths] })),
 
     restoreSession: () => runOpen(() => invoke('files:restoreSession')),
+
+    openLaunchPaths: () => runOpen(() => invoke('files:openLaunchPaths')),
 
     close: async (sessionId) => {
       const tab = get().tabs.find((candidate) => candidate.session.id === sessionId);

@@ -11,6 +11,7 @@ import { Dialog } from './Dialog';
 import { QpdfSetting } from './QpdfSetting';
 import { OfficeSetting } from './OfficeSetting';
 import { OcrSetting } from './OcrSetting';
+import { WindowsSetting } from './WindowsSetting';
 import styles from './SettingsDialog.module.css';
 
 interface SettingRowProps {
@@ -73,6 +74,21 @@ export function SettingsDialog({ settings }: { settings: Settings }): ReactEleme
             checked={settings.session.restoreOnStartup}
             label={settings.session.restoreOnStartup ? 'On' : 'Off'}
             onChange={(checked) => void patchSettings({ session: { restoreOnStartup: checked } })}
+          />
+        </SettingRow>
+      </section>
+
+      <section className={styles.section} aria-label="Windows">
+        <h3 className={styles.sectionTitle}>Windows</h3>
+        <WindowsSetting />
+        <SettingRow
+          label="Notify when work finishes"
+          description="A Windows notification when long work, such as recognising text or printing, finishes while PaperForge is in the background."
+        >
+          <Toggle
+            checked={settings.notifications.whenDone}
+            label={settings.notifications.whenDone ? 'On' : 'Off'}
+            onChange={(checked) => void patchSettings({ notifications: { whenDone: checked } })}
           />
         </SettingRow>
       </section>

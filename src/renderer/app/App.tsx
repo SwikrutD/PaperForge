@@ -47,6 +47,7 @@ import { BackgroundDialog } from '../components/edit/furniture/BackgroundDialog'
 import { HeaderFooterDialog } from '../components/edit/furniture/HeaderFooterDialog';
 import { useUiStore } from '../stores/uiStore';
 import { AppErrorBoundary } from './AppErrorBoundary';
+import { useDesktopIntegration } from './useDesktopIntegration';
 import styles from './App.module.css';
 
 const STATUS_TEXT = {
@@ -106,6 +107,7 @@ export function App(): ReactElement {
   const setFilling = useFormStore((state) => state.setActive);
 
   const [recovery, setRecovery] = useState<RecoveryEntry[] | null>(null);
+  useDesktopIntegration();
 
   useEffect(() => {
     void initialize();
@@ -121,6 +123,9 @@ export function App(): ReactElement {
       if (cancelled) return;
       if (entries.length > 0) setRecovery(entries);
       else await restoreSession();
+      // Files PaperForge was started with open after the previous session, so
+      // the one the reader double-clicked ends up in front.
+      if (!cancelled) await useDocumentStore.getState().openLaunchPaths();
     };
     void start();
     return () => {

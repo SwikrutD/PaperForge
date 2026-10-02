@@ -21,6 +21,7 @@ import type { Logger } from '../services/logging/logger';
 import type { ThemeController } from '../theme/themeController';
 import type { PageExport } from '../services/documents/pageExport';
 import type { PrintJobs } from '../services/printing/printJobs';
+import type { DesktopIntegration } from '../services/windows/desktopIntegration';
 import type { DocumentCreator } from '../services/creation/documentCreator';
 import type { SourceLibrary } from '../services/creation/sourceLibrary';
 import type { ConversionRegistry } from '@conversion/models/provider';
@@ -41,6 +42,7 @@ import { registerOcrHandlers } from './handlers/ocrHandlers';
 import { registerConvertHandlers } from './handlers/convertHandlers';
 import { registerFileHandlers } from './handlers/fileHandlers';
 import { registerPrintHandlers } from './handlers/printHandlers';
+import { registerSystemHandlers } from './handlers/systemHandlers';
 import { createIpcRegistrar } from './registry';
 
 export interface IpcDependencies {
@@ -59,6 +61,7 @@ export interface IpcDependencies {
   office: LibreOfficeProvider;
   pageExport: PageExport;
   printing: PrintJobs;
+  desktop: DesktopIntegration;
   engine: PdfMutationEngine;
   library: SourceLibrary;
   creator: DocumentCreator;
@@ -202,6 +205,11 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
   });
 
   registerPrintHandlers(registerInvoke, { documents: deps.documents, printing: deps.printing });
+  registerSystemHandlers(registerInvoke, {
+    documents: deps.documents,
+    desktop: deps.desktop,
+    senderWindow,
+  });
 
   registerFileHandlers(registerInvoke, {
     documents: deps.documents,

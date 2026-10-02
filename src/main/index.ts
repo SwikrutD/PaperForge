@@ -1,4 +1,5 @@
 import { app, BrowserWindow, session } from 'electron';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { APP_NAME, RENDERER_ORIGIN } from '@shared/constants/app';
 import { createEventBroadcaster, registerIpcHandlers } from './ipc/registerHandlers';
@@ -38,6 +39,15 @@ import { SettingsStore } from './services/settings/settingsStore';
 import { ThemeController } from './theme/themeController';
 import { registerDocumentProtocol, registerDocumentScheme } from './windows/documentProtocol';
 import { createMainWindow } from './windows/mainWindow';
+import { LaunchRouter } from './windows/launchRouting';
+import { DesktopIntegration } from './services/windows/desktopIntegration';
+import { launchArgsToSkip, parseLaunchArgs } from './services/windows/launchArgs';
+import { stableExecutable } from './services/windows/jumpList';
+import {
+  handleSquirrelEvent,
+  pointUninstallIcon,
+  readSquirrelEvent,
+} from './services/windows/squirrel';
 import { registerRendererProtocol, registerRendererScheme } from './windows/rendererProtocol';
 
 const devServerUrl =
@@ -45,9 +55,15 @@ const devServerUrl =
 const rendererRoot = path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}`);
 const preloadPath = path.join(__dirname, 'preload.js');
 
+/** The identity Squirrel gives an installed copy's shortcuts. */
+const SQUIRREL_APP_USER_MODEL_ID = `com.squirrel.${APP_NAME}.${APP_NAME}`;
+
 app.setName(APP_NAME);
 if (process.platform === 'win32') {
-  app.setAppUserModelId('com.paperforge.PaperForge');
+  // An installed copy uses the identity the installer gave its shortcuts, so
+  // the taskbar, the jump list and notifications all agree on which app it is.
+  const installed = stableExecutable(process.execPath, existsSync) !== process.execPath;
+  app.setAppUserModelId(installed ? SQUIRREL_APP_USER_MODEL_ID : 'com.paperforge.PaperForge');
 }
 app.enableSandbox();
 registerRendererScheme();
@@ -61,6 +77,8 @@ function installProcessGuards(logger: Logger): void {
     logger.error('Unhandled rejection in the main process.', reason);
   });
 }
+
+const launches = new LaunchRouter();
 
 async function bootstrap(): Promise<void> {
   const logger = createLogger({
@@ -81,6 +99,11 @@ async function bootstrap(): Promise<void> {
 
   const getWindows = (): BrowserWindow[] => BrowserWindow.getAllWindows();
   const broadcast = createEventBroadcaster({ getWindows, logger });
+
+  const desktop = new DesktopIntegration({
+    logger,
+    notificationsEnabled: () => settings.get().notifications.whenDone,
+  });
 
   const workspaces = new SessionWorkspaces(path.join(app.getPath('temp'), APP_NAME), logger);
   const documents = new DocumentService({
@@ -239,6 +262,7 @@ async function bootstrap(): Promise<void> {
     office,
     pageExport,
     printing,
+    desktop,
     engine,
     library,
     creator,
@@ -254,6 +278,9 @@ async function bootstrap(): Promise<void> {
   });
 
   installShutdownHandler(documents, logger);
+  launches.attach({ desktop, openWindow });
+  desktop.updateJumpList(recentFiles.list());
+  recentFiles.onChange((entries) => desktop.updateJumpList(entries));
   openWindow();
 
   app.on('activate', () => {
@@ -281,16 +308,32 @@ function installShutdownHandler(documents: DocumentService, logger: Logger): voi
 }
 
 function main(): void {
+  // The installer starts PaperForge to set itself up, and expects it to exit.
+  const squirrel =
+    app.isPackaged && process.platform === 'win32' ? readSquirrelEvent(process.argv) : null;
+  if (squirrel !== null && squirrel !== 'firstrun') {
+    void handleSquirrelEvent(squirrel, process.execPath)
+      .catch((error: unknown) => console.error('PaperForge setup did not finish.', error))
+      .finally(() => app.quit());
+    return;
+  }
+  if (squirrel === 'firstrun') void pointUninstallIcon(process.execPath).catch(() => undefined);
+
   if (!app.requestSingleInstanceLock()) {
     app.quit();
     return;
   }
 
-  app.on('second-instance', () => {
-    const [window] = BrowserWindow.getAllWindows();
-    if (window === undefined) return;
-    if (window.isMinimized()) window.restore();
-    window.focus();
+  const skip = launchArgsToSkip(process.argv, app.isPackaged);
+  launches.receive(parseLaunchArgs(process.argv, { cwd: process.cwd(), skip }), true);
+
+  // A second launch hands its files, or a request for a new window, to this one.
+  app.on('second-instance', (_event, argv, workingDirectory) => {
+    const request = parseLaunchArgs(argv, {
+      cwd: workingDirectory,
+      skip: launchArgsToSkip(argv, app.isPackaged),
+    });
+    launches.receive(request, false);
   });
 
   app.on('window-all-closed', () => {

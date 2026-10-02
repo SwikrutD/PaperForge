@@ -88,6 +88,16 @@ export const ocrSettingsSchema = z.object({
 });
 export type OcrSettings = z.infer<typeof ocrSettingsSchema>;
 
+/** How PaperForge tells the reader about work that finished in the background. */
+export const notificationSettingsSchema = z.object({
+  /**
+   * Shows a Windows notification when a long job — recognising text, an
+   * export, printing — finishes while PaperForge is not in front.
+   */
+  whenDone: z.boolean(),
+});
+export type NotificationSettings = z.infer<typeof notificationSettingsSchema>;
+
 export const settingsSchema = z.object({
   version: z.literal(SETTINGS_VERSION),
   appearance: appearanceSettingsSchema,
@@ -97,6 +107,7 @@ export const settingsSchema = z.object({
   editing: editingSettingsSchema,
   tools: toolsSettingsSchema,
   ocr: ocrSettingsSchema,
+  notifications: notificationSettingsSchema,
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
@@ -117,6 +128,7 @@ export const settingsPatchSchema = z.strictObject({
   editing: editingSettingsSchema.partial().optional(),
   tools: toolsSettingsSchema.partial().optional(),
   ocr: ocrSettingsSchema.partial().optional(),
+  notifications: notificationSettingsSchema.partial().optional(),
 });
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
 
@@ -129,6 +141,7 @@ const SETTINGS_SECTIONS = [
   'editing',
   'tools',
   'ocr',
+  'notifications',
 ] as const;
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -146,6 +159,7 @@ export const DEFAULT_SETTINGS: Settings = {
   editing: { annotationAuthor: '' },
   tools: { qpdfPath: null, tesseractPath: null, tessdataPath: null, libreOfficePath: null },
   ocr: { languages: ['eng'], dpi: 300, preprocess: false },
+  notifications: { whenDone: true },
 };
 
 /**
@@ -176,6 +190,7 @@ export function applySettingsPatch(current: Settings, patch: SettingsPatch): Set
     editing: mergeDefined(current.editing, patch.editing),
     tools: mergeTools(current.tools, patch.tools),
     ocr: mergeDefined(current.ocr, patch.ocr),
+    notifications: mergeDefined(current.notifications, patch.notifications),
   });
 }
 

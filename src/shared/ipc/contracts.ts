@@ -76,6 +76,12 @@ import {
   printSettingsSchema,
 } from '../schemas/print';
 import {
+  fileAssociationStatusSchema,
+  launchPathsWaitingSchema,
+  notificationRequestSchema,
+  taskbarProgressSchema,
+} from '../schemas/system';
+import {
   EVENT_CHANNEL_NAMES,
   INVOKE_CHANNEL_NAMES,
   type EventChannel,
@@ -563,6 +569,24 @@ export const invokeContracts = {
     request: z.strictObject({ printId: z.string().min(1).max(64) }),
     response: z.null(),
   },
+
+  /**
+   * Opens the files Explorer, Open With or a jump list handed PaperForge and
+   * that are waiting for this window. The renderer never names them.
+   */
+  'files:openLaunchPaths': { request: z.void(), response: openResultSchema },
+  /** Shows the progress of long work on this window's taskbar button. */
+  'window:setProgress': { request: taskbarProgressSchema, response: z.null() },
+  /** A Windows notification, shown only while this window is not in front. */
+  'window:notify': { request: notificationRequestSchema, response: z.null() },
+  'system:fileAssociation': { request: z.void(), response: fileAssociationStatusSchema },
+  /** Adds PaperForge to, or takes it off, the Open With list for PDFs. */
+  'system:setOpenWith': {
+    request: z.strictObject({ enabled: z.boolean() }),
+    response: fileAssociationStatusSchema,
+  },
+  /** Opens Windows Settings at PaperForge's default-app choices. */
+  'system:openDefaultApps': { request: z.void(), response: z.null() },
 } as const satisfies Record<InvokeChannel, InvokeContract>;
 
 /** Request payload as callers pass it. */
@@ -585,6 +609,7 @@ export const eventContracts = {
   'recentFiles:changed': recentFilesListSchema,
   'window:stateChanged': windowRuntimeStateSchema,
   'files:changed': fileChangeEventSchema,
+  'files:launchPathsWaiting': launchPathsWaitingSchema,
 } as const satisfies Record<EventChannel, z.ZodType>;
 
 export type EventPayload<C extends EventChannel> = z.output<(typeof eventContracts)[C]>;
