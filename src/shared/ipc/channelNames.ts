@@ -70,6 +70,8 @@ export const INVOKE_CHANNEL_NAMES = [
   'attachments:choose',
   'attachments:save',
   'sanitize:scan',
+  'accessibility:check',
+  'accessibility:readingOrder',
   'redaction:find',
   'redaction:plan',
   'redaction:stagePage',

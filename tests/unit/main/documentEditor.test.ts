@@ -32,6 +32,8 @@ const READ_ONLY_STUBS = {
   rewrite: () => Promise.reject(new Error('not used in this test')),
   analyzeForOptimize: () => Promise.reject(new Error('not used in this test')),
   optimize: () => Promise.reject(new Error('not used in this test')),
+  checkAccessibility: () => Promise.reject(new Error('not used in this test')),
+  readReadingOrder: () => Promise.reject(new Error('not used in this test')),
 } satisfies Partial<PdfMutationEngine>;
 
 const logger = {

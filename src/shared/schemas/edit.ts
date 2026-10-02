@@ -14,6 +14,7 @@ import { customMetadataEntrySchema, documentMetadataSchema } from './metadata';
 import { sanitizeCategorySchema } from './sanitize';
 import { rasterPageSchema, redactionAppearanceSchema, redactionRectSchema } from './redaction';
 import { textStyleSchema } from './text';
+import { structurePathSchema } from './accessibility';
 import { documentSessionSchema } from './document';
 
 /**
@@ -343,6 +344,56 @@ export const setDocumentLanguageOperationSchema = z.strictObject({
   language: z.string().max(100).nullable(),
 });
 
+/**
+ * Sets or clears the document's title — the information dictionary's
+ * `/Title`, which is what a reader announces and a title bar can show.
+ */
+export const setDocumentTitleOperationSchema = z.strictObject({
+  kind: z.literal('setDocumentTitle'),
+  title: z.string().max(2000).nullable(),
+});
+
+/** Asks readers to show the title rather than the file name in their title bar. */
+export const setDisplayDocTitleOperationSchema = z.strictObject({
+  kind: z.literal('setDisplayDocTitle'),
+  display: z.boolean(),
+});
+
+/**
+ * Sets the alternate text of one element of the tag tree. The element's type
+ * is restated so a tree that has changed underneath is refused rather than
+ * written to the wrong element.
+ */
+export const setAltTextOperationSchema = z.strictObject({
+  kind: z.literal('setAltText'),
+  path: structurePathSchema,
+  expectedType: z.string().min(1).max(100),
+  alt: z.string().max(5000).nullable(),
+});
+
+/** Gives fields the accessible names readers announce (`/TU`). */
+export const setFieldTooltipsOperationSchema = z.strictObject({
+  kind: z.literal('setFieldTooltips'),
+  fields: z
+    .array(
+      z.strictObject({
+        name: z.string().min(1).max(500),
+        tooltip: z.string().max(1000).nullable(),
+      }),
+    )
+    .min(1)
+    .max(5000),
+});
+
+/**
+ * Makes the keyboard visit links and fields in the order the tag tree reads
+ * the page (`/Tabs /S`). Null means every page.
+ */
+export const setTabOrderOperationSchema = z.strictObject({
+  kind: z.literal('setTabOrder'),
+  pages: pageListSchema.nullable(),
+});
+
 /** Embeds files the main process has staged, by token. */
 export const addAttachmentsOperationSchema = z.strictObject({
   kind: z.literal('addAttachments'),
@@ -419,6 +470,11 @@ export const editOperationSchema = z.discriminatedUnion('kind', [
   deleteAnnotationsOperationSchema,
   setMetadataOperationSchema,
   setDocumentLanguageOperationSchema,
+  setDocumentTitleOperationSchema,
+  setDisplayDocTitleOperationSchema,
+  setAltTextOperationSchema,
+  setFieldTooltipsOperationSchema,
+  setTabOrderOperationSchema,
   addAttachmentsOperationSchema,
   removeAttachmentsOperationSchema,
   sanitizeOperationSchema,

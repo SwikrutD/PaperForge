@@ -67,6 +67,7 @@ import { recentFilesListSchema } from '../schemas/recentFiles';
 import { settingsPatchSchema, settingsSchema } from '../schemas/settings';
 import { themeStateSchema } from '../schemas/theme';
 import { windowRuntimeStateSchema } from '../schemas/windowState';
+import { accessibilityReportSchema, readingOrderSchema } from '../schemas/accessibility';
 import {
   EVENT_CHANNEL_NAMES,
   INVOKE_CHANNEL_NAMES,
@@ -432,6 +433,20 @@ export const invokeContracts = {
   'sanitize:scan': {
     request: z.strictObject({ sessionId: z.string().min(1) }),
     response: sanitizeReportSchema,
+  },
+
+  /** The Accessibility Check, run on the revision being shown. Changes nothing. */
+  'accessibility:check': {
+    request: z.strictObject({ sessionId: z.string().min(1) }),
+    response: accessibilityReportSchema,
+  },
+  /** One page's content in the order the document's tags read it. */
+  'accessibility:readingOrder': {
+    request: z.strictObject({
+      sessionId: z.string().min(1),
+      page: z.number().int().min(1).max(100_000),
+    }),
+    response: readingOrderSchema,
   },
 
   /** Finds text to mark, as the boxes of the glyphs redaction would remove. */

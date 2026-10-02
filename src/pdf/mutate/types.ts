@@ -3,6 +3,8 @@ import type { EmbeddedFile } from '@shared/schemas/attachment';
 import type { EditOperation } from '@shared/schemas/edit';
 import type { DocumentContentProperties } from '@shared/schemas/metadata';
 import type { SanitizeReport } from '@shared/schemas/sanitize';
+import type { SecuritySummary } from '@shared/schemas/protect';
+import type { AccessibilityReport, ReadingOrder } from '@shared/schemas/accessibility';
 import type { OptimizeAnalysis, OptimizeReport, OptimizeSettings } from '@shared/schemas/optimize';
 import type { ImageCodec } from '../optimize/pixels';
 import type {
@@ -76,6 +78,16 @@ export interface PdfMutationEngine {
   extractAttachment(bytes: Uint8Array, id: string): Promise<ExtractedAttachment | null>;
   /** What the document carries besides the pages it shows. */
   scanHiddenInformation(bytes: Uint8Array): Promise<SanitizeReport>;
+  /**
+   * The Accessibility Check. `security` is what the file's bytes say, which
+   * decides whether assistive technology may read the text at all.
+   */
+  checkAccessibility(
+    bytes: Uint8Array,
+    security: SecuritySummary,
+  ): Promise<Omit<AccessibilityReport, 'revision'>>;
+  /** One page's content in the order its tags read it. */
+  readReadingOrder(bytes: Uint8Array, page: number): Promise<Omit<ReadingOrder, 'revision'>>;
   /**
    * What applying marks would remove, and which pages cannot be cut without
    * being drawn as pictures. Nothing is changed.

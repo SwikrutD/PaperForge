@@ -52,6 +52,12 @@ import {
 } from '../metadata/read';
 import { readAttachmentBytes, readAttachments } from '../attachments/read';
 import { scanDocument } from '../sanitize/scan';
+import { checkAccessibility } from '../accessibility/check';
+import { readingOrderOf } from '../accessibility/readingOrder';
+import { readStructureTree } from '../accessibility/structure';
+import { applyAccessibilityOperation } from '../accessibility/write';
+import type { AccessibilityReport, ReadingOrder } from '@shared/schemas/accessibility';
+import type { SecuritySummary } from '@shared/schemas/protect';
 import type {
   DocumentFacts,
   ExtractedAttachment,
@@ -150,6 +156,36 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
     const document = await load(bytes);
     try {
       return scanDocument(document, bytes);
+    } catch (error) {
+      throw toMutationError(error);
+    }
+  }
+
+  async checkAccessibility(
+    bytes: Uint8Array,
+    security: SecuritySummary,
+  ): Promise<Omit<AccessibilityReport, 'revision'>> {
+    const document = await load(bytes);
+    try {
+      return await checkAccessibility(document, security);
+    } catch (error) {
+      throw toMutationError(error);
+    }
+  }
+
+  async readReadingOrder(bytes: Uint8Array, page: number): Promise<Omit<ReadingOrder, 'revision'>> {
+    const document = await load(bytes);
+    try {
+      const pageIndex = page - 1;
+      if (pageIndex < 0 || pageIndex >= document.getPageCount()) {
+        throw new AppError('internal/unexpected', {
+          message: 'That page is not in this document.',
+          details: `page ${String(page)} of ${String(document.getPageCount())}`,
+        });
+      }
+      const tree = readStructureTree(document);
+      if (tree === null) return { page, tagged: false, regions: [], untagged: [] };
+      return { page, tagged: true, ...(await readingOrderOf(document, tree, pageIndex)) };
     } catch (error) {
       throw toMutationError(error);
     }
@@ -257,6 +293,7 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
         if (await applyAuthoringOperation(document, operation)) continue;
         if (await applyOcrOperation(document, operation)) continue;
         if (applyMetadataOperation(document, operation)) continue;
+        if (applyAccessibilityOperation(document, operation)) continue;
 
         // Carrying a file in or taking one out changes the catalogue, and
         // sanitizing can remove annotations, so both invalidate what was read.

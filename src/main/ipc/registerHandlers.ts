@@ -34,6 +34,7 @@ import { registerRepairHandlers } from './handlers/repairHandlers';
 import { registerImageHandlers } from './handlers/imageHandlers';
 import { registerLinkHandlers } from './handlers/linkHandlers';
 import { registerFormHandlers } from './handlers/formHandlers';
+import { registerStructureHandlers } from './handlers/structureHandlers';
 import { registerSignatureHandlers } from './handlers/signatureHandlers';
 import { registerOcrHandlers } from './handlers/ocrHandlers';
 import { registerConvertHandlers } from './handlers/convertHandlers';
@@ -167,6 +168,8 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
   registerLinkHandlers(registerInvoke, { editor: deps.editor });
 
   registerFormHandlers(registerInvoke, { editor: deps.editor });
+
+  registerStructureHandlers(registerInvoke, { editor: deps.editor, engine: deps.engine });
 
   registerSignatureHandlers(registerInvoke, {
     signatures: deps.signatures,

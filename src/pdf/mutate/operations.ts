@@ -199,6 +199,20 @@ export function describeOperation(operation: EditOperation): string {
       return 'Change document properties';
     case 'setDocumentLanguage':
       return operation.language === null ? 'Clear document language' : 'Set document language';
+    case 'setDocumentTitle':
+      return operation.title === null ? 'Clear document title' : 'Set document title';
+    case 'setDisplayDocTitle':
+      return operation.display
+        ? 'Show the title in the title bar'
+        : 'Show the file name in the title bar';
+    case 'setAltText':
+      return operation.alt === null ? 'Clear alternate text' : 'Set alternate text';
+    case 'setFieldTooltips':
+      return operation.fields.length === 1
+        ? `Name ${operation.fields[0]?.name ?? 'field'}`
+        : `Name ${String(operation.fields.length)} fields`;
+    case 'setTabOrder':
+      return 'Set the tab order to follow the tags';
     case 'addAttachments':
       return operation.tokens.length === 1 ? 'Attach a file' : 'Attach files';
     case 'removeAttachments':
