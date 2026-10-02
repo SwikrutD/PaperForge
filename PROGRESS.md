@@ -2,12 +2,12 @@
 
 ## Current status
 
-- Last completed segment: **16 — Compare, optimize, repair, crop**
-- Next segment: **17 — Accessibility and practical advanced tools**
+- Last completed segment: **17 — Accessibility and practical advanced tools**
+- Next segment: **18 — Printing and Windows integration**
 - Build status: `npm run package` succeeds; the end-to-end suite drives the built application
-- Test status: 774 unit tests (66 files) and 157 Playwright end-to-end tests passing;
-  typecheck, lint and format clean. qpdf 12.4.2 is installed on the build machine, so the repair
-  and optimize end-to-end tests ran against it; the Protect walkthrough is still a manual step.
+- Test status: 807 unit tests (72 files) and 165 Playwright end-to-end tests passing;
+  typecheck, lint and format clean. qpdf 12.4.2 is installed on the build machine; the Protect
+  walkthrough is still a manual step.
 
 ## Completed segments
 
@@ -28,7 +28,7 @@
 - [x] 14 Protect, metadata, sanitize, attachments
 - [x] 15 True redaction
 - [x] 16 Compare, optimize, repair, crop
-- [ ] 17 Accessibility and practical advanced tools
+- [x] 17 Accessibility and practical advanced tools
 - [ ] 18 Printing and Windows integration
 - [ ] 19 Performance, polish, QA, release candidate
 
@@ -789,11 +789,15 @@ Recognize Text rather than writing an empty file.
 - The viewer is continuous scrolling only. Single page, two-page spread, cover page, the hand and
   marquee-zoom tools and presentation mode are part of the fuller viewer in `CLAUDE.md` section 10
   and are not built yet.
-- Layer visibility applies to the view only. Saving a default layer state needs the write engine,
-  which is Segment 5.
+- Changing a layer's visibility applies to the view; Save as default writes it into the document.
+  Layers locked by the document are not shown as locked, and per-layer usage settings (print or
+  export visibility) are not edited.
 - Attachments are listed but cannot be saved, added or removed; that is Segment 14. No size is
   shown, because the listing PDF.js returns does not carry one.
-- Bookmarks can be read and followed but not added, renamed, reordered or restyled (Segment 17).
+- Bookmarks are moved with buttons and keys, not by dragging. Expanding and collapsing an entry in
+  the panel is not written to the file (the operation exists; the panel does not use it). A
+  bookmark goes to a page and a height on it, at the reader's zoom; PaperForge does not write other
+  destination kinds, though it keeps them on entries it renames or moves.
 - Search covers text. Searching bookmarks and annotations, and regular expressions, are not
   implemented; a query is matched literally, so punctuation searches for itself.
 - A search stops collecting at 5,000 matches and says so rather than growing without bound.
@@ -966,6 +970,19 @@ Recognize Text rather than writing an empty file.
   that needs a password to open.
 - The crop frame is drawn on one page at a time; bleed, trim and art boxes are shown but not edited.
 
+- The Accessibility Check reads structure; it does not certify anything, add tags, repair a tag
+  tree, edit reading order or judge colour contrast. Alternate text is offered for `Figure` and
+  `Formula` elements only. A figure is located by the page content its marked-content identifiers
+  own; content drawn inside a group under its own identifiers is not located. The title fix writes
+  the information dictionary and leaves an XMP title as it was.
+- "Text outside the tags" counts show operations outside marked content on the page itself; text
+  drawn inside a group is not checked. Image-only pages are judged by counting: a page that paints a
+  picture and shows no text at all.
+- Measurements use one rectilinear scale per document for as long as it is open; a page's own
+  viewport measure dictionaries (`/VP`) and `/UserUnit` are not read. Angles, radius and
+  geographic (`/GEO`) measures are not offered. A measurement can be moved and restyled; its
+  scale is fixed when it is made.
+
 ## Segment 14 — what landed
 
 **Document Properties.** `src/pdf/metadata/` reads the information dictionary, the custom entries
@@ -1116,7 +1133,58 @@ how to start.
 | Renderer | `stores/{compare,crop,optimize}Store.ts`, `services/compare{Render,Documents}.ts`, `components/{compare,crop,optimize,repair}/*`                       |
 | Tests    | `tests/unit/shared/{compare,optimize,cropBoxes}.test.ts`, `tests/unit/main/document{Repair,Optimizer}.test.ts`, `tests/e2e/{compare,pageTools}.e2e.ts` |
 
+## Segment 17 — what landed
+
+**Accessibility Check.** A tool of its own in the properties panel (Tools menu, palette, home card).
+It was the last home-screen card without a command, so the "not built yet" card state had nothing
+left to describe and is gone. `src/pdf/accessibility/` reads the tag tree with its role map, the
+marked-content brackets pages draw in, and what each page draws through its groups, and reports
+fourteen checks: title, title bar, language, tags, figure alternate text, pages without text, field
+descriptions, links that go nowhere, link descriptions, tab order, text outside the tags, security
+against assistive technology, and two that only a person can make (reading order, contrast),
+listed as such rather than passed. Statuses are words as well as colours. Fixes are edit operations
+(title, title bar, language, alternate text, field descriptions, tab order), alternate text is
+refused if the tag tree has moved, and the check runs again on each new revision. Pages without
+text hand their numbers to Recognize Text, which opens with them as its range.
+
+**Reading order.** `accessibility:readingOrder` boxes, for each element of the tag tree that owns
+content on a page, the text, pictures, paths and groups drawn under its identifiers, numbered in
+tree order; untagged text comes back separately and is drawn dashed. Only real structure and real
+geometry are drawn.
+
+**Bookmarks editing.** The bookmarks panel now reads the outline through the write engine and edits
+it: add at the current view (a new `viewTop` in the view state records the height at the top of the
+window), rename in place (F2, double-click), move up and down, nest and un-nest (Alt+Shift+arrows),
+bold, italic, colour, re-point, delete, each undoable. The outline is read into arrays of its own
+dictionaries, changed and relinked with correct `/Count`s, so an entry keeps whatever else it
+carries. An encrypted document shows the PDF.js outline, read-only.
+
+**Measuring.** Distance, perimeter and area, placed a click at a time (Shift keeps a segment level
+or at 45 degrees), written as dimension annotations with a rectilinear `/Measure`, the value as the
+comment and a caption in the appearance. Calibrate sets the document's scale from a known length; a
+measurement keeps its scale, is re-measured when reshaped, and shows its value and scale in the
+annotation properties and the Measure panel.
+
+**Layers.** Nested display order with headings, Show all and Hide all, and Save as default, which
+writes `/ON` and `/OFF` into the default optional-content configuration.
+
+**Fixed on the way.** A Zustand selector that built a new scale object on every call made React
+loop; the measuring components select the parts instead.
+
+| Area     | Files                                                                                                                      |
+| -------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Engine   | `src/pdf/accessibility/*`, `src/pdf/bookmarks/*`, `src/pdf/layers/defaults.ts`, `annotations/measure.ts`                   |
+| Shared   | `schemas/{accessibility,bookmark}.ts`, `measure` on annotations, `utils/measure.ts`, eleven operations                     |
+| Main     | `main/ipc/handlers/structureHandlers.ts`: `accessibility:check`, `accessibility:readingOrder`, `bookmarks:list`            |
+| Renderer | `stores/{accessibility,bookmark,measure}Store.ts`, `components/{accessibility,measure}/*`, `BookmarkEditor`, `LayersPanel` |
+| Tests    | `unit/shared/{accessibility,bookmarks,measure,layers}.test.ts`, `e2e/{accessibility,bookmarks,measure}.e2e.ts`             |
+
 ## What is not yet verified
+
+**Segment 17 against third-party files and assistive technology.** The checks, alternate text and
+reading order are proven on generated tagged documents. Walk the Segment 17 section of
+`docs/QA_CHECKLIST.md` with a tagged Word export and a screen reader, and check measurements on a
+real scaled drawing.
 
 **Protect PDF against a real qpdf.** qpdf 12.4.2 is now installed on the build machine, and every
 save in the end-to-end suite was checked by it, but the Protect walkthrough in
@@ -1151,35 +1219,34 @@ Nothing is downloaded at runtime, then or now.
 
 Run on Windows 11 x64, Node 24.19.0, npm 11.17.0:
 
-| Command                     | Result                                                                                                                                                  |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                                                                          |
-| `npm run typecheck`         | Pass — four projects, no errors (the renderer project now includes `src/workers`)                                                                       |
-| `npm run lint`              | Pass — no errors, no warnings                                                                                                                           |
-| `npm test`                  | Pass — 774 tests in 66 files                                                                                                                            |
-| `npm run test:e2e`          | Pass — 157 Playwright tests against the built application                                                                                               |
-| `npm run format:check`      | Pass — Prettier clean                                                                                                                                   |
-| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                                                                               |
-| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                                                                        |
-| Packaged launch/close smoke | Pass — window ready in ~1 s                                                                                                                             |
-| Settings upgrade            | Pass — unchanged this segment                                                                                                                           |
-| Appearance                  | Checked by driving the real application: compare (side by side, overlay), crop frame and panel, Optimize and Check and Repair dialogs in light and dark |
-| qpdf                        | Installed (12.4.2); repair and optimize e2e tests ran against it. Protect walkthrough not yet run by hand.                                              |
+| Command                     | Result                                                                                                    |
+| --------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `npm install`               | Pass; unchanged this segment, no dependency added                                                         |
+| `npm run typecheck`         | Pass; four projects, no errors                                                                            |
+| `npm run lint`              | Pass; no errors, no warnings                                                                              |
+| `npm test`                  | Pass; 807 tests in 72 files                                                                               |
+| `npm run test:e2e`          | Pass; 165 Playwright tests against the built application                                                  |
+| `npm run format:check`      | Pass; Prettier clean                                                                                      |
+| `npm run dev`               | Pass; Vite dev server and Electron window, no renderer errors in the log                                  |
+| `npm run package`           | Pass; `out/PaperForge-win32-x64/PaperForge.exe`                                                           |
+| Packaged launch/close smoke | Pass; window ready in about 1 s                                                                           |
+| Appearance                  | Checked in the real application: the check and reading order in light and dark, bookmark tools, measuring |
 
 ## Manual setup required
 
 None beyond `npm install`. On npm 11 the first install asks to approve the Electron install script;
 `package.json` already records the approval (`allowScripts`), so it should not ask again.
 
-## Where Segment 17 starts
+## Where Segment 18 starts
 
-- **Accessibility checker** can read title and language through `src/pdf/metadata/` (both already
-  editable through `setMetadata` and `setDocumentLanguage`), form field names through the form
-  model, and image-only pages through the same text test search uses.
-- **Bookmarks editing** has the outline writer from Combine (`src/pdf/create/outline.ts`).
-- **Measurement tools** are annotations; the annotation writer (`src/pdf/mutate/annotations/`)
-  takes a new kind the same way the others were added.
-- **Reading-order visualisation** should only be built on the structure tree where one exists.
+- **Printing** has nothing yet: there is no `Ctrl+P` command (it is listed as planned in
+  `docs/KEYBOARD_SHORTCUTS.md`). Rendering pages for a print document can reuse the rendering the
+  export and redaction paths use (`renderer/services/exportRender.ts`), and leaving annotations out
+  can use the `contentOnly` render option.
+- **File association and Open With** need the packaging config (`forge.config.ts`, zip only today)
+  and the main process's `second-instance` handler, which today only focuses the window, to open
+  the paths it is given.
+- **Taskbar progress** can follow the job store (`renderer/stores/jobStore.ts`).
 
 ## Next-session instruction
 
