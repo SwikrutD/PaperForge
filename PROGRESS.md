@@ -2,10 +2,11 @@
 
 ## Current status
 
-- Last completed segment: **17 — Accessibility and practical advanced tools**
-- Next segment: **18 — Printing and Windows integration**
-- Build status: `npm run package` succeeds; the end-to-end suite drives the built application
-- Test status: 807 unit tests (72 files) and 165 Playwright end-to-end tests passing;
+- Last completed segment: **18 — Printing and Windows integration**
+- Next segment: **19 — Performance, polish, QA, release candidate**
+- Build status: `npm run package` and `npm run make` succeed (`PaperForge-Setup.exe` and a zip);
+  the end-to-end suite drives the built application
+- Test status: 852 unit tests (76 files) and 174 Playwright end-to-end tests passing;
   typecheck, lint and format clean. qpdf 12.4.2 is installed on the build machine; the Protect
   walkthrough is still a manual step.
 
@@ -29,7 +30,7 @@
 - [x] 15 True redaction
 - [x] 16 Compare, optimize, repair, crop
 - [x] 17 Accessibility and practical advanced tools
-- [ ] 18 Printing and Windows integration
+- [x] 18 Printing and Windows integration
 - [ ] 19 Performance, polish, QA, release candidate
 
 ## Segment 0 — what landed
@@ -978,6 +979,19 @@ Recognize Text rather than writing an empty file.
 - "Text outside the tags" counts show operations outside marked content on the page itself; text
   drawn inside a group is not checked. Image-only pages are judged by counting: a page that paints a
   picture and shows no text at all.
+- Printing sends pictures of the pages (150 or 300 dpi), not the PDF's vector content, so very
+  fine print is limited by that resolution and large jobs take a moment per page to prepare. Paper
+  trays, both-sided printing and finishing are left to the Windows print dialog. Whether a silent
+  job honours colour, copies and collation is up to the printer driver; grey is also applied to the
+  pictures. Printing has been checked through Chromium's PDF output in the end-to-end suite, not on
+  a physical printer.
+- Windows does not let an app make itself the default PDF handler; PaperForge adds itself to Open
+  With and Default apps and opens the Settings page. Uninstalling leaves Squirrel's `Update.exe`
+  and a folder marked `.dead` in `%LOCALAPPDATA%\PaperForge`, which Squirrel removes on its next
+  run; delete the folder by hand otherwise. There is no auto-update, and no arm64 installer yet.
+- The jump list, taskbar AppUserModelID and file association are set by installed copies only; a
+  development build or the zip leaves the registry alone. Notifications need the Start menu
+  shortcut the installer makes, so the zip build may not show them.
 - Measurements use one rectilinear scale per document for as long as it is open; a page's own
   viewport measure dictionaries (`/VP`) and `/UserUnit` are not read. Angles, radius and
   geographic (`/GEO`) measures are not offered. A measurement can be moved and restyled; its
@@ -1179,7 +1193,63 @@ loop; the measuring components select the parts instead.
 | Renderer | `stores/{accessibility,bookmark,measure}Store.ts`, `components/{accessibility,measure}/*`, `BookmarkEditor`, `LayersPanel` |
 | Tests    | `unit/shared/{accessibility,bookmarks,measure,layers}.test.ts`, `e2e/{accessibility,bookmarks,measure}.e2e.ts`             |
 
+## Segment 18 — what landed
+
+**Printing.** `Ctrl+P` (File menu, palette) opens Print: printer (the Windows default marked, read
+from the registry because Chromium no longer reports it), or the Windows print dialog; all pages,
+this page, a range, and odd or even pages; copies and collation; fit, actual size or a custom
+scale; orientation following the pages or fixed; turning pages to match the paper; centring;
+comments and fields; grey; standard or high quality. The window draws each page with PDF.js's print
+intent (annotations marked not for printing are left out; layers print as shown) and the main
+process writes it to the job's own folder at once, then lays the sheets out with CSS that adapts to
+whatever paper the printer or the Windows dialog chooses, and prints a locked-down hidden window.
+Stopping or dismissing the dialog prints nothing and leaves nothing behind.
+
+**Opening from Windows.** Files PaperForge is started with — Open With, Explorer, a jump list item —
+or handed by a second launch are reduced to absolute `.pdf` paths and opened in the running
+window; switches, URLs, device paths and other files are ignored. `--new-window` (the jump list's
+task) opens another window.
+
+**Taskbar, jump list, notifications.** Long jobs show on the taskbar button. A Windows notification
+reports a job of five seconds or more that finished while PaperForge was in the background
+(Settings → Windows can turn it off; a new `notifications` settings section). The jump list shows
+pinned and recent files and New window.
+
+**Installer.** `npm run make` builds a per-user Squirrel installer: `%LOCALAPPDATA%\PaperForge`, no
+administrator rights, Start menu and desktop shortcuts, the Open With entry and Default-apps
+capability for `.pdf` under `HKCU`, nothing downloaded (the Apps & features icon is local), and an
+uninstall that removes the shortcuts, the Start menu folder, the association and the Apps entry.
+Settings → Windows shows whether PaperForge is offered or default, can add or remove the Open With
+entry, and opens Windows' Default apps page; a development build says it cannot be registered.
+
+**Fixed on the way.** Restyling a bookmark sent the whole style as last read, so Bold followed at
+once by a colour lost the bold; the bookmarks end-to-end test caught it intermittently. Restyles
+now send patches that build on each other.
+
+**Installer smoke test.** Run twice on the build machine (Windows 11, standard user): install
+with `PaperForge-Setup.exe --silent`; the shortcuts, the `HKCU` ProgID, Open With entry,
+`RegisteredApplications` and Apps entry were present; the installed launcher opened a PDF with a
+Unicode name and spaces from its command line, and a second launch handed another file to the
+running window; the Apps entry's icon was re-pointed at the executable; `Update.exe --uninstall`
+removed shortcuts, Start menu folder, association and Apps entry and left the other `.pdf` Open
+With entry alone. Not yet run on a clean VM.
+
+| Area     | Files                                                                                                      |
+| -------- | ---------------------------------------------------------------------------------------------------------- |
+| Main     | `services/printing/*`, `services/windows/*`, `windows/launchRouting.ts`, `ipc/handlers/{print,system}*`    |
+| Shared   | `schemas/{print,system}.ts`, `utils/printPages.ts`, `notifications` in settings, eleven channels           |
+| Renderer | `components/print/PrintDialog.tsx`, `stores/printStore.ts`, `services/printRender.ts`, `WindowsSetting`    |
+| Renderer | `app/useDesktopIntegration.ts`, `openLaunchPaths` in the document store, the `print` render option         |
+| Build    | `forge.config.ts` (MakerSquirrel), `@electron-forge/maker-squirrel` 7.11.2 (MIT)                           |
+| Tests    | `unit/main/{printing,registry,windowsIntegration}`, `unit/{shared/printPages,renderer/desktopIntegration}` |
+| Tests    | `e2e/print.e2e.ts`, `e2e/windows.e2e.ts`                                                                   |
+
 ## What is not yet verified
+
+**Segment 18 on paper and on a clean machine.** Printing was proven through Chromium's PDF output,
+and the installer on the build machine. Walk the Segment 18 section of `docs/QA_CHECKLIST.md` with
+a physical printer (or Microsoft Print to PDF) and on a clean Windows VM, including choosing
+PaperForge as the default PDF app and display scaling at 125–200%.
 
 **Segment 17 against third-party files and assistive technology.** The checks, alternate text and
 reading order are proven on generated tagged documents. Walk the Segment 17 section of
@@ -1219,34 +1289,35 @@ Nothing is downloaded at runtime, then or now.
 
 Run on Windows 11 x64, Node 24.19.0, npm 11.17.0:
 
-| Command                     | Result                                                                                                    |
-| --------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `npm install`               | Pass; unchanged this segment, no dependency added                                                         |
-| `npm run typecheck`         | Pass; four projects, no errors                                                                            |
-| `npm run lint`              | Pass; no errors, no warnings                                                                              |
-| `npm test`                  | Pass; 807 tests in 72 files                                                                               |
-| `npm run test:e2e`          | Pass; 165 Playwright tests against the built application                                                  |
-| `npm run format:check`      | Pass; Prettier clean                                                                                      |
-| `npm run dev`               | Pass; Vite dev server and Electron window, no renderer errors in the log                                  |
-| `npm run package`           | Pass; `out/PaperForge-win32-x64/PaperForge.exe`                                                           |
-| Packaged launch/close smoke | Pass; window ready in about 1 s                                                                           |
-| Appearance                  | Checked in the real application: the check and reading order in light and dark, bookmark tools, measuring |
+| Command                | Result                                                                                         |
+| ---------------------- | ---------------------------------------------------------------------------------------------- |
+| `npm install`          | Pass; adds `@electron-forge/maker-squirrel` 7.11.2 (and `electron-winstaller` 5.4.4)           |
+| `npm run typecheck`    | Pass; four projects, no errors                                                                 |
+| `npm run lint`         | Pass; no errors, no warnings                                                                   |
+| `npm test`             | Pass; 852 tests in 76 files                                                                    |
+| `npm run test:e2e`     | Pass; 174 Playwright tests against the built application                                       |
+| `npm run format:check` | Pass; Prettier clean                                                                           |
+| `npm run dev`          | Pass; Vite dev server and Electron window                                                      |
+| `npm run package`      | Pass; `out/PaperForge-win32-x64/PaperForge.exe`; launch/close smoke passed                     |
+| `npm run make`         | Pass; `out/make/squirrel.windows/x64/PaperForge-Setup.exe` and the zip                         |
+| Installer smoke        | Pass, twice, on the build machine: install, open from the command line, hand-over, uninstall   |
+| Print layout           | Checked by rendering Chromium's output: fitted, turned and centred pages in light of the paper |
 
 ## Manual setup required
 
-None beyond `npm install`. On npm 11 the first install asks to approve the Electron install script;
-`package.json` already records the approval (`allowScripts`), so it should not ask again.
+None beyond `npm install`. On npm 11 the first install asks to approve the Electron and
+electron-winstaller install scripts; `package.json` already records both approvals (`allowScripts`).
 
-## Where Segment 18 starts
+## Where Segment 19 starts
 
-- **Printing** has nothing yet: there is no `Ctrl+P` command (it is listed as planned in
-  `docs/KEYBOARD_SHORTCUTS.md`). Rendering pages for a print document can reuse the rendering the
-  export and redaction paths use (`renderer/services/exportRender.ts`), and leaving annotations out
-  can use the `contentOnly` render option.
-- **File association and Open With** need the packaging config (`forge.config.ts`, zip only today)
-  and the main process's `second-instance` handler, which today only focuses the window, to open
-  the paths it is given.
-- **Taskbar progress** can follow the job store (`renderer/stores/jobStore.ts`).
+- Segment 19 is the release candidate pass: profiling, 1,000-page and large scanned documents,
+  keyboard-only and high-contrast passes, a check that no mocked feature or dev-only path is
+  visible, and `docs/RELEASE_CHECKLIST.md` and `docs/KNOWN_LIMITATIONS.md` (the Known limitations
+  section above is their starting point).
+- The manual walkthroughs listed under "What is not yet verified" belong there too, along with a
+  clean-VM install.
+- `npm run make` produces the installer; the e2e suite still launches the built main bundle with
+  the stock Electron binary, because the packaged app's fuses refuse an inspector.
 
 ## Next-session instruction
 
