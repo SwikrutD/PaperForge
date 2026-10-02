@@ -39,22 +39,28 @@ refuses to start if two commands claim the same one.
 
 Shell behaviour that needs no chord:
 
-| Keys                      | Behaviour                                                                                        |
-| ------------------------- | ------------------------------------------------------------------------------------------------ |
-| `Tab` / `Shift+Tab`       | Move between controls, with a visible focus ring                                                 |
-| Middle-click a tab        | Close that document                                                                              |
-| `Arrow keys`              | Move within a menu, the palette results, the theme options, or a divider                         |
-| `Ctrl+wheel`              | Zoom the document                                                                                |
-| `Page Up` / `Page Down`   | Scroll the page column by a screen                                                               |
-| `Home` / `End`            | Jump to the start or the end of the document                                                     |
-| `Home` / `End`            | On a panel divider: minimum and maximum width                                                    |
-| `Enter` / `Space`         | Activate the focused control                                                                     |
-| `Escape`                  | Close the palette, a menu, a dialog, the find bar or reading mode, or go back to the select tool |
-| `Ctrl+A` in the page grid | Choose every page; `Escape` chooses none                                                         |
-| `Delete` in the page grid | Remove the chosen pages                                                                          |
-| `Arrow keys` in the grid  | Move the chosen page; with `Shift`, extend the selection                                         |
-| Double-click a page       | Leave the grid and read that page                                                                |
-| `Enter` in the find field | Next match; `Shift+Enter` for the previous one                                                   |
+| Keys                       | Behaviour                                                                                        |
+| -------------------------- | ------------------------------------------------------------------------------------------------ |
+| `Tab` / `Shift+Tab`        | Move between controls, with a visible focus ring                                                 |
+| Middle-click a tab         | Close that document                                                                              |
+| `Arrow keys`               | Move within a menu, the palette results, the theme options, or a divider                         |
+| `Ctrl+wheel`               | Zoom the document                                                                                |
+| `Page Up` / `Page Down`    | Scroll the page column by a screen                                                               |
+| `Home` / `End`             | Jump to the start or the end of the document                                                     |
+| `Home` / `End`             | On a panel divider: minimum and maximum width                                                    |
+| `Enter` / `Space`          | Activate the focused control                                                                     |
+| `Escape`                   | Close the palette, a menu, a dialog, the find bar or reading mode, or go back to the select tool |
+| `Ctrl+A` in the page grid  | Choose every page; `Escape` chooses none                                                         |
+| `Delete` in the page grid  | Remove the chosen pages                                                                          |
+| `Arrow keys` in the grid   | Move the chosen page; with `Shift`, extend the selection                                         |
+| Double-click a page        | Leave the grid and read that page                                                                |
+| `Enter` in the find field  | Next match; `Shift+Enter` for the previous one                                                   |
+| `F2` in the bookmarks      | Rename the selected bookmark; `Enter` keeps the new title, `Escape` abandons it                  |
+| `Delete` in the bookmarks  | Delete the selected bookmark and what is nested under it                                         |
+| `Alt+Shift+Up` / `Down`    | In the bookmarks: move the selected bookmark up or down                                          |
+| `Alt+Shift+Right` / `Left` | In the bookmarks: nest it under the one above, or move it out a level                            |
+| `Enter` while measuring    | Finish a perimeter or area; `Backspace` removes the last point, `Escape` abandons the shape      |
+| `Shift` while measuring    | Keep the next segment level, upright or at 45°                                                   |
 
 Bare printable keys are suppressed while the focus is in a text field. Function keys are not:
 `F3` has to keep stepping through matches while the find field has focus, and `F4`, `F6` and `F11`

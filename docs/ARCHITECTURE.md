@@ -57,6 +57,8 @@ src/
       admin/       document properties, protect, remove hidden information
       compare/     the comparison workspace: toolbar, panes, overlay, differences list
       crop/        the crop frame on the page, its toolbar and its panel
+      accessibility/ the Accessibility Check panel, its fixes and the reading-order overlay
+      measure/     the measuring tools: the layer that places points, toolbar, panel
       optimize/    the Optimize PDF dialog
       repair/      the Check and Repair dialog
       workspace/   the properties panel
@@ -84,6 +86,9 @@ src/
     compare/       word differences, pixel differences, and the model that joins them
     optimize/      measuring how pictures are drawn, resampling, re-encoding, compressing
     structure/     reading a file's cross-reference table without a sidecar
+    accessibility/ the tag tree, marked content, page inventory, the checks and their fixes
+    bookmarks/     the outline as arrays of its own dictionaries, read and relinked
+    layers/        the default visibility of optional content
   workers/         Web Workers; compare.worker.ts compares two pages' pixels
 scripts/           build-time tooling (icon generation)
 tests/unit/        Vitest suites mirroring src/
@@ -360,6 +365,53 @@ slot the redaction and form layers use. A frame drawn on one page becomes margin
 what that page shows (`src/shared/utils/cropBoxes.ts`, shared with the page grid), and the margins
 are applied to the pages in scope as one `cropPages` transaction. The panel shows all five page
 boxes as the page declares them.
+
+## Accessibility Check
+
+The check is a mode of the viewer like cropping (`accessibilityStore`, `components/accessibility/`)
+that has the properties panel to itself. `accessibility:check` runs `src/pdf/accessibility/check.ts`
+on the current revision and returns one result per check, each `passed`, `failed`, `warning`,
+`manual` (only a person can judge it) or `notApplicable`, with the items it found and where they
+are. It reads the tag tree with its role map (`structure.ts`), the marked-content brackets a page
+draws its content in (`markedContent.ts`), and how much text and how many pictures each page draws
+through any groups (`inventory.ts`). Fixes are edit operations — `setDocumentTitle`,
+`setDisplayDocTitle`, `setDocumentLanguage`, `setAltText`, `setFieldTooltips`, `setTabOrder` — so
+each is undoable and the check simply runs again on the revision it produced. Alternate text names
+its element by position in the tree and restates its type, and is refused when the tree has moved.
+
+`accessibility:readingOrder` gives one page's content in tag-tree order: for every element that owns
+content on the page, the box of the text, pictures, paths and groups drawn under its marked-content
+identifiers, read from the page's own drawing (`readingOrder.ts`). Text drawn outside any bracket
+and not marked as decoration comes back separately. Nothing is guessed; a document without tags has
+no order to show, and PaperForge does not add tags.
+
+## Bookmarks
+
+`bookmarks:list` reads the outline through the write engine with each entry's position, page,
+style, open state and what kind of action it has. The panel edits it with four operations —
+`addBookmark`, `updateBookmark`, `deleteBookmark`, `moveBookmark` — that name an entry by position
+and restate its title, so an edit against an outline that has since changed is refused.
+`src/pdf/bookmarks/outlineTree.ts` reads the linked lists into arrays of the entries' own
+dictionaries, changes the arrays, and writes every link and `/Count` again; an entry keeps every key
+PaperForge does not write, including an action it does not understand. A document the write engine
+cannot open (an encrypted one) shows the outline PDF.js read, without editing.
+
+## Measuring
+
+A measurement is an annotation (`measure` on the annotation model): a line, polyline or polygon with
+`/IT` `LineDimension`, `PolyLineDimension` or `PolygonDimension` and a rectilinear `/Measure`
+dictionary whose first `/X` number format carries the scale (`src/pdf/mutate/annotations/measure.ts`).
+The value is written as the comment and drawn as a caption in the appearance. The arithmetic is in
+`src/shared/utils/measure.ts`. The tool (`measureStore`, `components/measure/`) places points a click
+at a time; the scale is per open document, the page's actual size until the reader calibrates it
+from a known length, and every measurement records the scale it was made with.
+
+## Layers
+
+The panel lists optional content groups in the document's display order with headings and nesting
+(`src/pdf/render/layerOrder.ts`). Visibility changes the view only. Save as default is a
+`setLayerDefaults` edit that writes `/ON` and `/OFF` in full into `/OCProperties /D`
+(`src/pdf/layers/defaults.ts`), naming layers the way PDF.js does ("12R").
 
 ## Comments
 

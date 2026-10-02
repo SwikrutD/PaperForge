@@ -658,3 +658,38 @@ Run in both light and dark themes:
 - [ ] The panel lists MediaBox, CropBox, BleedBox, TrimBox and ArtBox, "Not set" where absent.
 - [ ] Light and dark themes for the comparison workspace, the crop frame and both dialogs;
       keyboard focus reaches every control.
+
+## Segment 17 — accessibility and practical tools
+
+- [ ] Accessibility Check (Tools menu, palette, home card) opens in the properties panel and runs
+      at once; problems are listed first, every status is a word as well as a colour, and the panel
+      says it does not certify against PDF/UA.
+- [ ] An untagged document: no title, no language and no tags are problems; figures, tab order and
+      untagged text say "Not applicable"; reading order and colour contrast say "Check by hand".
+- [ ] A tagged document exported from Word (with headings, a picture and a link): the tag count is
+      plausible, a picture without alternate text is listed and outlined on its page when chosen,
+      and typing alternate text and saving makes it pass. Read the saved file with a screen reader
+      (Narrator in Edge, or NVDA in another reader) and hear the new text.
+- [ ] Setting the title, "Show the title" and the language all pass afterwards; Undo takes each back.
+- [ ] A scanned page is listed under "Pages without text"; Recognize Text… opens with those pages
+      in the range, and after recognising, the check passes.
+- [ ] A form: fields without a description are listed; a description typed for one is announced by
+      a screen reader.
+- [ ] Show reading order numbers the regions of each page in tag order, with dashed boxes for
+      untagged text; Done removes the overlay.
+- [ ] Bookmarks: add at the current view (with the page scrolled part-way down, the bookmark goes
+      back to that height), rename with F2 and by double-click, move up and down, nest and un-nest,
+      bold, italic and colour, set to current view, delete; each step undoes. Save, reopen in
+      PaperForge and another reader, and see the same outline with the same styles.
+- [ ] An outline entry that opens a web address keeps doing so after it is renamed or moved.
+- [ ] An encrypted document shows its bookmarks read-only.
+- [ ] Measure: distance, perimeter and area on a page at actual size (a 1-inch square on a
+      letter-size page reads 1 sq in). Calibrate from a known length on a scanned drawing, measure
+      with it, and check the values against the drawing's own dimensions.
+- [ ] A saved measurement shows its value in another reader, and in PaperForge's comments panel and
+      properties panel with its scale.
+- [ ] Layers: a document with nested layers or labelled groups shows the nesting; Show all and Hide
+      all work; Save as default, save, reopen: the layers hidden are hidden on opening, in
+      PaperForge and another reader.
+- [ ] Light and dark themes for the check, the reading-order overlay, the bookmark tools, the
+      measuring tools and the layers panel; keyboard focus reaches every control.
