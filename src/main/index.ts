@@ -16,6 +16,8 @@ import { nativeImageCodec } from './services/optimize/nativeImageCodec';
 import { DocumentEditor } from './services/documents/documentEditor';
 import { DocumentService } from './services/documents/documentService';
 import { PageExport } from './services/documents/pageExport';
+import { createChromiumPrintDriver } from './services/printing/chromiumPrinter';
+import { PrintJobs } from './services/printing/printJobs';
 import { DocumentCreator } from './services/creation/documentCreator';
 import { SourceLibrary } from './services/creation/sourceLibrary';
 import { createHtmlProvider } from './services/conversion/htmlProvider';
@@ -113,6 +115,14 @@ async function bootstrap(): Promise<void> {
   const signatures = new SignatureLibrary(app.getPath('userData'), logger);
   const engine = new PdfLibMutationEngine();
   const pageExport = new PageExport({ engine, qpdf, logger });
+  // Pages waiting for the printer live in a folder of their own, cleared of
+  // anything an earlier run left behind.
+  const printing = new PrintJobs({
+    root: path.join(app.getPath('temp'), APP_NAME, 'print'),
+    driver: createChromiumPrintDriver(logger),
+    logger,
+  });
+  await printing.clearStale();
   // Everything a new document can be made from. The web-page provider needs
   // Chromium's own printing, so it is registered by the process that has it;
   // local Office conversion joins the list in Segment 13.
@@ -228,6 +238,7 @@ async function bootstrap(): Promise<void> {
     exports,
     office,
     pageExport,
+    printing,
     engine,
     library,
     creator,

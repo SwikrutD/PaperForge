@@ -88,6 +88,11 @@ export const INVOKE_CHANNEL_NAMES = [
   'recovery:restore',
   'recovery:discard',
   'shell:openExternal',
+  'print:printers',
+  'print:start',
+  'print:page',
+  'print:finish',
+  'print:cancel',
 ] as const;
 
 export type InvokeChannel = (typeof INVOKE_CHANNEL_NAMES)[number];

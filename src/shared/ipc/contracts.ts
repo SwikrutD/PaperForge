@@ -70,6 +70,12 @@ import { windowRuntimeStateSchema } from '../schemas/windowState';
 import { accessibilityReportSchema, readingOrderSchema } from '../schemas/accessibility';
 import { bookmarkListSchema } from '../schemas/bookmark';
 import {
+  printerSchema,
+  printOutcomeSchema,
+  printPagePayloadSchema,
+  printSettingsSchema,
+} from '../schemas/print';
+import {
   EVENT_CHANNEL_NAMES,
   INVOKE_CHANNEL_NAMES,
   type EventChannel,
@@ -534,6 +540,28 @@ export const invokeContracts = {
   'shell:openExternal': {
     request: z.strictObject({ url: z.string().min(1).max(4096) }),
     response: z.void(),
+  },
+
+  /** The printers Windows knows about, default first. */
+  'print:printers': { request: z.void(), response: z.array(printerSchema) },
+  /** Starts a print job; the window then sends its pages one at a time. */
+  'print:start': {
+    request: z.strictObject({
+      sessionId: z.string().min(1),
+      settings: printSettingsSchema,
+      pages: z.number().int().min(1).max(100_000),
+    }),
+    response: z.strictObject({ printId: z.string().min(1).max(64) }),
+  },
+  'print:page': { request: printPagePayloadSchema, response: z.null() },
+  /** Lays the pages out and hands them to the printer. */
+  'print:finish': {
+    request: z.strictObject({ printId: z.string().min(1).max(64) }),
+    response: printOutcomeSchema,
+  },
+  'print:cancel': {
+    request: z.strictObject({ printId: z.string().min(1).max(64) }),
+    response: z.null(),
   },
 } as const satisfies Record<InvokeChannel, InvokeContract>;
 

@@ -27,6 +27,7 @@ import {
   MessageSquare,
   MessageSquarePlus,
   Pencil,
+  Printer,
   Square as SquareIcon,
   Stamp,
   Strikethrough,
@@ -244,6 +245,18 @@ export function buildCommands(): CommandDefinition[] {
           ? true
           : { enabled: false, reason: 'This document has no unsaved changes.' },
       run: (context) => context.actions.revert(),
+    },
+    {
+      id: 'file.print',
+      title: 'Print…',
+      description: 'Print this document, or some of its pages, on a printer of this computer.',
+      category: 'file',
+      group: 'print',
+      icon: Printer,
+      shortcut: 'Ctrl+P',
+      keywords: ['printer', 'paper', 'hard copy'],
+      isAvailable: documentRequired,
+      run: (context) => context.actions.openDialog('print'),
     },
     {
       id: 'file.closeDocument',

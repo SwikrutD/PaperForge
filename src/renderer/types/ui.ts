@@ -13,7 +13,8 @@ export type DialogId =
   | 'sanitize'
   | 'applyRedactions'
   | 'repair'
-  | 'optimize';
+  | 'optimize'
+  | 'print';
 
 /** A question the user must answer before something irreversible happens. */
 export interface ConfirmationRequest {

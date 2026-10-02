@@ -6,7 +6,7 @@
 export type JobState = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
 
 export type JobType =
-  'ocr' | 'export' | 'combine' | 'optimize' | 'compare' | 'redact' | 'convert' | 'save';
+  'ocr' | 'export' | 'combine' | 'optimize' | 'compare' | 'redact' | 'convert' | 'save' | 'print';
 
 export interface Job {
   id: string;

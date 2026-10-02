@@ -33,6 +33,7 @@ import { SignatureDialog } from '../components/forms/SignatureDialog';
 import { FlattenDialog } from '../components/forms/FlattenDialog';
 import { OcrDialog } from '../components/ocr/OcrDialog';
 import { ExportDialog } from '../components/convert/ExportDialog';
+import { PrintDialog } from '../components/print/PrintDialog';
 import { DocumentPropertiesDialog } from '../components/admin/DocumentPropertiesDialog';
 import { ProtectDialog } from '../components/admin/ProtectDialog';
 import { SanitizeDialog } from '../components/admin/SanitizeDialog';
@@ -176,6 +177,7 @@ export function App(): ReactElement {
             {dialog === 'flatten' && <FlattenDialog onClose={closeDialog} />}
             {dialog === 'ocr' && <OcrDialog onClose={closeDialog} />}
             {dialog === 'export' && <ExportDialog onClose={closeDialog} />}
+            {dialog === 'print' && <PrintDialog onClose={closeDialog} />}
             {dialog === 'properties' && <DocumentPropertiesDialog onClose={closeDialog} />}
             {dialog === 'protect' && <ProtectDialog onClose={closeDialog} />}
             {dialog === 'sanitize' && <SanitizeDialog onClose={closeDialog} />}

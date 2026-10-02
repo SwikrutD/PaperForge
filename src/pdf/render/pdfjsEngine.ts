@@ -153,6 +153,9 @@ class PdfjsDocument implements LoadedPdfDocument {
     canvas.style.width = `${Math.floor(viewport.width / devicePixelRatio)}px`;
     canvas.style.height = `${Math.floor(viewport.height / devicePixelRatio)}px`;
 
+    const layers = options.contentOnly === true ? null : await this.layersFor(options);
+    if (isAborted(signal)) return;
+
     const task = page.render({
       canvas,
       viewport,
@@ -160,9 +163,13 @@ class PdfjsDocument implements LoadedPdfDocument {
       // itself, which is exactly what filling a form in needs.
       ...(options.hideFormFields === true ? { annotationMode: AnnotationMode.ENABLE_FORMS } : {}),
       ...(options.contentOnly === true ? { annotationMode: AnnotationMode.DISABLE } : {}),
-      ...(this.optionalContent === null || options.contentOnly === true
+      ...(options.print === undefined
         ? {}
-        : { optionalContentConfigPromise: Promise.resolve(this.optionalContent) }),
+        : {
+            intent: 'print',
+            ...(options.print.annotations ? {} : { annotationMode: AnnotationMode.DISABLE }),
+          }),
+      ...(layers === null ? {} : { optionalContentConfigPromise: Promise.resolve(layers) }),
     });
     const abort = (): void => task.cancel();
     signal?.addEventListener('abort', abort, { once: true });
@@ -306,6 +313,19 @@ class PdfjsDocument implements LoadedPdfDocument {
         description: attachment.description ?? null,
       };
     });
+  }
+
+  /**
+   * The layer state a render uses. PDF.js keeps a separate one for printing,
+   * so the reader's choices are copied onto it: a page prints as it is shown.
+   */
+  private async layersFor(options: RenderPageOptions): Promise<OptionalContentConfig | null> {
+    if (this.optionalContent === null || options.print === undefined) return this.optionalContent;
+    const config = await this.document.getOptionalContentConfig({ intent: 'print' });
+    for (const [id, group] of this.optionalContent) {
+      config.setVisibility(id, (group as { visible?: boolean }).visible !== false);
+    }
+    return config;
   }
 
   getLayers(): Promise<PdfLayerEntry[]> {

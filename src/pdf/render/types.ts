@@ -54,6 +54,12 @@ export interface RenderPageOptions {
    * the picture redaction puts in place of a page.
    */
   contentOnly?: boolean;
+  /**
+   * Draws the page for a printer: annotations the document marks as not for
+   * printing are left out, and `annotations: false` leaves out every one.
+   * Layers stay as the reader has switched them.
+   */
+  print?: { annotations: boolean };
   signal?: AbortSignal;
 }
 
