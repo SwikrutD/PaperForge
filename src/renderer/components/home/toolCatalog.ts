@@ -122,6 +122,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     title: 'Optimize PDF',
     description: 'Reduce file size with control over quality.',
     icon: Minimize2,
+    commandId: 'tools.optimize',
     requires: 'optimisation',
   },
   {

@@ -37,6 +37,9 @@ import { applyRedactionOperation } from '../redact/apply';
 import { planRedactions } from '../redact/plan';
 import { findForRedaction } from '../redact/search';
 import { collectGarbage } from '../redact/garbage';
+import { analyzeDocument, optimizeDocument } from '../optimize/optimize';
+import type { ImageCodec } from '../optimize/pixels';
+import type { OptimizeAnalysis, OptimizeReport, OptimizeSettings } from '@shared/schemas/optimize';
 import {
   hasXmpMetadata,
   isLinearized,
@@ -184,6 +187,29 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
       // catalogue no longer reaches is left behind.
       collectGarbage(document);
       return { bytes: await save(document), pageCount: document.getPageCount() };
+    } catch (error) {
+      throw toMutationError(error);
+    }
+  }
+
+  async analyzeForOptimize(bytes: Uint8Array): Promise<Omit<OptimizeAnalysis, 'qpdfAvailable'>> {
+    const document = await load(bytes);
+    try {
+      return analyzeDocument(document, bytes);
+    } catch (error) {
+      throw toMutationError(error);
+    }
+  }
+
+  async optimize(
+    bytes: Uint8Array,
+    settings: OptimizeSettings,
+    codec: ImageCodec | null,
+  ): Promise<{ bytes: Uint8Array; report: OptimizeReport }> {
+    const document = await load(bytes);
+    try {
+      const report = optimizeDocument(document, settings, codec);
+      return { bytes: await save(document), report };
     } catch (error) {
       throw toMutationError(error);
     }

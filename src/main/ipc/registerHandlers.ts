@@ -6,6 +6,7 @@ import { buildAppInfo } from '../services/appInfo';
 import type { DocumentAdmin } from '../services/documents/documentAdmin';
 import type { DocumentEditor } from '../services/documents/documentEditor';
 import type { DocumentRepair } from '../services/documents/documentRepair';
+import type { DocumentOptimizer } from '../services/optimize/documentOptimizer';
 import type { DocumentService } from '../services/documents/documentService';
 import type { QpdfService } from '../services/qpdf/qpdfService';
 import type { StagedAssets } from '../services/documents/stagedAssets';
@@ -46,6 +47,7 @@ export interface IpcDependencies {
   editor: DocumentEditor;
   admin: DocumentAdmin;
   repair: DocumentRepair;
+  optimizer: DocumentOptimizer;
   qpdf: QpdfService;
   stagedAssets: StagedAssets;
   signatures: SignatureLibrary;
@@ -141,6 +143,11 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
     repair: deps.repair,
     senderWindow,
   });
+
+  registerInvoke('optimize:analyze', ({ sessionId }) => deps.optimizer.analyze(sessionId));
+  registerInvoke('optimize:run', ({ sessionId, settings }) =>
+    deps.optimizer.optimize(sessionId, settings),
+  );
 
   registerTextHandlers(registerInvoke, { editor: deps.editor });
 

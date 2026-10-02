@@ -30,6 +30,8 @@ const READ_ONLY_STUBS = {
   planRedactions: () => Promise.reject(new Error('not used in this test')),
   findForRedaction: () => Promise.reject(new Error('not used in this test')),
   rewrite: () => Promise.reject(new Error('not used in this test')),
+  analyzeForOptimize: () => Promise.reject(new Error('not used in this test')),
+  optimize: () => Promise.reject(new Error('not used in this test')),
 } satisfies Partial<PdfMutationEngine>;
 
 const logger = {

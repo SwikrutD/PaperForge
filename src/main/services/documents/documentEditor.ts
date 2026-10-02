@@ -155,6 +155,33 @@ export class DocumentEditor {
   }
 
   /**
+   * Makes a whole document produced elsewhere — by qpdf, say — the next
+   * revision. It is checked the way a save is: bytes PaperForge cannot read
+   * back never become the document being shown.
+   */
+  async applyBytes(
+    sessionId: string,
+    label: string,
+    bytes: Uint8Array,
+  ): Promise<DocumentEditState> {
+    const session = this.requireSession(sessionId);
+    const facts = await this.deps.engine.inspect(bytes);
+    if (facts.encrypted || facts.pageCount < 1) {
+      throw new AppError('io/write-failed', {
+        message: 'The changed document could not be read back, so it was not used.',
+        details: label,
+      });
+    }
+
+    const entry = await this.ensureStarted(sessionId, await this.readCurrentBytes(session));
+    delete entry.annotations;
+    await entry.history.push(label, bytes);
+    await this.markDirty(sessionId, entry);
+    this.deps.logger.info('Applied a change.', session.file.displayName, label);
+    return this.state(sessionId);
+  }
+
+  /**
    * Every annotation in the document as it stands, read from the file itself.
    *
    * The result is kept until the revision changes, so opening the comments

@@ -1,5 +1,6 @@
 import {
   Activity,
+  Minimize2,
   Wrench,
   Crop,
   AppWindow,
@@ -841,6 +842,17 @@ export function buildCommands(): CommandDefinition[] {
           : { enabled: false, reason: 'Nothing is marked for redaction.' };
       },
       run: (context) => context.actions.openDialog('applyRedactions'),
+    },
+    {
+      id: 'tools.optimize',
+      title: 'Optimize PDF',
+      description: 'Make the document smaller, with control over picture quality.',
+      category: 'tools',
+      group: 'document',
+      icon: Minimize2,
+      keywords: ['compress', 'reduce', 'size', 'shrink', 'downsample', 'linearize', 'web'],
+      isAvailable: documentRequired,
+      run: (context) => context.actions.openDialog('optimize'),
     },
     {
       id: 'tools.repair',

@@ -58,6 +58,11 @@ import {
   redactionSearchSchema,
 } from '../schemas/redaction';
 import { repairDiagnosisSchema, repairOutcomeSchema } from '../schemas/repair';
+import {
+  optimizeAnalysisSchema,
+  optimizeOutcomeSchema,
+  optimizeSettingsSchema,
+} from '../schemas/optimize';
 import { recentFilesListSchema } from '../schemas/recentFiles';
 import { settingsPatchSchema, settingsSchema } from '../schemas/settings';
 import { themeStateSchema } from '../schemas/theme';
@@ -474,6 +479,17 @@ export const invokeContracts = {
   'repair:save': {
     request: z.strictObject({ sessionId: z.string().min(1) }),
     response: repairOutcomeSchema,
+  },
+
+  /** What the document holds that an optimisation could act on. */
+  'optimize:analyze': {
+    request: z.strictObject({ sessionId: z.string().min(1) }),
+    response: optimizeAnalysisSchema,
+  },
+  /** Optimises the revision being shown into a new, undoable revision. */
+  'optimize:run': {
+    request: z.strictObject({ sessionId: z.string().min(1), settings: optimizeSettingsSchema }),
+    response: optimizeOutcomeSchema,
   },
 
   'tools:qpdfStatus': { request: z.void(), response: qpdfStatusSchema },

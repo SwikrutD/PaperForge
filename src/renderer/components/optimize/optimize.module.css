@@ -1,0 +1,37 @@
+.advanced > summary {
+  cursor: pointer;
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+}
+
+.advanced[open] > summary {
+  margin-bottom: var(--pf-space-100);
+}
+
+.advanced fieldset + fieldset {
+  margin-top: var(--pf-space-150);
+}
+
+.result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-100);
+  margin: 0;
+  padding: var(--pf-space-150);
+  border: 1px solid var(--pf-color-border);
+  border-radius: var(--pf-radius-md);
+  background-color: var(--pf-color-bg-subtle);
+  font-size: var(--pf-font-size-200);
+}
+
+.saving {
+  margin: 0;
+  font-size: var(--pf-font-size-400);
+  font-weight: var(--pf-font-weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.changes {
+  margin: 0;
+  padding-left: var(--pf-space-200);
+}

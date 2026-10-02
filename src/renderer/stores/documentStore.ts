@@ -76,6 +76,8 @@ export interface DocumentStore {
   updateView: (sessionId: string, patch: Partial<DocumentViewState>) => void;
   /** Recorded by the viewer once it has read the document. */
   setPageCount: (sessionId: string, pageCount: number) => void;
+  /** Records an edit the main process made on its own, such as an optimisation. */
+  receiveEdit: (edit: DocumentEditState) => void;
   /** Applies one undoable change to a document. */
   applyEdit: (sessionId: string, transaction: EditTransaction) => Promise<void>;
   undo: (sessionId: string) => Promise<void>;
@@ -313,6 +315,8 @@ export const useDocumentStore = create<DocumentStore>((set, get) => {
           tab.session.id === sessionId && tab.pageCount !== pageCount ? { ...tab, pageCount } : tab,
         ),
       })),
+
+    receiveEdit: (edit) => applyEditState(edit),
 
     applyEdit: (sessionId, transaction) =>
       runEdit(() => invoke('edit:apply', { sessionId, transaction })),

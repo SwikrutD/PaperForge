@@ -11,6 +11,8 @@ import {
 } from './security/hardening';
 import { DocumentAdmin } from './services/documents/documentAdmin';
 import { DocumentRepair } from './services/documents/documentRepair';
+import { DocumentOptimizer } from './services/optimize/documentOptimizer';
+import { nativeImageCodec } from './services/optimize/nativeImageCodec';
 import { DocumentEditor } from './services/documents/documentEditor';
 import { DocumentService } from './services/documents/documentService';
 import { PageExport } from './services/documents/pageExport';
@@ -160,6 +162,16 @@ async function bootstrap(): Promise<void> {
     workspaceDirectory: (sessionId) => workspaces.directoryFor(sessionId),
   });
 
+  // Optimising writes a new revision, so it is undone like any other change.
+  const optimizer = new DocumentOptimizer({
+    editor,
+    engine,
+    qpdf,
+    codec: nativeImageCodec,
+    logger,
+    workspaceDirectory: (sessionId) => workspaces.directoryFor(sessionId),
+  });
+
   // Closing a document throws its working copies away with it.
   documents.onClosed((sessionId) => {
     stagedAssets.dispose(sessionId);
@@ -208,6 +220,7 @@ async function bootstrap(): Promise<void> {
     editor,
     admin,
     repair,
+    optimizer,
     qpdf,
     stagedAssets,
     signatures,

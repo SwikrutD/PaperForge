@@ -7,15 +7,16 @@ import {
   type Page,
 } from '@playwright/test';
 import electronBinary from 'electron';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, PDFName, PDFNumber, PDFRawStream, StandardFonts } from 'pdf-lib';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { threePageDocument } from '../fixtures/pdf';
 
 /**
- * The page tools of Segment 16, driven in the real application: drawing a
- * crop frame on a page and applying it.
+ * The page tools of Segment 16, driven in the real application: cropping by
+ * a frame drawn on the page, checking and repairing a damaged file, and
+ * optimising one.
  */
 
 const mainBundle = path.resolve('.vite', 'build', 'main.js');
@@ -177,4 +178,76 @@ test('Check and Repair describes a damaged file and writes a repaired copy', asy
   expect(repaired.getPageCount()).toBe(3);
   // The opened file is as it was.
   expect((await fs.readFile(damagedPath)).toString('latin1')).toContain('% padding nobody');
+});
+
+test('Optimize PDF makes pictures smaller, measured, and undoably', async () => {
+  // A photograph-like JPEG, made by the same codec the application uses.
+  const jpeg = Buffer.from(
+    await app.evaluate(({ nativeImage }) => {
+      const size = 800;
+      const bitmap = Buffer.alloc(size * size * 4);
+      let state = 7;
+      for (let index = 0; index < bitmap.length; index += 1) {
+        state = (Math.imul(state, 1103515245) + 12345) >>> 0;
+        bitmap[index] = index % 4 === 3 ? 255 : state >>> 24;
+      }
+      return nativeImage
+        .createFromBitmap(bitmap, { width: size, height: size })
+        .toJPEG(95)
+        .toString('base64');
+    }),
+    'base64',
+  );
+
+  const source = await PDFDocument.create();
+  const sheet = source.addPage([612, 792]);
+  const font = await source.embedFont(StandardFonts.Helvetica);
+  sheet.drawText('Holiday photographs', { x: 72, y: 720, size: 18, font });
+  const picture = await source.embedJpg(jpeg);
+  // 800 pixels across 100 points: 576 dpi.
+  sheet.drawImage(picture, { x: 72, y: 500, width: 100, height: 100 });
+  const photosPath = path.join(sandbox, 'Photos.pdf');
+  await fs.writeFile(photosPath, await source.save());
+  const before = (await fs.stat(photosPath)).size;
+
+  await app.evaluate(({ dialog: electronDialog }, target: string) => {
+    electronDialog.showOpenDialog = () => Promise.resolve({ canceled: false, filePaths: [target] });
+  }, photosPath);
+  await page.keyboard.press('Control+o');
+  await expect(page.getByRole('tab', { name: /Photos\.pdf/ })).toBeVisible();
+  await expect(onPage(1).getByText('Holiday photographs')).toBeVisible();
+
+  await runCommand('Optimize PDF');
+  const dialog = page.getByRole('dialog', { name: 'Optimize PDF' });
+  await expect(dialog).toContainText('Drawn at 576 dpi');
+  await dialog.getByRole('radio', { name: /Balanced/ }).check();
+  await dialog.getByRole('button', { name: 'Optimize' }).click();
+  await expect(dialog.locator('[data-optimize-result="applied"]')).toContainText('% smaller');
+  await expect(dialog).toContainText('1 picture made smaller');
+  await dialog.getByRole('button', { name: 'Done' }).click();
+  await expect(page.getByLabel('Unsaved changes')).toBeVisible();
+
+  await page.keyboard.press('Control+s');
+  await expect(page.getByLabel('Unsaved changes')).toHaveCount(0);
+  const after = (await fs.stat(photosPath)).size;
+  expect(after).toBeLessThan(before / 4);
+
+  // 150 dpi across 100 points, still a JPEG, and the text untouched.
+  const saved = await PDFDocument.load(await fs.readFile(photosPath));
+  const images = saved.context
+    .enumerateIndirectObjects()
+    .map(([, object]) => object)
+    .filter(
+      (object): object is PDFRawStream =>
+        object instanceof PDFRawStream &&
+        object.dict.lookup(PDFName.of('Subtype')) === PDFName.of('Image'),
+    );
+  expect(images).toHaveLength(1);
+  expect(images[0]?.dict.lookup(PDFName.of('Width'), PDFNumber).asNumber()).toBe(208);
+  expect(images[0]?.dict.lookup(PDFName.of('Filter'))).toBe(PDFName.of('DCTDecode'));
+  await expect(onPage(1).getByText('Holiday photographs')).toBeVisible();
+
+  // And it was one step: undo brings the picture back as it was.
+  await page.keyboard.press('Control+z');
+  await expect(page.getByLabel('Unsaved changes')).toBeVisible();
 });

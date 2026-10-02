@@ -3,6 +3,8 @@ import type { EmbeddedFile } from '@shared/schemas/attachment';
 import type { EditOperation } from '@shared/schemas/edit';
 import type { DocumentContentProperties } from '@shared/schemas/metadata';
 import type { SanitizeReport } from '@shared/schemas/sanitize';
+import type { OptimizeAnalysis, OptimizeReport, OptimizeSettings } from '@shared/schemas/optimize';
+import type { ImageCodec } from '../optimize/pixels';
 import type {
   RedactionMark,
   RedactionPlan,
@@ -94,6 +96,17 @@ export interface PdfMutationEngine {
    * is not installed; the input bytes are not modified.
    */
   rewrite(bytes: Uint8Array): Promise<MutationResult>;
+  /** What an optimisation could act on: pictures, streams, thumbnails, metadata. */
+  analyzeForOptimize(bytes: Uint8Array): Promise<Omit<OptimizeAnalysis, 'qpdfAvailable'>>;
+  /**
+   * Writes a smaller document. JPEG pictures need `codec`; without one they
+   * are left as they are and only lossless work is done.
+   */
+  optimize(
+    bytes: Uint8Array,
+    settings: OptimizeSettings,
+    codec: ImageCodec | null,
+  ): Promise<{ bytes: Uint8Array; report: OptimizeReport }>;
   /**
    * Applies operations in order and returns the new document. The input bytes
    * are never modified: a caller keeps its own copy either way.

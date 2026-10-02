@@ -160,12 +160,17 @@ describe('home screen', () => {
     const redactTool = screen.getByRole('button', { name: /Redact/ });
     expect(redactTool).toBeDisabled();
     expect(redactTool).toHaveAttribute('title', 'No document is open.');
-    expect(screen.getAllByText('Needs a document')).toHaveLength(11);
+    // And optimising makes the document in front of the reader smaller.
+    expect(screen.getByRole('button', { name: /Optimize PDF/ })).toBeDisabled();
+    expect(screen.getAllByText('Needs a document')).toHaveLength(12);
 
     // A tool whose capability is not built says something different.
-    const optimizeTool = screen.getByRole('button', { name: /Optimize PDF/ });
-    expect(optimizeTool).toBeDisabled();
-    expect(optimizeTool).toHaveAttribute('title', expect.stringContaining('Not available yet'));
-    expect(screen.getAllByText('Not yet available').length).toBeGreaterThanOrEqual(3);
+    const accessibilityTool = screen.getByRole('button', { name: /Accessibility Check/ });
+    expect(accessibilityTool).toBeDisabled();
+    expect(accessibilityTool).toHaveAttribute(
+      'title',
+      expect.stringContaining('Not available yet'),
+    );
+    expect(screen.getAllByText('Not yet available').length).toBeGreaterThanOrEqual(1);
   });
 });

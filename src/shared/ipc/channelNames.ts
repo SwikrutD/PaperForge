@@ -77,6 +77,8 @@ export const INVOKE_CHANNEL_NAMES = [
   'protect:remove',
   'repair:diagnose',
   'repair:save',
+  'optimize:analyze',
+  'optimize:run',
   'tools:qpdfStatus',
   'tools:locateQpdf',
   'recovery:list',
