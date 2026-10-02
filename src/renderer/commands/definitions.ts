@@ -1,5 +1,6 @@
 import {
   Activity,
+  GitCompare,
   Minimize2,
   Wrench,
   Crop,
@@ -842,6 +843,17 @@ export function buildCommands(): CommandDefinition[] {
           : { enabled: false, reason: 'Nothing is marked for redaction.' };
       },
       run: (context) => context.actions.openDialog('applyRedactions'),
+    },
+    {
+      id: 'tools.compare',
+      title: 'Compare Files',
+      description: 'See what changed between two versions of a document.',
+      category: 'tools',
+      group: 'document',
+      icon: GitCompare,
+      keywords: ['compare', 'difference', 'diff', 'changes', 'versions', 'revision'],
+      isChecked: (context) => context.comparing,
+      run: (context) => context.actions.toggleComparing(),
     },
     {
       id: 'tools.optimize',

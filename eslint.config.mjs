@@ -89,6 +89,11 @@ export default tseslint.config(
     },
   },
   {
+    // Workers run in the window's sandbox, without a document.
+    files: ['src/workers/**/*.ts'],
+    languageOptions: { globals: globals.worker },
+  },
+  {
     files: ['tests/**/*.ts', 'tests/**/*.tsx'],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
     rules: {

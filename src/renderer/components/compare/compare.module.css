@@ -1,0 +1,407 @@
+.workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-space-150);
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  min-height: 48px;
+  padding: var(--pf-space-100) var(--pf-space-200);
+  background-color: var(--pf-color-bg-subtle);
+  border-bottom: 1px solid var(--pf-color-border);
+}
+
+.group {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-space-050);
+}
+
+.fieldLabel {
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+}
+
+.select,
+.offset {
+  height: var(--pf-control-height-sm);
+  padding: 0 var(--pf-space-100);
+  border: 1px solid var(--pf-color-border-strong);
+  border-radius: var(--pf-radius-sm);
+  background-color: var(--pf-color-bg-surface);
+  color: var(--pf-color-text-primary);
+  font-family: inherit;
+  font-size: var(--pf-font-size-200);
+}
+
+.select {
+  max-width: 220px;
+}
+
+.offset {
+  width: 64px;
+  font-variant-numeric: tabular-nums;
+}
+
+.divider {
+  width: 1px;
+  height: 20px;
+  background-color: var(--pf-color-border);
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.filter {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-space-050);
+  font-size: var(--pf-font-size-200);
+}
+
+.body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pf-space-100);
+  flex: 1 1 auto;
+  padding: var(--pf-space-300);
+  text-align: center;
+}
+
+.emptyIcon {
+  width: 40px;
+  height: 40px;
+  color: var(--pf-color-text-secondary);
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: var(--pf-font-size-400);
+  font-weight: var(--pf-font-weight-medium);
+}
+
+.emptyText {
+  max-width: 460px;
+  margin: 0;
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+}
+
+.pairBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pf-space-100);
+  flex: 0 0 auto;
+  padding: var(--pf-space-050);
+  border-bottom: 1px solid var(--pf-color-border);
+}
+
+.pairText {
+  font-size: var(--pf-font-size-200);
+  font-variant-numeric: tabular-nums;
+}
+
+.panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.pane + .pane {
+  border-left: 1px solid var(--pf-color-border);
+}
+
+.paneHeader {
+  display: flex;
+  align-items: baseline;
+  gap: var(--pf-space-100);
+  padding: var(--pf-space-050) var(--pf-space-150);
+  border-bottom: 1px solid var(--pf-color-border);
+}
+
+.paneLabel {
+  font-size: var(--pf-font-size-200);
+  font-weight: var(--pf-font-weight-medium);
+}
+
+.paneMeta {
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+}
+
+.paneScroller {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--pf-space-200) 0;
+  overflow: auto;
+  background-color: var(--pf-color-workspace);
+}
+
+.paneScroller:focus-visible {
+  outline: 2px solid var(--pf-color-focus-ring);
+  outline-offset: -2px;
+}
+
+.measure {
+  width: 100%;
+  height: 0;
+}
+
+.page {
+  position: relative;
+  margin: 0 auto;
+  background-color: #ffffff;
+  box-shadow: var(--pf-shadow-8);
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.noPage {
+  max-width: 320px;
+  margin: var(--pf-space-300) auto;
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+  text-align: center;
+}
+
+/* Differences are outlined, never filled solid: what changed stays readable.
+   Each kind has its own border style as well as colour. */
+.mark {
+  position: absolute;
+  border: 2px solid var(--pf-color-accent);
+  border-radius: 2px;
+  pointer-events: auto;
+}
+
+.textAdded {
+  border-color: var(--pf-color-success);
+  background-color: color-mix(in srgb, var(--pf-color-success) 14%, transparent);
+}
+
+.textRemoved {
+  border-color: var(--pf-color-danger);
+  border-style: dashed;
+  background-color: color-mix(in srgb, var(--pf-color-danger) 12%, transparent);
+}
+
+.textChanged {
+  border-color: var(--pf-color-warning);
+  background-color: color-mix(in srgb, var(--pf-color-warning) 14%, transparent);
+}
+
+.visual,
+.pageSize,
+.pageAdded,
+.pageRemoved {
+  border-color: var(--pf-color-accent);
+  border-style: dotted;
+}
+
+.markSelected {
+  outline: 2px solid var(--pf-color-focus-ring);
+  outline-offset: 2px;
+}
+
+.overlayPane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-100);
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--pf-space-150) var(--pf-space-200);
+  overflow: auto;
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-space-050);
+  flex-wrap: wrap;
+  margin: 0;
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+}
+
+.swatch {
+  width: 12px;
+  height: 12px;
+  margin-left: var(--pf-space-100);
+  border-radius: 2px;
+}
+
+/* The same colours the worker paints into the difference picture, which is
+   document pixels rather than interface, and the same in both themes. */
+.swatchRemoved {
+  background-color: rgb(210 40 40);
+}
+
+.swatchAdded {
+  background-color: rgb(30 100 220);
+}
+
+.swatchChanged {
+  background-color: rgb(230 150 20);
+}
+
+.overlayFrame {
+  position: relative;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.overlayCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  box-shadow: var(--pf-shadow-8);
+}
+
+.differences {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-100);
+  flex: 0 0 300px;
+  min-height: 0;
+  padding: var(--pf-space-150);
+  border-left: 1px solid var(--pf-color-border);
+  background-color: var(--pf-color-bg-surface);
+}
+
+.differencesHeader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-050);
+}
+
+.differencesTitle {
+  margin: 0;
+  font-size: var(--pf-font-size-300);
+  font-weight: var(--pf-font-weight-medium);
+}
+
+.summary,
+.caveat {
+  margin: 0;
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+}
+
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-025);
+}
+
+.differenceList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-025);
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.differenceItem {
+  display: flex;
+  align-items: stretch;
+  gap: var(--pf-space-100);
+  width: 100%;
+  padding: var(--pf-space-050) var(--pf-space-100) var(--pf-space-050) 0;
+  border: none;
+  border-radius: var(--pf-radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.differenceItem:hover {
+  background-color: var(--pf-color-bg-subtle);
+}
+
+.differenceItem:focus-visible {
+  outline: 2px solid var(--pf-color-focus-ring);
+  outline-offset: -2px;
+}
+
+.differenceSelected,
+.differenceSelected:hover {
+  background-color: var(--pf-color-bg-selected);
+}
+
+.kindBar {
+  flex: 0 0 3px;
+  border-radius: 2px;
+  background-color: var(--pf-color-accent);
+}
+
+.kindBar.textAdded {
+  background-color: var(--pf-color-success);
+}
+
+.kindBar.textRemoved {
+  background-color: var(--pf-color-danger);
+}
+
+.kindBar.textChanged {
+  background-color: var(--pf-color-warning);
+}
+
+.differenceText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.differenceSummary {
+  font-size: var(--pf-font-size-200);
+  overflow-wrap: anywhere;
+}
+
+.differenceMeta {
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-100);
+}

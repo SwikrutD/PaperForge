@@ -130,6 +130,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     title: 'Compare Files',
     description: 'See what changed between two versions.',
     icon: GitCompare,
+    commandId: 'tools.compare',
     requires: 'comparison',
   },
   {

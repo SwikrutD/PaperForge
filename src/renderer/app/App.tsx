@@ -19,6 +19,8 @@ import { PdfDocumentProvider } from '../components/viewer/PdfDocumentContext';
 import { PdfViewer } from '../components/viewer/PdfViewer';
 import { OrganizeWorkspace } from '../components/organize/OrganizeWorkspace';
 import { CreateWorkspace } from '../components/create/CreateWorkspace';
+import { CompareWorkspace } from '../components/compare/CompareWorkspace';
+import { useCompareStore } from '../stores/compareStore';
 import { ErrorMessageBar } from '../components/surfaces/MessageBar';
 import { invoke } from '../services/ipcClient';
 import { useAppStore } from '../stores/appStore';
@@ -95,6 +97,7 @@ export function App(): ReactElement {
 
   const organizing = useOrganizeStore((state) => state.active);
   const creating = useCreateStore((state) => state.open);
+  const comparing = useCompareStore((state) => state.open);
   const editingText = useTextEditStore((state) => state.active);
   const setEditingText = useTextEditStore((state) => state.setActive);
   const setOrganizing = useOrganizeStore((state) => state.setActive);
@@ -204,6 +207,9 @@ export function App(): ReactElement {
           {creating ? (
             // Making a document does not need one open, so it comes first.
             <CreateWorkspace />
+          ) : comparing ? (
+            // Comparing works on open documents but is not about any one of them.
+            <CompareWorkspace />
           ) : activeTab === null ? (
             <HomeScreen recentFiles={recentFiles} />
           ) : organizing ? (

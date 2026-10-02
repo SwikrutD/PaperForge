@@ -17,6 +17,7 @@ import { useOrganizeStore } from '../stores/organizeStore';
 import { useSearchStore } from '../stores/searchStore';
 import { marksFor, useRedactionStore } from '../stores/redactionStore';
 import { useCropStore } from '../stores/cropStore';
+import { useCompareStore } from '../stores/compareStore';
 import { useUiStore } from '../stores/uiStore';
 import { buildDiagnosticsText } from '../utils/diagnostics';
 import { CommandApiContext, type CommandApi } from './commandApiContext';
@@ -42,6 +43,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
   const preparingForm = useFormStore((state) => state.preparing);
   const redacting = useRedactionStore((state) => state.active);
   const cropping = useCropStore((state) => state.active);
+  const comparing = useCompareStore((state) => state.open);
   const redactionMarkCount = useRedactionStore(
     (state) => marksFor(state.marks, activeTabId).length,
   );
@@ -64,6 +66,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     const forms = useFormStore.getState;
     const redaction = useRedactionStore.getState;
     const crop = useCropStore.getState;
+    const compare = useCompareStore.getState;
 
     const activeSessionId = (): string | null => documents().activeId;
 
@@ -258,6 +261,17 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         }
         crop().setActive(next);
       },
+      toggleComparing: () => {
+        const next = !compare().open;
+        // Comparing is a workspace of its own, like making a document.
+        if (next) {
+          creation().closeWorkspace();
+          organize().setActive(false);
+          crop().setActive(false);
+          redaction().setActive(false);
+        }
+        compare().setOpen(next);
+      },
       togglePreparingForm: () => {
         const next = !forms().preparing;
         if (next) {
@@ -279,6 +293,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         // act on while it is open.
         organize().setActive(false);
         crop().setActive(false);
+        compare().setOpen(false);
         creation().openWorkspace(intent);
       },
       closeCreateWorkspace: () => creation().closeWorkspace(),
@@ -341,6 +356,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
       redacting,
       redactionMarkCount,
       cropping,
+      comparing,
       annotationTool: annotationTool === 'select' ? null : annotationTool,
       annotationSelected,
       findOpen,
@@ -365,6 +381,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     redacting,
     redactionMarkCount,
     cropping,
+    comparing,
     annotationTool,
     annotationSelected,
     findOpen,
