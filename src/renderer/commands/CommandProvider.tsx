@@ -15,6 +15,7 @@ import { useTextEditStore } from '../stores/textEditStore';
 import { useFormStore } from '../stores/formStore';
 import { useOrganizeStore } from '../stores/organizeStore';
 import { useSearchStore } from '../stores/searchStore';
+import { marksFor, useRedactionStore } from '../stores/redactionStore';
 import { useUiStore } from '../stores/uiStore';
 import { buildDiagnosticsText } from '../utils/diagnostics';
 import { CommandApiContext, type CommandApi } from './commandApiContext';
@@ -38,6 +39,10 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
   const editingText = useTextEditStore((state) => state.active);
   const filling = useFormStore((state) => state.active);
   const preparingForm = useFormStore((state) => state.preparing);
+  const redacting = useRedactionStore((state) => state.active);
+  const redactionMarkCount = useRedactionStore(
+    (state) => marksFor(state.marks, activeTabId).length,
+  );
   const annotationTool = useAnnotationStore((state) => state.tool);
   const annotationSelected = useAnnotationStore((state) => state.selectedId !== null);
   const findOpen = useSearchStore((state) => state.open);
@@ -55,6 +60,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     const creation = useCreateStore.getState;
     const textEditor = useTextEditStore.getState;
     const forms = useFormStore.getState;
+    const redaction = useRedactionStore.getState;
 
     const activeSessionId = (): string | null => documents().activeId;
 
@@ -159,6 +165,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
       toggleReadingMode: () => ui().setReadingMode(!ui().readingMode),
       toggleCommenting: () => {
         const next = !ui().commenting;
+        if (next) redaction().setActive(false);
         ui().setCommenting(next);
         if (!next) annotations().setTool('select');
         else void app().patchSettings({ layout: { rightPanel: { visible: true } } });
@@ -171,6 +178,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         // where a page says what it is.
         if (next) {
           ui().setCommenting(false);
+          redaction().setActive(false);
           void app().patchSettings({
             layout: { activeRightPanel: 'properties', rightPanel: { visible: true } },
           });
@@ -183,6 +191,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
           ui().setCommenting(false);
           annotations().setTool('select');
           organize().setActive(false);
+          redaction().setActive(false);
           void app().patchSettings({
             layout: { activeRightPanel: 'properties', rightPanel: { visible: true } },
           });
@@ -199,6 +208,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
           annotations().setTool('select');
           organize().setActive(false);
           textEditor().setActive(false);
+          redaction().setActive(false);
           void app().patchSettings({
             layout: { activeRightPanel: 'properties', rightPanel: { visible: true } },
           });
@@ -207,6 +217,23 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         }
         forms().setActive(next);
       },
+      toggleRedacting: () => {
+        const next = !redaction().active;
+        // Marking for redaction is a review of the whole page: no other tool
+        // should be taking the pointer while it is on.
+        if (next) {
+          ui().setCommenting(false);
+          annotations().setTool('select');
+          organize().setActive(false);
+          textEditor().setActive(false);
+          if (forms().active) void forms().commitDrafts();
+          forms().setActive(false);
+          void app().patchSettings({
+            layout: { activeRightPanel: 'properties', rightPanel: { visible: true } },
+          });
+        }
+        redaction().setActive(next);
+      },
       togglePreparingForm: () => {
         const next = !forms().preparing;
         if (next) {
@@ -214,6 +241,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
           annotations().setTool('select');
           organize().setActive(false);
           textEditor().setActive(false);
+          redaction().setActive(false);
           void app().patchSettings({
             layout: { activeRightPanel: 'properties', rightPanel: { visible: true } },
           });
@@ -229,6 +257,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
       },
       closeCreateWorkspace: () => creation().closeWorkspace(),
       setAnnotationTool: (tool) => {
+        redaction().setActive(false);
         ui().setCommenting(true);
         annotations().setTool(tool);
       },
@@ -282,6 +311,8 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
       editingText,
       filling,
       preparingForm,
+      redacting,
+      redactionMarkCount,
       annotationTool: annotationTool === 'select' ? null : annotationTool,
       annotationSelected,
       findOpen,
@@ -303,6 +334,8 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     editingText,
     filling,
     preparingForm,
+    redacting,
+    redactionMarkCount,
     annotationTool,
     annotationSelected,
     findOpen,

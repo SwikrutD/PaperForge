@@ -51,6 +51,10 @@ export interface CommandContext {
   readonly filling: boolean;
   /** True while the form is being made rather than filled in. */
   readonly preparingForm: boolean;
+  /** True while redaction marks are being made. */
+  readonly redacting: boolean;
+  /** Marks waiting to be applied to the active document. */
+  readonly redactionMarkCount: number;
   /** True while the find bar is on screen. */
   readonly findOpen: boolean;
   /** How many matches the current search found. */
@@ -92,6 +96,7 @@ export interface CommandActions {
   toggleTextEditing(): void;
   toggleFilling(): void;
   togglePreparingForm(): void;
+  toggleRedacting(): void;
   openCreateWorkspace(intent: 'create' | 'combine'): void;
   closeCreateWorkspace(): void;
   setAnnotationTool(tool: AnnotationKind | 'eraser' | 'select'): void;

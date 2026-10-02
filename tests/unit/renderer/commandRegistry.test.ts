@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { AppError } from '../../../src/shared/errors/appError';
 import { DEFAULT_SETTINGS } from '../../../src/shared/schemas/settings';
 import { CommandRegistry } from '../../../src/renderer/commands/registry';
+import { createCommandRegistry } from '../../../src/renderer/commands/definitions';
 import type { CommandContext, CommandDefinition } from '../../../src/renderer/commands/types';
 
 function makeContext(overrides: Partial<CommandContext> = {}): CommandContext {
@@ -23,6 +24,8 @@ function makeContext(overrides: Partial<CommandContext> = {}): CommandContext {
     editingText: false,
     filling: false,
     preparingForm: false,
+    redacting: false,
+    redactionMarkCount: 0,
     annotationTool: null,
     annotationSelected: false,
     findOpen: false,
@@ -146,5 +149,23 @@ describe('CommandRegistry', () => {
       ['b', false],
     ]);
     expect(registry.listByCategory('help').map((definition) => definition.id)).toEqual(['b']);
+  });
+
+  it('offers Apply Redactions only when something is marked', () => {
+    const registry = createCommandRegistry();
+    const open = makeContext({
+      activeDocument: { id: 'doc' } as CommandContext['activeDocument'],
+    });
+
+    expect(registry.resolve('redact.apply', open)).toMatchObject({
+      enabled: false,
+      reason: 'Nothing is marked for redaction.',
+    });
+    expect(registry.resolve('redact.apply', { ...open, redactionMarkCount: 2 })).toMatchObject({
+      enabled: true,
+    });
+    expect(registry.resolve('tools.redact', { ...open, redacting: true })).toMatchObject({
+      checked: true,
+    });
   });
 });

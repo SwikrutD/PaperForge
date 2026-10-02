@@ -171,7 +171,8 @@ class PdfjsDocument implements LoadedPdfDocument {
       // `ENABLE_FORMS` draws everything except the widgets a form layer draws
       // itself, which is exactly what filling a form in needs.
       ...(options.hideFormFields === true ? { annotationMode: AnnotationMode.ENABLE_FORMS } : {}),
-      ...(this.optionalContent === null
+      ...(options.contentOnly === true ? { annotationMode: AnnotationMode.DISABLE } : {}),
+      ...(this.optionalContent === null || options.contentOnly === true
         ? {}
         : { optionalContentConfigPromise: Promise.resolve(this.optionalContent) }),
     });

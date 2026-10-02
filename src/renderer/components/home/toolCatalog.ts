@@ -114,6 +114,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     title: 'Redact',
     description: 'Remove sensitive content for good, not just cover it.',
     icon: EyeOff,
+    commandId: 'tools.redact',
     requires: 'redaction',
   },
   {

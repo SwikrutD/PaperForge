@@ -10,6 +10,10 @@ const MIN_RECT = 1.5;
 export interface MarkupSelection {
   pageNumber: number;
   quads: number[][];
+  /** The same rectangles, in page coordinates, before they became quads. */
+  rects: AnnotationRect[];
+  /** What was selected, across every page it ran over. */
+  text: string;
 }
 
 /**
@@ -36,6 +40,8 @@ export function useTextMarkup(
 
       const selections = collectSelections(selection, pages, scale, rotation);
       if (selections.length === 0) return;
+      const text = selection.toString().replace(/\s+/g, ' ').trim();
+      for (const entry of selections) entry.text = text;
 
       selection.removeAllRanges();
       onSelection(selections);
@@ -85,7 +91,7 @@ function collectSelections(
   }
 
   return [...byPage.entries()]
-    .map(([pageNumber, rects]) => ({ pageNumber, quads: quadsFromRects(rects) }))
+    .map(([pageNumber, rects]) => ({ pageNumber, quads: quadsFromRects(rects), rects, text: '' }))
     .filter((entry) => entry.quads.length > 0);
 }
 

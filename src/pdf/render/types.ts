@@ -48,6 +48,12 @@ export interface RenderPageOptions {
    * field holds and the control would show it again, half a line apart.
    */
   hideFormFields?: boolean;
+  /**
+   * Draws only the page's own content: no annotations, and layers as the
+   * document sets them rather than as the reader has switched them. This is
+   * the picture redaction puts in place of a page.
+   */
+  contentOnly?: boolean;
   signal?: AbortSignal;
 }
 

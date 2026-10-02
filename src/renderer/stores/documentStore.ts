@@ -81,7 +81,11 @@ export interface DocumentStore {
   undo: (sessionId: string) => Promise<void>;
   redo: (sessionId: string) => Promise<void>;
   revert: (sessionId: string) => Promise<void>;
-  save: (sessionId: string, mode: SaveMode) => Promise<void>;
+  /**
+   * Saves, or writes elsewhere. `nameSuffix` is added to the name Save As and
+   * Save a Copy suggest, such as "redacted".
+   */
+  save: (sessionId: string, mode: SaveMode, nameSuffix?: string) => Promise<void>;
 }
 
 let unsubscribe: (() => void) | undefined;
@@ -317,7 +321,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => {
     redo: (sessionId) => runEdit(() => invoke('edit:redo', { sessionId })),
     revert: (sessionId) => runEdit(() => invoke('edit:revert', { sessionId })),
 
-    save: async (sessionId, mode) => {
+    save: async (sessionId, mode, nameSuffix) => {
       const ui = useUiStore.getState();
       const tab = get().tabs.find((candidate) => candidate.session.id === sessionId);
       if (tab === undefined) return;
@@ -327,6 +331,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => {
           sessionId,
           mode,
           ...(force ? { force: true } : {}),
+          ...(nameSuffix === undefined ? {} : { nameSuffix }),
         });
         if (outcome.canceled) return;
 

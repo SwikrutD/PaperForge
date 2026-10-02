@@ -7,6 +7,7 @@ import {
   ScanText,
   Signature,
   Droplets,
+  EyeOff,
   PaintBucket,
   BookOpen,
   Circle,
@@ -797,6 +798,35 @@ export function buildCommands(): CommandDefinition[] {
       keywords: ['password', 'encrypt', 'permissions', 'security', 'lock', 'qpdf'],
       isAvailable: documentRequired,
       run: (context) => context.actions.openDialog('protect'),
+    },
+    {
+      id: 'tools.redact',
+      title: 'Redact',
+      description: 'Mark text, pictures or areas and remove them from the document for good.',
+      category: 'tools',
+      group: 'document',
+      icon: EyeOff,
+      keywords: ['redaction', 'black out', 'remove', 'censor', 'hide', 'personal data', 'privacy'],
+      isChecked: (context) => context.redacting,
+      isAvailable: documentRequired,
+      run: (context) => context.actions.toggleRedacting(),
+    },
+    {
+      id: 'redact.apply',
+      title: 'Apply Redactions',
+      description: 'Review the marked areas and remove what lies under them.',
+      category: 'tools',
+      group: 'document',
+      icon: EyeOff,
+      keywords: ['redaction', 'apply', 'remove', 'black out'],
+      isAvailable: (context) => {
+        const document = documentRequired(context);
+        if (document !== true) return document;
+        return context.redactionMarkCount > 0
+          ? true
+          : { enabled: false, reason: 'Nothing is marked for redaction.' };
+      },
+      run: (context) => context.actions.openDialog('applyRedactions'),
     },
     {
       id: 'tools.sanitize',

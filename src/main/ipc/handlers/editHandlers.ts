@@ -35,11 +35,11 @@ export function registerEditHandlers(registerInvoke: RegisterInvoke, deps: EditH
   registerInvoke('edit:redo', ({ sessionId }) => deps.editor.redo(sessionId));
   registerInvoke('edit:revert', ({ sessionId }) => deps.editor.revert(sessionId));
 
-  registerInvoke('files:save', async ({ sessionId, mode, force }, event) => {
+  registerInvoke('files:save', async ({ sessionId, mode, force, nameSuffix }, event) => {
     // Save As and Save a Copy ask where to write. The dialog is a native
     // Windows one, so the renderer never handles a path.
     const destination =
-      mode === 'save' ? undefined : await askWhereToWrite(deps, sessionId, mode, event);
+      mode === 'save' ? undefined : await askWhereToWrite(deps, sessionId, mode, event, nameSuffix);
     if (mode !== 'save' && destination === undefined) return CANCELED;
 
     return deps.editor.save({
@@ -105,14 +105,18 @@ async function askWhereToWrite(
   sessionId: string,
   mode: SaveMode,
   event: Electron.IpcMainInvokeEvent,
+  nameSuffix?: string,
 ): Promise<string | undefined> {
   const session = deps.documents.get(sessionId);
   const current = session?.file.path ?? '';
+  // A copy is suggested as "name copy.pdf", or with whatever the caller says
+  // the new file is — "name redacted.pdf" — so the original is never the default.
+  const suffix = nameSuffix ?? (mode === 'saveCopy' ? 'copy' : undefined);
   const suggestion =
-    mode === 'saveCopy' && current !== ''
+    suffix !== undefined && current !== ''
       ? path.join(
           path.dirname(current),
-          `${path.basename(current, path.extname(current))} copy${path.extname(current) || '.pdf'}`,
+          `${path.basename(current, path.extname(current))} ${suffix}${path.extname(current) || '.pdf'}`,
         )
       : current;
 

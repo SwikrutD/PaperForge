@@ -156,12 +156,16 @@ describe('home screen', () => {
     const protectTool = screen.getByRole('button', { name: /Protect PDF/ });
     expect(protectTool).toBeDisabled();
     expect(protectTool).toHaveAttribute('title', 'No document is open.');
-    expect(screen.getAllByText('Needs a document')).toHaveLength(10);
-
-    // A tool whose capability is not built says something different.
+    // Redacting marks the document in front of the reader as well.
     const redactTool = screen.getByRole('button', { name: /Redact/ });
     expect(redactTool).toBeDisabled();
-    expect(redactTool).toHaveAttribute('title', expect.stringContaining('Not available yet'));
-    expect(screen.getAllByText('Not yet available').length).toBeGreaterThan(3);
+    expect(redactTool).toHaveAttribute('title', 'No document is open.');
+    expect(screen.getAllByText('Needs a document')).toHaveLength(11);
+
+    // A tool whose capability is not built says something different.
+    const optimizeTool = screen.getByRole('button', { name: /Optimize PDF/ });
+    expect(optimizeTool).toBeDisabled();
+    expect(optimizeTool).toHaveAttribute('title', expect.stringContaining('Not available yet'));
+    expect(screen.getAllByText('Not yet available').length).toBeGreaterThanOrEqual(3);
   });
 });

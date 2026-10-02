@@ -10,6 +10,8 @@ import { LinkProperties } from '../edit/LinkProperties';
 import { FieldProperties } from '../forms/FieldProperties';
 import { FieldDesignProperties } from '../forms/FieldDesignProperties';
 import { useFormStore } from '../../stores/formStore';
+import { useRedactionStore } from '../../stores/redactionStore';
+import { RedactionPanel } from '../redact/RedactionPanel';
 import { useUiStore } from '../../stores/uiStore';
 import { DocumentProperties } from '../workspace/DocumentProperties';
 import { AnnotationProperties } from '../annotations/AnnotationProperties';
@@ -46,6 +48,7 @@ export function RightPanel({ panel }: { panel: RightPanelId }): ReactElement {
   const editTarget = useEditTargetStore((state) => state.target);
   const filling = useFormStore((state) => state.active);
   const preparing = useFormStore((state) => state.preparing);
+  const redacting = useRedactionStore((state) => state.active);
   const selected = selectedAnnotation({ annotations, selectedId });
 
   const select = (id: RightPanelId): void => {
@@ -106,6 +109,9 @@ export function RightPanel({ panel }: { panel: RightPanelId }): ReactElement {
               title="Nothing selected"
               description="Open a document, then select text, an image, an annotation or a form field."
             />
+          ) : redacting ? (
+            // While redacting, this panel is the list of what is marked.
+            <RedactionPanel />
           ) : filling ? (
             // While filling in, this panel is about the field being filled;
             // while making the form, about the field being made.

@@ -1,0 +1,66 @@
+/* Over the text layer, but only the marks take the pointer unless an area is
+   being drawn: the text underneath stays selectable for marking text. */
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.drawing {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+/* Pending, not applied: outlined so what it covers is still visible. */
+.mark {
+  position: absolute;
+  display: flex;
+  align-items: flex-start;
+  padding: 0;
+  border: 1.5px solid var(--pf-color-danger);
+  border-radius: 1px;
+  background-color: color-mix(in srgb, var(--pf-color-danger) 16%, transparent);
+  cursor: pointer;
+  pointer-events: auto;
+  overflow: visible;
+}
+
+.mark:hover {
+  background-color: color-mix(in srgb, var(--pf-color-danger) 24%, transparent);
+}
+
+.mark:focus-visible {
+  outline: 2px solid var(--pf-color-focus-ring);
+  outline-offset: 1px;
+}
+
+.selected,
+.selected:hover {
+  border-width: 2px;
+  background-color: color-mix(in srgb, var(--pf-color-danger) 30%, transparent);
+}
+
+.reason {
+  position: absolute;
+  bottom: 100%;
+  left: -1.5px;
+  max-width: 220px;
+  padding: 0 4px;
+  border-radius: 2px 2px 0 0;
+  background-color: var(--pf-color-danger);
+  color: var(--pf-color-text-on-accent);
+  font-size: var(--pf-font-size-100);
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.sketch {
+  position: absolute;
+  border: 1.5px dashed var(--pf-color-danger);
+  background-color: color-mix(in srgb, var(--pf-color-danger) 12%, transparent);
+  pointer-events: none;
+}

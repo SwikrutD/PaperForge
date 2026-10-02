@@ -51,6 +51,12 @@ import {
   unprotectRequestSchema,
 } from '../schemas/protect';
 import { sanitizeReportSchema } from '../schemas/sanitize';
+import {
+  redactionMarkSchema,
+  redactionPlanSchema,
+  redactionSearchResultSchema,
+  redactionSearchSchema,
+} from '../schemas/redaction';
 import { recentFilesListSchema } from '../schemas/recentFiles';
 import { settingsPatchSchema, settingsSchema } from '../schemas/settings';
 import { themeStateSchema } from '../schemas/theme';
@@ -148,6 +154,11 @@ export const invokeContracts = {
       mode: saveModeSchema,
       /** Save anyway, after the reader was warned the file changed on disk. */
       force: z.boolean().optional(),
+      /** Added to the suggested file name for Save As and Save a Copy, e.g. "redacted". */
+      nameSuffix: z
+        .string()
+        .regex(/^[A-Za-z0-9 _-]{1,40}$/)
+        .optional(),
     }),
     response: saveOutcomeSchema,
   },
@@ -415,6 +426,34 @@ export const invokeContracts = {
   'sanitize:scan': {
     request: z.strictObject({ sessionId: z.string().min(1) }),
     response: sanitizeReportSchema,
+  },
+
+  /** Finds text to mark, as the boxes of the glyphs redaction would remove. */
+  'redaction:find': {
+    request: z.strictObject({ sessionId: z.string().min(1), search: redactionSearchSchema }),
+    response: redactionSearchResultSchema,
+  },
+
+  /** What applying the marks would remove, page by page. Changes nothing. */
+  'redaction:plan': {
+    request: z.strictObject({
+      sessionId: z.string().min(1),
+      marks: z.array(redactionMarkSchema).min(1).max(5000),
+    }),
+    response: redactionPlanSchema,
+  },
+
+  /**
+   * Stages a page the window has drawn, with its marks painted on, to stand
+   * in for a page that cannot be cut. The picture crosses as base64.
+   */
+  'redaction:stagePage': {
+    request: z.strictObject({
+      sessionId: z.string().min(1),
+      page: z.number().int().min(1).max(100_000),
+      image: z.string().min(1).max(64_000_000),
+    }),
+    response: z.strictObject({ token: z.string().min(1) }),
   },
 
   /**

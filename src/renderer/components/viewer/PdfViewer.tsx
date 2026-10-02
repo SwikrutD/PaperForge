@@ -36,6 +36,10 @@ import { useSignatureStore } from '../../stores/signatureStore';
 import { FieldDesignLayer } from '../forms/FieldDesignLayer';
 import { PrepareToolbar } from '../forms/PrepareToolbar';
 import { FindBar } from '../search/FindBar';
+import { RedactionLayer } from '../redact/RedactionLayer';
+import { RedactionToolbar } from '../redact/RedactionToolbar';
+import { useRedactionMarking } from '../redact/useRedactionMarking';
+import { marksFor, useRedactionStore } from '../../stores/redactionStore';
 import { highlightsByPage } from '../search/searchNavigation';
 import { pdfRectToCss } from './pageGeometry';
 import { usePdfDocumentContext } from './pdfDocumentContextValue';
@@ -99,6 +103,10 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const fieldTool = useFormStore((store) => store.fieldTool);
   const fieldDrag = useFormStore((store) => store.drag);
   const requestConfirmation = useUiStore((store) => store.requestConfirmation);
+  const redacting = useRedactionStore((store) => store.active);
+  const redactionTool = useRedactionStore((store) => store.tool);
+  const redactionMarks = useRedactionStore((store) => marksFor(store.marks, sessionId));
+  const redactionSelected = useRedactionStore((store) => store.selectedId);
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
@@ -153,6 +161,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
     view.rotation,
     stagedSignature,
   );
+  useRedactionMarking(sessionId, pages, scale, view.rotation);
   const layout = useMemo(
     () => layoutPages(pages, scale, view.rotation),
     [pages, scale, view.rotation],
@@ -352,7 +361,8 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
       )}
       {filling && preparing && <PrepareToolbar disabled={state.status !== 'ready'} />}
       {filling && !preparing && <FillSignToolbar disabled={state.status !== 'ready'} />}
-      {!editing && !filling && (commenting || toolActive) && (
+      {redacting && <RedactionToolbar disabled={state.status !== 'ready'} />}
+      {!editing && !filling && !redacting && (commenting || toolActive) && (
         <AnnotationToolbar disabled={state.status !== 'ready'} />
       )}
 
@@ -377,7 +387,26 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                   hideFormFields={filling}
                   highlights={highlights.get(pageNumber)}
                   overlay={
-                    state.document === null ? null : filling && preparing ? (
+                    state.document === null ? null : redacting ? (
+                      <RedactionLayer
+                        geometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}
+                        scale={scale}
+                        rotation={view.rotation}
+                        marks={redactionMarks.filter((mark) => mark.page === pageNumber)}
+                        selectedId={redactionSelected}
+                        tool={redactionTool}
+                        onSelect={(id) => useRedactionStore.getState().select(id)}
+                        onRemove={(id) => useRedactionStore.getState().removeMark(sessionId, id)}
+                        onDraw={(rect) =>
+                          useRedactionStore.getState().addMark(sessionId, {
+                            page: pageNumber,
+                            rects: [rect],
+                            source: 'area',
+                            label: 'Area',
+                          })
+                        }
+                      />
+                    ) : filling && preparing ? (
                       <FieldDesignLayer
                         geometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}
                         scale={scale}

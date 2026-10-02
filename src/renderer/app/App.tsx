@@ -33,6 +33,7 @@ import { ExportDialog } from '../components/convert/ExportDialog';
 import { DocumentPropertiesDialog } from '../components/admin/DocumentPropertiesDialog';
 import { ProtectDialog } from '../components/admin/ProtectDialog';
 import { SanitizeDialog } from '../components/admin/SanitizeDialog';
+import { ApplyRedactionsDialog } from '../components/redact/ApplyRedactionsDialog';
 import { useSignatureStore } from '../stores/signatureStore';
 import { useFormStore } from '../stores/formStore';
 import { WatermarkDialog } from '../components/edit/furniture/WatermarkDialog';
@@ -171,6 +172,7 @@ export function App(): ReactElement {
             {dialog === 'properties' && <DocumentPropertiesDialog onClose={closeDialog} />}
             {dialog === 'protect' && <ProtectDialog onClose={closeDialog} />}
             {dialog === 'sanitize' && <SanitizeDialog onClose={closeDialog} />}
+            {dialog === 'applyRedactions' && <ApplyRedactionsDialog onClose={closeDialog} />}
             {dialog === 'watermark' && <WatermarkDialog onClose={closeDialog} />}
             {dialog === 'background' && <BackgroundDialog onClose={closeDialog} />}
             {dialog === 'headerFooter' && <HeaderFooterDialog onClose={closeDialog} />}
