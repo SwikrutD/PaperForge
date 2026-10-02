@@ -38,6 +38,7 @@
   },
   "devDependencies": {
     "@electron-forge/cli": "7.11.2",
+    "@electron-forge/maker-squirrel": "7.11.2",
     "@electron-forge/maker-zip": "7.11.2",
     "@electron-forge/plugin-fuses": "7.11.2",
     "@electron-forge/plugin-vite": "7.11.2",
@@ -65,6 +66,7 @@
     "vitest": "5.0.1"
   },
   "allowScripts": {
-    "electron@44.4.3": true
+    "electron@44.4.3": true,
+    "electron-winstaller@5.4.4": true
   }
 }

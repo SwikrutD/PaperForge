@@ -105,11 +105,14 @@ Packaging:
 
 ```sh
 npm run package     # unpacked app in out/PaperForge-win32-x64
-npm run make        # distributable archive in out/make
+npm run make        # out/make: PaperForge-Setup.exe (per-user installer) and a zip
 npm run icons       # regenerate resources/icons from scripts/generate-icon.mjs
 ```
 
-The Windows installer, file associations and "Open with" support arrive in Segment 18.
+`PaperForge-Setup.exe` installs for the current user only, in `%LOCALAPPDATA%\PaperForge`, with
+Start menu and desktop shortcuts, and adds PaperForge to the Open With list for PDF files. It needs
+no administrator rights and downloads nothing. Windows leaves the choice of default PDF app to the
+user; Settings → Windows opens the right page. Uninstall from Settings → Apps.
 
 ## Documentation
 

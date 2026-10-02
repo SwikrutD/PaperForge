@@ -10,6 +10,7 @@ refuses to start if two commands claim the same one.
 | Keys           | Command         | Notes                                                                        |
 | -------------- | --------------- | ---------------------------------------------------------------------------- |
 | `Ctrl+O`       | Open…           | Native Windows file picker; several files at once                            |
+| `Ctrl+P`       | Print…          | Pages, copies, scaling and printer; or the Windows print dialog              |
 | `Ctrl+W`       | Close Document  | Asks first when the document has unsaved changes                             |
 | `Ctrl+Shift+W` | Close Window    | Closes this window only                                                      |
 | `Ctrl+K`       | Command Palette | Search every command; unavailable ones show their reason                     |
@@ -73,7 +74,6 @@ Taken from `CLAUDE.md` section 7; each lands with the segment that implements th
 | Keys                           | Command                       | Segment  |
 | ------------------------------ | ----------------------------- | -------- |
 | `Ctrl+Shift+O`                 | Open recent / open options    | later    |
-| `Ctrl+P`                       | Print                         | 18       |
 | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / Cut / Paste in context | 6 onward |
 | `Ctrl+A`                       | Select all text or comments   | later    |
 

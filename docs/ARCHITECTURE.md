@@ -514,3 +514,46 @@ TypeScript is split into four strict projects — tooling, main/preload/shared, 
 tests — because they have genuinely different globals (Node vs DOM) and must not borrow each
 other's APIs by accident. ESLint enforces the same separation: the renderer may not import
 `electron`, `fs` or `path`.
+
+## Printing
+
+`Ctrl+P` opens the Print dialog (`components/print/`, `printStore`). The window draws each chosen
+page with PDF.js's print intent — annotations the document marks as not for printing are left
+out, and the reader's layer choices are copied onto PDF.js's print layer state — and sends it as a
+PNG with its size in points (`print:start`, `print:page`). `PrintJobs` in the main process writes
+each page to the job's folder at once; `print:finish` lays the sheets out
+(`printing/printDocument.ts`) and prints them through a locked-down hidden window
+(`printing/chromiumPrinter.ts`), silently to the chosen printer or after the Windows print dialog.
+
+The layout is CSS against the sheet rather than arithmetic against a paper size, because only the
+printer knows the paper. A sheet is `100vw × 100vh` with a quarter-inch margin; fitting uses the
+page's aspect ratio, actual and custom sizes are inches, and turning a page to suit the paper uses
+the `orientation` media query (which in print describes the paper) with container units. A paper
+or orientation chosen in the Windows dialog therefore still comes out right. Copies, collation,
+colour and orientation go to Chromium as print options; grey is also applied as a CSS filter in
+case a driver ignores the option. Chromium no longer reports the default printer, so it is read
+from the `Device` value under `HKCU\Software\Microsoft\Windows NT\CurrentVersion\Windows`.
+
+## Windows integration
+
+`services/windows/` holds what belongs to Windows rather than to a document.
+
+- **Launching.** `launchArgs.ts` reads PDF paths (and the jump list's `--new-window`) from the
+  first launch and from `second-instance`, resolving relative paths against the launching copy's
+  directory. `windows/launchRouting.ts` queues them in `DesktopIntegration`; the window takes them
+  with `files:openLaunchPaths` once it has started, and again whenever `files:launchPathsWaiting`
+  says more arrived.
+- **Jump list.** Pinned and recent files, and a New window task, rebuilt whenever the recent files
+  change. Each file is a task that starts PaperForge with its path, so it works whether or not
+  PaperForge is the default PDF app. Installed copies only.
+- **Taskbar and notifications.** `app/useDesktopIntegration.ts` turns the job store into taskbar
+  progress (`window:setProgress`) and asks for a notification when a job of five seconds or more
+  finishes (`window:notify`); the main process shows it only while that window is not focused and
+  `settings.notifications.whenDone` is on.
+- **Installer and association.** `forge.config.ts` makes a per-user Squirrel installer.
+  `squirrel.ts` handles its events — shortcuts through `Update.exe`, and the PDF association from
+  `fileAssociation.ts` written to `HKCU` — and exits. Shortcuts and the association point at the
+  launcher above the versioned `app-x.y.z` folder (`stableExecutable`), and an installed copy uses
+  the installer's AppUserModelID, `com.squirrel.PaperForge.PaperForge`, so the taskbar, jump list
+  and notifications agree with its shortcuts. Settings → Windows adds or removes the Open With
+  entry and opens Default apps; a development build says it cannot be registered.

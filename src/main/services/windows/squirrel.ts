@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import { APP_NAME } from '@shared/constants/app';
 import { readValue, writeKeys, type RegRunner, runReg } from './registry';
@@ -77,6 +78,7 @@ export async function handleSquirrelEvent(
 
   if (event === 'uninstall') {
     await unregisterFileAssociation(paths.launcher, run);
+    await removeEmptyStartMenuFolder();
     return true;
   }
 
@@ -103,6 +105,18 @@ export async function pointUninstallIcon(execPath: string, run: RegRunner = runR
     ],
     run,
   );
+}
+
+/**
+ * The installer removes the Start menu shortcut but leaves the folder it was
+ * in. Removing a folder only succeeds while it is empty, so anything the
+ * reader put there stays.
+ */
+async function removeEmptyStartMenuFolder(): Promise<void> {
+  const appData = process.env['APPDATA'];
+  if (appData === undefined) return;
+  const folder = path.join(appData, 'Microsoft', 'Windows', 'Start Menu', 'Programs', APP_NAME);
+  await fs.rmdir(folder).catch(() => undefined);
 }
 
 function runUpdate(updateExe: string, args: readonly string[]): Promise<void> {

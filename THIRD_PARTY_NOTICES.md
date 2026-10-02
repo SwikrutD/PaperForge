@@ -32,32 +32,43 @@ PaperForge takes it under the MIT terms, which is why a GPL package appears nowh
 
 Not redistributed with the application.
 
-| Package                      | Version | License    |
-| ---------------------------- | ------- | ---------- |
-| @electron-forge/cli          | 7.11.2  | MIT        |
-| @electron-forge/maker-zip    | 7.11.2  | MIT        |
-| @electron-forge/plugin-fuses | 7.11.2  | MIT        |
-| @electron-forge/plugin-vite  | 7.11.2  | MIT        |
-| @electron/fuses              | 1.8.0   | MIT        |
-| @eslint/js                   | 10.0.1  | MIT        |
-| @testing-library/jest-dom    | 7.0.1   | MIT        |
-| @testing-library/react       | 16.3.3  | MIT        |
-| @testing-library/user-event  | 14.6.7  | MIT        |
-| @types/node                  | 26.6.2  | MIT        |
-| @types/react                 | 19.3.0  | MIT        |
-| @types/react-dom             | 19.3.0  | MIT        |
-| @vitejs/plugin-react         | 6.1.1   | MIT        |
-| eslint                       | 10.11.0 | MIT        |
-| eslint-plugin-react-hooks    | 7.1.1   | MIT        |
-| eslint-plugin-react-refresh  | 0.5.7   | MIT        |
-| globals                      | 17.12.0 | MIT        |
-| jsdom                        | 30.1.0  | MIT        |
-| prettier                     | 3.9.8   | MIT        |
-| ts-node                      | 10.9.2  | MIT        |
-| typescript                   | 6.0.3   | Apache-2.0 |
-| typescript-eslint            | 8.70.1  | MIT        |
-| vite                         | 8.3.0   | MIT        |
-| vitest                       | 5.0.1   | MIT        |
+| Package                        | Version | License    |
+| ------------------------------ | ------- | ---------- |
+| @electron-forge/cli            | 7.11.2  | MIT        |
+| @electron-forge/maker-squirrel | 7.11.2  | MIT        |
+| @electron-forge/maker-zip      | 7.11.2  | MIT        |
+| electron-winstaller            | 5.4.4   | MIT        |
+| @electron-forge/plugin-fuses   | 7.11.2  | MIT        |
+| @electron-forge/plugin-vite    | 7.11.2  | MIT        |
+| @electron/fuses                | 1.8.0   | MIT        |
+| @eslint/js                     | 10.0.1  | MIT        |
+| @testing-library/jest-dom      | 7.0.1   | MIT        |
+| @testing-library/react         | 16.3.3  | MIT        |
+| @testing-library/user-event    | 14.6.7  | MIT        |
+| @types/node                    | 26.6.2  | MIT        |
+| @types/react                   | 19.3.0  | MIT        |
+| @types/react-dom               | 19.3.0  | MIT        |
+| @vitejs/plugin-react           | 6.1.1   | MIT        |
+| eslint                         | 10.11.0 | MIT        |
+| eslint-plugin-react-hooks      | 7.1.1   | MIT        |
+| eslint-plugin-react-refresh    | 0.5.7   | MIT        |
+| globals                        | 17.12.0 | MIT        |
+| jsdom                          | 30.1.0  | MIT        |
+| prettier                       | 3.9.8   | MIT        |
+| ts-node                        | 10.9.2  | MIT        |
+| typescript                     | 6.0.3   | Apache-2.0 |
+| typescript-eslint              | 8.70.1  | MIT        |
+| vite                           | 8.3.0   | MIT        |
+| vitest                         | 5.0.1   | MIT        |
+
+### The Windows installer
+
+`npm run make` builds `PaperForge-Setup.exe` with electron-winstaller, which wraps the application
+in Squirrel.Windows (MIT, © GitHub). The installer and the `Update.exe` it leaves beside the
+installed application are Squirrel.Windows; they are redistributed with the installer, not with
+the application archive. electron-winstaller's build-time tools — NuGet (Apache-2.0), 7-Zip
+(LGPL-2.1 with the unRAR restriction) and rcedit (MIT) — run on the build machine only and are not
+part of either distributable.
 
 ## Planned components
 

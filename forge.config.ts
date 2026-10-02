@@ -1,5 +1,8 @@
 import type { ForgeConfig } from '@electron-forge/shared-types';
+import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { MakerZIP } from '@electron-forge/maker-zip';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
@@ -35,8 +38,31 @@ const config: ForgeConfig = {
     },
   },
   rebuildConfig: {},
-  // Segment 18 adds the Windows installer (Squirrel) and file associations.
-  makers: [new MakerZIP({}, ['win32'])],
+  makers: [
+    // A per-user installer: it puts PaperForge in %LOCALAPPDATA%, makes Start
+    // menu and desktop shortcuts, offers it for PDF files and needs no
+    // administrator rights. PaperForge's own installer events do the
+    // shortcuts and the association (src/main/services/windows/squirrel.ts).
+    new MakerSquirrel(
+      {
+        name: 'PaperForge',
+        title: 'PaperForge',
+        authors: 'PaperForge contributors',
+        description: 'An offline PDF workspace for Windows.',
+        exe: 'PaperForge.exe',
+        setupExe: 'PaperForge-Setup.exe',
+        setupIcon: 'resources/icons/icon.ico',
+        // The installer would otherwise download the Electron icon from the
+        // internet for Apps & features. A local file is never fetched over
+        // the network; where it does not exist the copy fails quietly and
+        // PaperForge points the entry at its own executable when it starts.
+        iconUrl: pathToFileURL(path.resolve('resources/icons/icon.ico')).href,
+        noMsi: true,
+      },
+      ['win32'],
+    ),
+    new MakerZIP({}, ['win32']),
+  ],
   plugins: [
     new VitePlugin({
       build: [

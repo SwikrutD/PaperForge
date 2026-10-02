@@ -693,3 +693,40 @@ Run in both light and dark themes:
       PaperForge and another reader.
 - [ ] Light and dark themes for the check, the reading-order overlay, the bookmark tools, the
       measuring tools and the layers panel; keyboard focus reaches every control.
+
+## Segment 18 — printing and Windows integration
+
+### Printing (a real printer, or Microsoft Print to PDF)
+
+- [ ] `Ctrl+P` lists the printers with the Windows default marked; printing to Microsoft Print to
+      PDF writes one sheet per page.
+- [ ] All pages, This page, a range, and odd or even pages each print the pages they say.
+- [ ] Fit to the paper: a Letter page on A4 and an A4 page on Letter both fill the sheet inside a
+      margin, uncut.
+- [ ] Actual size: a ruler drawn in a test PDF measures true on paper. Custom 50% prints at half.
+- [ ] A landscape page in a portrait document prints turned to fill the sheet; with turning off it
+      prints small and upright.
+- [ ] "Choose more in the Windows print dialog" shows the Windows dialog; changing paper or
+      orientation there still lays pages out correctly; Cancel there prints nothing and reports no
+      error.
+- [ ] Comments off leaves out highlights and notes; a comment marked not for printing never prints.
+- [ ] A hidden layer does not print; shades of grey prints grey on a colour printer.
+- [ ] Stop during a long job prints nothing and leaves nothing in `%TEMP%\PaperForge\print`.
+
+### Windows
+
+- [ ] `npm run make`; run `PaperForge-Setup.exe` as a standard user: no UAC prompt, Start menu and
+      desktop shortcuts, PaperForge in Settings → Apps with its own icon.
+- [ ] Right-click a PDF → Open with → PaperForge opens it; with PaperForge running, it opens as a
+      new tab in the existing window.
+- [ ] Settings → Windows says PaperForge is in the Open With list; Open Windows Settings lands on
+      its default-apps page; after choosing it there, double-clicking a PDF opens PaperForge.
+- [ ] Right-click the taskbar button: pinned and recent files open; New window opens a window.
+- [ ] Recognise text on a long document and switch away: the taskbar button shows progress and a
+      notification arrives when it finishes; clicking it brings PaperForge back.
+- [ ] Windows dark mode with Follow system: title bar and app both dark, and both follow a live
+      switch.
+- [ ] 125%, 150% and 200% scaling, and a window dragged between monitors of different scaling:
+      pages and controls stay crisp.
+- [ ] Uninstall from Settings → Apps: shortcuts, the Start menu folder, the Open With entry and the
+      Apps entry are gone, and other apps' PDF associations are untouched.

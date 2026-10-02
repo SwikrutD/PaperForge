@@ -282,6 +282,12 @@ async function bootstrap(): Promise<void> {
   desktop.updateJumpList(recentFiles.list());
   recentFiles.onChange((entries) => desktop.updateJumpList(entries));
   openWindow();
+  // An installed copy keeps its Apps & features entry showing its own icon.
+  if (desktop.supported && desktop.executable !== process.execPath) {
+    void pointUninstallIcon(process.execPath).catch((error: unknown) =>
+      logger.warn('Could not update the Apps & features entry.', error),
+    );
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) openWindow();
@@ -317,7 +323,6 @@ function main(): void {
       .finally(() => app.quit());
     return;
   }
-  if (squirrel === 'firstrun') void pointUninstallIcon(process.execPath).catch(() => undefined);
 
   if (!app.requestSingleInstanceLock()) {
     app.quit();

@@ -196,6 +196,30 @@ tree. The review dialog says so when the document has them.
   and refused — and the copy is published through the same reopen-and-check path as a save.
   qpdf's messages are shown with the working copy's path replaced by "the document".
 
+## Printing and Windows integration
+
+**Printing.** Pages are drawn by the window and written as PNG files (checked by signature) to a
+PaperForge-owned folder under `%TEMP%\PaperForge\print\<job>`, removed when the job is printed,
+dismissed or stopped, and cleared at start-up. The print document is loaded in a hidden window with
+its own empty session, no JavaScript, no Node, a `default-src 'none'; img-src file:` policy, and a
+request filter that refuses every URL outside the job's folder. The document title is escaped.
+
+**Launch arguments.** Files from Explorer, Open With, the jump list or a second launch are reduced
+to absolute paths ending in `.pdf`; switches, URLs of any scheme (`file:` included), device and
+pipe paths (`\\.\`, and `\\?\` other than long-path spellings) and anything past fifty files are
+dropped. They are queued in the main process and opened by the normal open flow, which checks the
+file is there and is a PDF. The renderer never names them. PaperForge registers no URL protocol.
+
+**Registry.** The installer events and Settings → Windows write only under `HKEY_CURRENT_USER`,
+through `%SystemRoot%\System32\reg.exe` run with an argument array and no shell. PaperForge adds a
+ProgID, an Open With entry and Default-apps capabilities for `.pdf`; it never writes the `.pdf`
+default or `UserChoice`, and uninstalling removes exactly what it added. Windows Settings is opened
+at a fixed `ms-settings:` address, not one the renderer supplies.
+
+**Installer.** A per-user Squirrel installer: no administrator rights, nothing downloaded at
+install time (its Apps & features icon is a local file), and no auto-update — PaperForge never
+calls the updater.
+
 ## Logging and privacy
 
 Logs are local only, in `%APPDATA%/PaperForge/logs/paperforge.log`, rotated at 1 MB. The logger
