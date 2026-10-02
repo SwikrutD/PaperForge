@@ -2,12 +2,12 @@
 
 ## Current status
 
-- Last completed segment: **15 — True redaction**
-- Next segment: **16 — Compare, optimize, repair, crop**
+- Last completed segment: **16 — Compare, optimize, repair, crop**
+- Next segment: **17 — Accessibility and practical advanced tools**
 - Build status: `npm run package` succeeds; the end-to-end suite drives the built application
-- Test status: 724 unit tests (61 files) and 150 Playwright end-to-end tests passing; typecheck,
-  lint and format clean. qpdf is now installed on the build machine, so every save in the
-  end-to-end suite was also checked by qpdf; the Protect walkthrough is still a manual step.
+- Test status: 774 unit tests (66 files) and 157 Playwright end-to-end tests passing;
+  typecheck, lint and format clean. qpdf 12.4.2 is installed on the build machine, so the repair
+  and optimize end-to-end tests ran against it; the Protect walkthrough is still a manual step.
 
 ## Completed segments
 
@@ -27,7 +27,7 @@
 - [x] 13 Conversion centre
 - [x] 14 Protect, metadata, sanitize, attachments
 - [x] 15 True redaction
-- [ ] 16 Compare, optimize, repair, crop
+- [x] 16 Compare, optimize, repair, crop
 - [ ] 17 Accessibility and practical advanced tools
 - [ ] 18 Printing and Windows integration
 - [ ] 19 Performance, polish, QA, release candidate
@@ -763,6 +763,27 @@ Recognize Text rather than writing an empty file.
 102. **jszip, reached through the Office writers, is taken under its MIT option**, which is why no
      GPL package appears in the notices.
 
+103. **Comparing is a workspace with its own copies of the documents.** It loads the two revisions
+     itself, so the viewer's document — and its password, which the viewer keeps — is never
+     disturbed, and comparing needs no document to be the active one.
+104. **Pixels are compared in a worker and only rectangles are kept.** A hundred-page comparison
+     would otherwise hold a gigabyte of pixels; the overlay picture is drawn again on demand for the
+     pair on screen.
+105. **A picture difference a text change explains is not listed.** A changed word redraws its own
+     pixels; listing both would double every text change.
+106. **Optimising produces a revision, not a file.** `DocumentEditor.applyBytes` makes qpdf's or the
+     engine's output the next revision after reading it back, so optimising is undone like any
+     edit and only Save writes the reader's file. A result that is not smaller is discarded.
+107. **JPEG comes from Chromium, injected.** `nativeImage` decodes and encodes in memory with no new
+     dependency; the engine takes the codec as a parameter, so it is tested without Electron.
+108. **A picture is made smaller only when how large it is drawn was measured.** A picture used by
+     an annotation's appearance, a pattern or a Type 3 glyph keeps every pixel.
+109. **Repair writes a new file, and checking needs no sidecar.** The cross-reference check reads the
+     table and the offsets it names, so a damaged file is reported without qpdf; the copy can
+     never be written over the file that was opened.
+110. **The crop tool and the page grid share one piece of arithmetic.** A frame is margins measured
+     from what the page shows, which is what lets one frame crop pages of different sizes.
+
 ## Known limitations
 
 - The viewer is continuous scrolling only. Single page, two-page spread, cover page, the hand and
@@ -927,6 +948,24 @@ Recognize Text rather than writing an empty file.
 - A widget under a mark removes its whole form field, on every page, because the value belongs to
   the field.
 
+- Compare pairs pages by position plus one offset; it does not find a page that moved further, and
+  compares the words in the order PDF.js gives them, so a reflowed paragraph reads as changed text.
+  Word boxes share a run's width by character, as search highlights do.
+- A document that needs a password to open cannot be compared yet: the viewer keeps the password
+  to itself and the comparison does not ask a second time.
+- Pages are compared at no more than 1,400 pixels along their longer side; a change smaller than a
+  few pixels at that size is not reported.
+- Optimize does not subset, merge or remove fonts, and does not merge duplicate objects. Pictures in
+  CMYK, indexed or Lab colour, JBIG2, JPEG 2000, colour-keyed or with a decode array are left
+  exactly as they are, and are counted as such in the dialog.
+- A grey picture re-encoded as JPEG is written as a colour JPEG, because Chromium's encoder writes
+  colour; it is described as RGB and still looks grey.
+- Optimizing runs in the main process; on a very large document the window waits for it, although
+  it stays drawn. Fast web view is lost again by the next edit, which rewrites the file.
+- A repaired copy is made from the revision being shown. qpdf cannot repair an encrypted document
+  that needs a password to open.
+- The crop frame is drawn on one page at a time; bleed, trim and art boxes are shown but not edited.
+
 ## Segment 14 — what landed
 
 **Document Properties.** `src/pdf/metadata/` reads the information dictionary, the custom entries
@@ -1024,12 +1063,70 @@ redaction, and assert the phrase is neither returned by PDF.js text extraction n
 in the saved file, with every stream decompressed and every string decoded. The end-to-end suite
 does the same against the file the application saved.
 
+## Segment 16 — what landed
+
+**Compare Files.** A workspace of its own, like Create: choose the original and the revised
+document from the open tabs (or open either from the toolbar), set a page offset when the revision
+gained or lost pages at the front, and Compare. Each page pair is compared twice. The words PDF.js
+gives are diffed with Myers' algorithm and grouped into additions, removals and changes
+(`src/pdf/compare/textDiff.ts`). Both pages are drawn at one scale on paper of the larger size and
+their pixels compared in a module worker (`src/workers/compare.worker.ts`), which gathers
+differing pixels into regions; regions no text change explains are listed as picture or layout
+changes, so a changed word is not reported twice. Unpaired pages and changed page sizes are
+differences of their own. Results show side by side, with scrolling kept level, or overlaid in one
+picture coloured by which document has the ink; the list filters by kind, and choosing an entry —
+or Previous and Next — goes to its pair and outlines it on both pages. The comparison is a
+cancellable job, keeps only rectangles per pair, and writes nothing anywhere.
+
+**Optimize PDF.** Three presets (low compression, balanced, small file) and every setting behind
+them. `src/pdf/optimize/` measures how large each picture is drawn, through groups, and brings
+pictures drawn far above the target resolution down to it by area averaging; a picture drawn
+where it cannot be measured (an annotation's appearance, a pattern) keeps its size rather than
+being shrunk on a guess. JPEGs are decoded and re-encoded with Chromium's own codec through
+`nativeImage`, so no image library was added; photographs stored losslessly can become JPEG while
+drawings and screenshots — told apart by how many colours they use — stay lossless. Unfiltered
+streams are deflated, thumbnails and unused objects removed, metadata on request, and qpdf packs
+and linearises where it is installed. Only a result that came out smaller becomes the next
+revision (`DocumentEditor.applyBytes`): one undoable step, measured before and after, written to
+the file only by Save.
+
+**Check and Repair.** `DocumentRepair` reports qpdf's `--check`, whether PaperForge's engine can
+read the file, and PaperForge's own reading of the cross-reference table
+(`src/pdf/structure/xrefCheck.ts`), which needs no sidecar — so damage is reported on a machine
+without qpdf too. A repaired copy is written by qpdf where it is installed, and otherwise by the
+engine's new `rewrite` (object-by-object parse, unreachable objects dropped); it is published like
+every other file, opened in a new tab, and refused if it would replace the file that was opened. A
+document the viewer cannot open offers the same dialog from its error screen.
+
+**Crop Pages.** A tool of the viewer: drag a frame on a page, adjust it by its edges, corners or
+the arrow keys, and apply the margins it leaves to that page, all pages or a range — as the crop
+box, or as the page size itself with a warning. Typing a margin moves the frame. The panel shows
+all five page boxes as the page declares them. The margin arithmetic moved to
+`src/shared/utils/cropBoxes.ts`, which the page grid now shares.
+
+**Fixed on the way.** The home screen still said documents could not be opened yet; it now says
+how to start.
+
+| Area     | Files                                                                                                                                                  |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Engine   | `src/pdf/compare/*`, `src/pdf/optimize/*`, `src/pdf/structure/xrefCheck.ts`, `rewrite` in the engine                                                   |
+| Worker   | `src/workers/compare.worker.ts`                                                                                                                        |
+| Main     | `main/services/documents/documentRepair.ts`, `main/services/optimize/*`, `repairHandlers.ts`                                                           |
+| Shared   | `src/shared/schemas/{optimize,repair}.ts`, `src/shared/utils/cropBoxes.ts`                                                                             |
+| Renderer | `stores/{compare,crop,optimize}Store.ts`, `services/compare{Render,Documents}.ts`, `components/{compare,crop,optimize,repair}/*`                       |
+| Tests    | `tests/unit/shared/{compare,optimize,cropBoxes}.test.ts`, `tests/unit/main/document{Repair,Optimizer}.test.ts`, `tests/e2e/{compare,pageTools}.e2e.ts` |
+
 ## What is not yet verified
 
 **Protect PDF against a real qpdf.** qpdf 12.4.2 is now installed on the build machine, and every
 save in the end-to-end suite was checked by it, but the Protect walkthrough in
 `docs/QA_CHECKLIST.md` (encrypt, reopen with the wrong and the right password, remove security) has
 still not been run by hand. It needs no new code.
+
+**Compare and Optimize on third-party files.** Both are proven on generated documents, and
+Optimize's JPEG path ran against Chromium's real codec in the end-to-end suite. Walk the Segment 16
+section of `docs/QA_CHECKLIST.md` on a few real documents — two exported versions of one report, a
+photograph-heavy brochure, a scanned file — before relying on the sizes and the difference lists.
 
 **Redaction on third-party files.** The redaction gate is proven on generated documents covering
 the shapes listed above. Walk the Segment 15 section of `docs/QA_CHECKLIST.md` on a few real
@@ -1038,8 +1135,9 @@ documents (a Word export, a scanned and recognised file, a form) before relying 
 ## Required local tools
 
 - qpdf: optional. Saved files are checked with it when it is installed; Settings → Local tools
-  reports what was found and can point at a different one. Protect PDF needs it; repair follows
-  in Segment 16.
+  reports what was found and can point at a different one. Protect PDF needs it; Check and Repair
+  and Optimize PDF use it when it is there (a stronger repair; packing and fast web view) and work
+  without it.
 - Tesseract: optional, and needed for Recognize Text. PaperForge looks in the usual Windows
   locations and on the PATH; Settings → Text recognition says what was found and can point at
   another copy or another tessdata folder. Nothing is downloaded.
@@ -1053,39 +1151,35 @@ Nothing is downloaded at runtime, then or now.
 
 Run on Windows 11 x64, Node 24.19.0, npm 11.17.0:
 
-| Command                     | Result                                                                                                             |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                                     |
-| `npm run typecheck`         | Pass — four projects, no errors                                                                                    |
-| `npm run lint`              | Pass — no errors, no warnings                                                                                      |
-| `npm test`                  | Pass — 724 tests in 61 files                                                                                       |
-| `npm run test:e2e`          | Pass — 150 Playwright tests against the built application                                                          |
-| `npm run format:check`      | Pass — Prettier clean                                                                                              |
-| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                                          |
-| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                                   |
-| Packaged launch/close smoke | Pass — window ready in ~700 ms                                                                                     |
-| Settings upgrade            | Pass — unchanged this segment                                                                                      |
-| Appearance                  | Checked by driving the real application: redaction marks, panel, review dialog and applied boxes in light and dark |
-| qpdf                        | Installed (12.4.2); saves in the e2e suite were qpdf-checked. Protect walkthrough not yet run by hand.             |
+| Command                     | Result                                                                                                                                                  |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm install`               | Pass (npm 11 asks once to approve the Electron install script)                                                                                          |
+| `npm run typecheck`         | Pass — four projects, no errors (the renderer project now includes `src/workers`)                                                                       |
+| `npm run lint`              | Pass — no errors, no warnings                                                                                                                           |
+| `npm test`                  | Pass — 774 tests in 66 files                                                                                                                            |
+| `npm run test:e2e`          | Pass — 157 Playwright tests against the built application                                                                                               |
+| `npm run format:check`      | Pass — Prettier clean                                                                                                                                   |
+| `npm run dev`               | Pass — Vite dev server and Electron window; no renderer errors in the log                                                                               |
+| `npm run package`           | Pass — `out/PaperForge-win32-x64/PaperForge.exe`                                                                                                        |
+| Packaged launch/close smoke | Pass — window ready in ~1 s                                                                                                                             |
+| Settings upgrade            | Pass — unchanged this segment                                                                                                                           |
+| Appearance                  | Checked by driving the real application: compare (side by side, overlay), crop frame and panel, Optimize and Check and Repair dialogs in light and dark |
+| qpdf                        | Installed (12.4.2); repair and optimize e2e tests ran against it. Protect walkthrough not yet run by hand.                                              |
 
 ## Manual setup required
 
 None beyond `npm install`. On npm 11 the first install asks to approve the Electron install script;
 `package.json` already records the approval (`allowScripts`), so it should not ask again.
 
-## Where Segment 16 starts
+## Where Segment 17 starts
 
-- **Compare** renders pages the way OCR and export already do (one page in flight) and needs a
-  worker for the pixel difference; text differences can use the glyph model in `src/pdf/content/`,
-  which redaction's search already turns into reading-order text with boxes
-  (`src/pdf/redact/search.ts`).
-- **Optimize** will rewrite images; `src/pdf/redact/pixels.ts` already decodes and re-encodes plain
-  and deflated samples, and `src/pdf/redact/garbage.ts` deletes unreachable objects — a clean-up an
-  optimizer should run too. Every destructive optimization must work on a temporary copy (the
-  revision pipeline already does).
-- **Repair** goes through `QpdfService`, which is now exercised against a real qpdf on this machine.
-- **Crop** has a foundation in Segment 7 (`cropPages`, page boxes); the crop tool needs a drag
-  rectangle, which `RedactionLayer` and `FieldDesignLayer` already implement.
+- **Accessibility checker** can read title and language through `src/pdf/metadata/` (both already
+  editable through `setMetadata` and `setDocumentLanguage`), form field names through the form
+  model, and image-only pages through the same text test search uses.
+- **Bookmarks editing** has the outline writer from Combine (`src/pdf/create/outline.ts`).
+- **Measurement tools** are annotations; the annotation writer (`src/pdf/mutate/annotations/`)
+  takes a new kind the same way the others were added.
+- **Reading-order visualisation** should only be built on the structure tree where one exists.
 
 ## Next-session instruction
 
