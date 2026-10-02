@@ -11,7 +11,9 @@ import {
 const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 
 let sandbox = '';
-let originalPath: string | undefined;
+/** Where Windows keeps programs; emptied so an installed qpdf cannot be found. */
+const LOOKED_IN = ['PATH', 'ProgramFiles', 'ProgramFiles(x86)', 'ProgramW6432', 'LOCALAPPDATA'];
+let originalEnvironment: Record<string, string | undefined> = {};
 
 function service(configuredPath?: string | null): QpdfService {
   return new QpdfService({
@@ -44,13 +46,19 @@ class FakeQpdf extends QpdfService {
 beforeEach(async () => {
   vi.clearAllMocks();
   sandbox = await fs.mkdtemp(path.join(os.tmpdir(), 'paperforge-qpdf-'));
-  originalPath = process.env['PATH'];
-  // An empty PATH is how "qpdf is not installed" looks.
-  process.env['PATH'] = '';
+  originalEnvironment = Object.fromEntries(LOOKED_IN.map((key) => [key, process.env[key]]));
+  // Nothing on the PATH and no program folders is how "qpdf is not installed"
+  // looks, whatever this machine actually has installed.
+  for (const key of LOOKED_IN) process.env[key] = '';
 });
 
 afterEach(async () => {
-  process.env['PATH'] = originalPath;
+  for (const key of LOOKED_IN) {
+    const original = originalEnvironment[key];
+    // Assigning undefined would store the string "undefined".
+    if (original === undefined) delete process.env[key];
+    else process.env[key] = original;
+  }
   await fs.rm(sandbox, { recursive: true, force: true });
 });
 
