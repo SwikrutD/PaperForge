@@ -59,6 +59,8 @@ export interface CommandContext {
   readonly comparing: boolean;
   /** True while the crop frame is being drawn. */
   readonly cropping: boolean;
+  /** True while the Accessibility Check has the properties panel. */
+  readonly checkingAccessibility: boolean;
   /** True while the find bar is on screen. */
   readonly findOpen: boolean;
   /** How many matches the current search found. */
@@ -102,6 +104,7 @@ export interface CommandActions {
   togglePreparingForm(): void;
   toggleRedacting(): void;
   toggleCropping(): void;
+  toggleAccessibility(): void;
   toggleComparing(): void;
   openCreateWorkspace(intent: 'create' | 'combine'): void;
   closeCreateWorkspace(): void;

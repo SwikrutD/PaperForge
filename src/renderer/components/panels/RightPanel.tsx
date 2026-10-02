@@ -14,6 +14,8 @@ import { useRedactionStore } from '../../stores/redactionStore';
 import { RedactionPanel } from '../redact/RedactionPanel';
 import { CropPanel } from '../crop/CropPanel';
 import { useCropStore } from '../../stores/cropStore';
+import { useAccessibilityStore } from '../../stores/accessibilityStore';
+import { AccessibilityPanel } from '../accessibility/AccessibilityPanel';
 import { useUiStore } from '../../stores/uiStore';
 import { DocumentProperties } from '../workspace/DocumentProperties';
 import { AnnotationProperties } from '../annotations/AnnotationProperties';
@@ -52,6 +54,7 @@ export function RightPanel({ panel }: { panel: RightPanelId }): ReactElement {
   const preparing = useFormStore((state) => state.preparing);
   const redacting = useRedactionStore((state) => state.active);
   const cropping = useCropStore((state) => state.active);
+  const checkingAccessibility = useAccessibilityStore((state) => state.active);
   const selected = selectedAnnotation({ annotations, selectedId });
 
   const select = (id: RightPanelId): void => {
@@ -59,10 +62,8 @@ export function RightPanel({ panel }: { panel: RightPanelId }): ReactElement {
   };
 
   // The panel lists tools that can be used right now; the home screen shows the
-  // whole catalogue including what is not built yet.
-  const availableTools = TOOL_CATALOG.filter(
-    (tool) => tool.commandId !== undefined && resolve(tool.commandId)?.enabled === true,
-  );
+  // whole catalogue.
+  const availableTools = TOOL_CATALOG.filter((tool) => resolve(tool.commandId)?.enabled === true);
 
   return (
     <section
@@ -112,6 +113,8 @@ export function RightPanel({ panel }: { panel: RightPanelId }): ReactElement {
               title="Nothing selected"
               description="Open a document, then select text, an image, an annotation or a form field."
             />
+          ) : checkingAccessibility ? (
+            <AccessibilityPanel />
           ) : cropping ? (
             <CropPanel />
           ) : redacting ? (
@@ -147,8 +150,8 @@ export function RightPanel({ panel }: { panel: RightPanelId }): ReactElement {
         ) : availableTools.length === 0 ? (
           <EmptyPanelState
             icon={Wrench}
-            title="No tools available yet"
-            description="Tools appear here as each capability is built. The full list is on the home screen."
+            title="No tools available"
+            description="Open a document to use the tools that work on one. The full list is on the home screen."
           />
         ) : (
           <div className={styles.tools}>

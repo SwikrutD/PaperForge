@@ -1,4 +1,5 @@
 import {
+  Accessibility,
   Activity,
   GitCompare,
   Minimize2,
@@ -826,6 +827,18 @@ export function buildCommands(): CommandDefinition[] {
       isChecked: (context) => context.cropping,
       isAvailable: documentRequired,
       run: (context) => context.actions.toggleCropping(),
+    },
+    {
+      id: 'tools.accessibility',
+      title: 'Accessibility Check',
+      description: 'Check titles, language, tags, alternate text, fields and links.',
+      category: 'tools',
+      group: 'document',
+      icon: Accessibility,
+      keywords: ['accessibility', 'a11y', 'alt text', 'screen reader', 'tags', 'language', 'ua'],
+      isChecked: (context) => context.checkingAccessibility,
+      isAvailable: documentRequired,
+      run: (context) => context.actions.toggleAccessibility(),
     },
     {
       id: 'redact.apply',

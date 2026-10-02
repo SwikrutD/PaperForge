@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactElement } from 'react';
 import { OCR_DPI_CHOICES } from '@shared/schemas/ocr';
 import { parsePageRange } from '@shared/utils/pageRange';
+import { formatPageList } from '@pdf/mutate/operations';
 import { Button } from '../controls/Button';
 import { Dialog } from '../overlays/Dialog';
 import { useDocumentStore } from '../../stores/documentStore';
@@ -36,8 +37,14 @@ export function OcrDialog({ onClose }: { onClose: () => void }): ReactElement {
     void useOcrStore.getState().refreshStatus();
   }, []);
 
-  const [scope, setScope] = useState<Scope>('all');
-  const [rangeText, setRangeText] = useState('');
+  // Another tool — the Accessibility Check — may have named the pages to read.
+  const [suggested] = useState(() => {
+    const pages = useOcrStore.getState().suggestion;
+    useOcrStore.getState().suggestPages(null);
+    return pages;
+  });
+  const [scope, setScope] = useState<Scope>(suggested === null ? 'all' : 'range');
+  const [rangeText, setRangeText] = useState(suggested === null ? '' : formatPageList(suggested));
   const [searchable, setSearchable] = useState(true);
 
   const pageCount = tab?.pageCount ?? 0;

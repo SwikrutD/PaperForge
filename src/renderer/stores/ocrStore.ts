@@ -32,8 +32,12 @@ export interface OcrStore {
   progress: { page: number; done: number; total: number } | null;
   outcome: OcrOutcome | null;
   busy: boolean;
+  /** Pages another tool asked to have read, which the dialog starts with. */
+  suggestion: number[] | null;
 
   forgetOutcome: () => void;
+  /** Names the pages the dialog should offer next time it opens. */
+  suggestPages: (pages: readonly number[] | null) => void;
   refreshStatus: () => Promise<void>;
   setOptions: (patch: Partial<OcrOptions>) => void;
   /** Points PaperForge at a Tesseract program, or forgets the one it has. */
@@ -77,6 +81,9 @@ export const useOcrStore = create<OcrStore>((set, get) => ({
   progress: null,
   outcome: null,
   busy: false,
+  suggestion: null,
+
+  suggestPages: (pages) => set({ suggestion: pages === null ? null : [...pages] }),
 
   /** Forgets the last run, so a dialog opened again starts clean. */
   forgetOutcome: () => set({ outcome: null }),

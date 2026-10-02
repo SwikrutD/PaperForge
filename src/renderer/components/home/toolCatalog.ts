@@ -23,18 +23,13 @@ export interface ToolCatalogEntry {
   title: string;
   description: string;
   icon: LucideIcon;
-  /** The command that runs this tool. Absent until the tool is built. */
-  commandId?: string;
-  /** What has to land first, shown plainly while the tool is unavailable. */
-  requires: string;
+  /** The command that runs this tool. */
+  commandId: string;
 }
 
 /**
- * The tools PaperForge is being built to provide (CLAUDE.md section 6.2).
- *
- * A card is only interactive when `commandId` names a registered command, so a
- * tool cannot be started before it works. Tools without one render as clearly
- * unavailable rather than pretending.
+ * The tools PaperForge provides (CLAUDE.md section 6.2). Each card runs a
+ * registered command, so it is available exactly when that command is.
  */
 export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
@@ -43,7 +38,6 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     description: 'Change text and images on the page.',
     icon: PenLine,
     commandId: 'tools.edit',
-    requires: 'the PDF editor',
   },
   {
     id: 'create',
@@ -51,7 +45,6 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     description: 'Start from images, text or a blank page.',
     icon: FilePlus2,
     commandId: 'tools.create',
-    requires: 'document creation',
   },
   {
     id: 'export',
@@ -59,7 +52,6 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     description: 'Save as images, text, Word, Excel or PowerPoint.',
     icon: FileOutput,
     commandId: 'tools.export',
-    requires: 'the conversion centre',
   },
   {
     id: 'combine',
@@ -67,7 +59,6 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     description: 'Merge several documents into one.',
     icon: Combine,
     commandId: 'tools.combine',
-    requires: 'document creation',
   },
   {
     id: 'organize',
@@ -75,7 +66,6 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     description: 'Reorder, rotate, extract, split and insert pages.',
     icon: LayoutGrid,
     commandId: 'tools.organize',
-    requires: 'page organisation',
   },
   {
     id: 'comment',
@@ -83,7 +73,6 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     description: 'Highlight, draw, and leave notes.',
     icon: MessageSquare,
     commandId: 'tools.comment',
-    requires: 'annotations',
   },
   {
     id: 'fillSign',
@@ -91,7 +80,6 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     description: 'Complete form fields and add a simple signature.',
     icon: Signature,
     commandId: 'tools.fillSign',
-    requires: 'forms',
   },
   {
     id: 'ocr',
@@ -99,7 +87,6 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     description: 'Make a scanned document searchable, entirely on this computer.',
     icon: ScanText,
     commandId: 'tools.ocr',
-    requires: 'local OCR',
   },
   {
     id: 'protect',
@@ -107,7 +94,6 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     description: 'Add a password and set permissions.',
     icon: ShieldCheck,
     commandId: 'tools.protect',
-    requires: 'document security',
   },
   {
     id: 'redact',
@@ -115,7 +101,6 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     description: 'Remove sensitive content for good, not just cover it.',
     icon: EyeOff,
     commandId: 'tools.redact',
-    requires: 'redaction',
   },
   {
     id: 'optimize',
@@ -123,7 +108,6 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     description: 'Reduce file size with control over quality.',
     icon: Minimize2,
     commandId: 'tools.optimize',
-    requires: 'optimisation',
   },
   {
     id: 'compare',
@@ -131,7 +115,6 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     description: 'See what changed between two versions.',
     icon: GitCompare,
     commandId: 'tools.compare',
-    requires: 'comparison',
   },
   {
     id: 'prepareForm',
@@ -139,7 +122,6 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     description: 'Add fields, checkboxes and buttons.',
     icon: TextCursorInput,
     commandId: 'tools.prepareForm',
-    requires: 'form authoring',
   },
   {
     id: 'sanitize',
@@ -147,14 +129,13 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     description: 'Find and remove metadata, attachments and scripts.',
     icon: ShieldX,
     commandId: 'tools.sanitize',
-    requires: 'document administration',
   },
   {
     id: 'accessibility',
     title: 'Accessibility Check',
     description: 'Find missing titles, languages and alt text.',
     icon: Accessibility,
-    requires: 'the accessibility checker',
+    commandId: 'tools.accessibility',
   },
   {
     id: 'properties',
@@ -162,6 +143,5 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     description: 'Inspect and edit metadata and security.',
     icon: FileText,
     commandId: 'tools.properties',
-    requires: 'document administration',
   },
 ];

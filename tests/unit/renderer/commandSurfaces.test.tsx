@@ -130,7 +130,7 @@ describe('home screen', () => {
     expect(screen.getByLabelText('Pinned')).toBeInTheDocument();
   });
 
-  it('tells a tool that is not built apart from one that needs a document', () => {
+  it('says plainly that a tool needs a document', () => {
     renderWithCommands(<HomeScreen recentFiles={[]} />);
 
     // Commenting exists; on the home screen there is simply nothing to mark up.
@@ -162,15 +162,10 @@ describe('home screen', () => {
     expect(redactTool).toHaveAttribute('title', 'No document is open.');
     // And optimising makes the document in front of the reader smaller.
     expect(screen.getByRole('button', { name: /Optimize PDF/ })).toBeDisabled();
-    expect(screen.getAllByText('Needs a document')).toHaveLength(12);
-
-    // A tool whose capability is not built says something different.
+    // And the Accessibility Check reads the document in front of the reader.
     const accessibilityTool = screen.getByRole('button', { name: /Accessibility Check/ });
     expect(accessibilityTool).toBeDisabled();
-    expect(accessibilityTool).toHaveAttribute(
-      'title',
-      expect.stringContaining('Not available yet'),
-    );
-    expect(screen.getAllByText('Not yet available').length).toBeGreaterThanOrEqual(1);
+    expect(accessibilityTool).toHaveAttribute('title', 'No document is open.');
+    expect(screen.getAllByText('Needs a document')).toHaveLength(13);
   });
 });

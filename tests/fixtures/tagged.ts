@@ -26,13 +26,13 @@ export interface TaggedOptions {
 const PAGE_ONE =
   '/Heading1 <</MCID 0>> BDC BT /F1 24 Tf 1 0 0 1 60 700 Tm (Annual report) Tj ET EMC\n' +
   '/P <</MCID 1>> BDC BT /F1 12 Tf 1 0 0 1 60 650 Tm (Body text of the report.) Tj ET EMC\n' +
-  '/Figure <</MCID 2>> BDC 0.2 0.4 0.8 rg 60 450 120 90 re f EMC\n' +
+  '/Figure <</MCID 2>> BDC q 0.2 0.4 0.8 rg 60 450 120 90 re f Q EMC\n' +
   '/Artifact BMC BT /F1 9 Tf 1 0 0 1 300 30 Tm (1) Tj ET EMC\n' +
   'BT /F1 12 Tf 1 0 0 1 300 300 Tm (Loose text) Tj ET\n';
 
 const PAGE_TWO =
   '/P <</MCID 0>> BDC BT /F1 12 Tf 1 0 0 1 60 700 Tm (Second page.) Tj ET EMC\n' +
-  '/Figure <</MCID 1>> BDC 0 0 0 rg 200 400 50 50 re f EMC\n';
+  '/Figure <</MCID 1>> BDC q 0 0 0 rg 200 400 50 50 re f Q EMC\n';
 
 export async function buildTaggedPdf(options: TaggedOptions = {}): Promise<Uint8Array> {
   const pages: PageSpec[] = [

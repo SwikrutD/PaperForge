@@ -17,6 +17,7 @@ import { useOrganizeStore } from '../stores/organizeStore';
 import { useSearchStore } from '../stores/searchStore';
 import { marksFor, useRedactionStore } from '../stores/redactionStore';
 import { useCropStore } from '../stores/cropStore';
+import { useAccessibilityStore } from '../stores/accessibilityStore';
 import { useCompareStore } from '../stores/compareStore';
 import { useUiStore } from '../stores/uiStore';
 import { buildDiagnosticsText } from '../utils/diagnostics';
@@ -43,6 +44,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
   const preparingForm = useFormStore((state) => state.preparing);
   const redacting = useRedactionStore((state) => state.active);
   const cropping = useCropStore((state) => state.active);
+  const checkingAccessibility = useAccessibilityStore((state) => state.active);
   const comparing = useCompareStore((state) => state.open);
   const redactionMarkCount = useRedactionStore(
     (state) => marksFor(state.marks, activeTabId).length,
@@ -66,6 +68,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     const forms = useFormStore.getState;
     const redaction = useRedactionStore.getState;
     const crop = useCropStore.getState;
+    const accessibility = useAccessibilityStore.getState;
     const compare = useCompareStore.getState;
 
     const activeSessionId = (): string | null => documents().activeId;
@@ -186,6 +189,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
           ui().setCommenting(false);
           redaction().setActive(false);
           crop().setActive(false);
+          accessibility().setActive(false);
           void app().patchSettings({
             layout: { activeRightPanel: 'properties', rightPanel: { visible: true } },
           });
@@ -199,6 +203,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
           annotations().setTool('select');
           organize().setActive(false);
           crop().setActive(false);
+          accessibility().setActive(false);
           redaction().setActive(false);
           void app().patchSettings({
             layout: { activeRightPanel: 'properties', rightPanel: { visible: true } },
@@ -216,6 +221,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
           annotations().setTool('select');
           organize().setActive(false);
           crop().setActive(false);
+          accessibility().setActive(false);
           textEditor().setActive(false);
           redaction().setActive(false);
           void app().patchSettings({
@@ -235,6 +241,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
           annotations().setTool('select');
           organize().setActive(false);
           crop().setActive(false);
+          accessibility().setActive(false);
           textEditor().setActive(false);
           if (forms().active) void forms().commitDrafts();
           forms().setActive(false);
@@ -248,6 +255,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         const next = !crop().active;
         // The frame takes the pointer on every page, so nothing else may.
         if (next) {
+          accessibility().setActive(false);
           ui().setCommenting(false);
           annotations().setTool('select');
           organize().setActive(false);
@@ -261,6 +269,25 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         }
         crop().setActive(next);
       },
+      toggleAccessibility: () => {
+        const next = !accessibility().active;
+        // The check has the properties panel to itself, so the tools that
+        // also want it step aside.
+        if (next) {
+          ui().setCommenting(false);
+          annotations().setTool('select');
+          organize().setActive(false);
+          crop().setActive(false);
+          textEditor().setActive(false);
+          redaction().setActive(false);
+          if (forms().active) void forms().commitDrafts();
+          forms().setActive(false);
+          void app().patchSettings({
+            layout: { activeRightPanel: 'properties', rightPanel: { visible: true } },
+          });
+        }
+        accessibility().setActive(next);
+      },
       toggleComparing: () => {
         const next = !compare().open;
         // Comparing is a workspace of its own, like making a document.
@@ -268,6 +295,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
           creation().closeWorkspace();
           organize().setActive(false);
           crop().setActive(false);
+          accessibility().setActive(false);
           redaction().setActive(false);
         }
         compare().setOpen(next);
@@ -279,6 +307,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
           annotations().setTool('select');
           organize().setActive(false);
           crop().setActive(false);
+          accessibility().setActive(false);
           textEditor().setActive(false);
           redaction().setActive(false);
           void app().patchSettings({
@@ -293,6 +322,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         // act on while it is open.
         organize().setActive(false);
         crop().setActive(false);
+        accessibility().setActive(false);
         compare().setOpen(false);
         creation().openWorkspace(intent);
       },
@@ -300,6 +330,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
       setAnnotationTool: (tool) => {
         redaction().setActive(false);
         crop().setActive(false);
+        accessibility().setActive(false);
         ui().setCommenting(true);
         annotations().setTool(tool);
       },
@@ -356,6 +387,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
       redacting,
       redactionMarkCount,
       cropping,
+      checkingAccessibility,
       comparing,
       annotationTool: annotationTool === 'select' ? null : annotationTool,
       annotationSelected,
@@ -381,6 +413,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     redacting,
     redactionMarkCount,
     cropping,
+    checkingAccessibility,
     comparing,
     annotationTool,
     annotationSelected,

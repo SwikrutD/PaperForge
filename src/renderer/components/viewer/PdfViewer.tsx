@@ -43,6 +43,9 @@ import { marksFor, useRedactionStore } from '../../stores/redactionStore';
 import { CropLayer } from '../crop/CropLayer';
 import { CropToolbar } from '../crop/CropToolbar';
 import { useCropStore } from '../../stores/cropStore';
+import { useAccessibilityStore } from '../../stores/accessibilityStore';
+import { AccessibilityLayer } from '../accessibility/AccessibilityLayer';
+import { AccessibilityToolbar } from '../accessibility/AccessibilityToolbar';
 import { highlightsByPage } from '../search/searchNavigation';
 import { pdfRectToCss } from './pageGeometry';
 import { usePdfDocumentContext } from './pdfDocumentContextValue';
@@ -112,6 +115,11 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const redactionSelected = useRedactionStore((store) => store.selectedId);
   const cropping = useCropStore((store) => store.active);
   const cropFrame = useCropStore((store) => store.frame);
+  const checkingAccessibility = useAccessibilityStore((store) => store.active);
+  const showReadingOrder = useAccessibilityStore((store) => store.showReadingOrder);
+  const readingOrders = useAccessibilityStore((store) => store.orders);
+  const readingOrderFor = useAccessibilityStore((store) => store.orderFor);
+  const accessibilityFocus = useAccessibilityStore((store) => store.focused);
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
@@ -235,6 +243,20 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
     if (!cropping || state.status !== 'ready') return;
     void useCropStore.getState().loadBoxes(sessionId, tab.edit.revision);
   }, [cropping, state.status, sessionId, tab.edit.revision]);
+
+  // The reading order is read a page at a time, for the pages on screen.
+  useEffect(() => {
+    if (!checkingAccessibility || !showReadingOrder || state.status !== 'ready') return;
+    const load = useAccessibilityStore.getState().loadReadingOrder;
+    for (const pageNumber of mounted) void load(sessionId, tab.edit.revision, pageNumber);
+  }, [
+    checkingAccessibility,
+    showReadingOrder,
+    state.status,
+    mounted,
+    sessionId,
+    tab.edit.revision,
+  ]);
 
   // The form is read whole, because a field can be drawn on several pages.
   useEffect(() => {
@@ -379,9 +401,13 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
       {filling && !preparing && <FillSignToolbar disabled={state.status !== 'ready'} />}
       {redacting && <RedactionToolbar disabled={state.status !== 'ready'} />}
       {cropping && <CropToolbar />}
-      {!editing && !filling && !redacting && !cropping && (commenting || toolActive) && (
-        <AnnotationToolbar disabled={state.status !== 'ready'} />
-      )}
+      {checkingAccessibility && <AccessibilityToolbar />}
+      {!editing &&
+        !filling &&
+        !redacting &&
+        !cropping &&
+        !checkingAccessibility &&
+        (commenting || toolActive) && <AnnotationToolbar disabled={state.status !== 'ready'} />}
 
       <div className={styles.scroller} ref={scrollerRef} onScroll={onScroll} tabIndex={0}>
         {state.status === 'ready' && state.document !== null ? (
@@ -404,7 +430,26 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                   hideFormFields={filling}
                   highlights={highlights.get(pageNumber)}
                   overlay={
-                    state.document === null ? null : cropping ? (
+                    state.document === null ? null : checkingAccessibility ? (
+                      <AccessibilityLayer
+                        geometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}
+                        scale={scale}
+                        rotation={view.rotation}
+                        order={
+                          showReadingOrder &&
+                          readingOrderFor?.sessionId === sessionId &&
+                          readingOrderFor.revision === tab.edit.revision
+                            ? (readingOrders.get(pageNumber) ?? null)
+                            : null
+                        }
+                        focused={
+                          accessibilityFocus?.sessionId === sessionId &&
+                          accessibilityFocus.page === pageNumber
+                            ? accessibilityFocus.rect
+                            : null
+                        }
+                      />
+                    ) : cropping ? (
                       <CropLayer
                         geometry={state.document.pages[pageNumber - 1] as PdfPageGeometry}
                         scale={scale}

@@ -1,0 +1,54 @@
+/* Drawn over the page and never in the way of it. */
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.region {
+  position: absolute;
+  border: 1.5px solid var(--pf-color-accent);
+  background-color: color-mix(in srgb, var(--pf-color-accent) 8%, transparent);
+}
+
+.badge {
+  position: absolute;
+  /* Above the region rather than over the content it labels. */
+  top: -1.5px;
+  left: -1.5px;
+  transform: translateY(-100%);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 0 4px;
+  border-radius: var(--pf-radius-sm) var(--pf-radius-sm) 0 0;
+  background-color: var(--pf-color-accent);
+  color: var(--pf-color-text-on-accent);
+  font-size: 11px;
+  font-weight: var(--pf-font-weight-medium);
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.type {
+  font-weight: normal;
+  opacity: 0.85;
+}
+
+/* Text the tags do not mention: dashed, in the warning colour, unnumbered. */
+.untagged {
+  position: absolute;
+  border: 1.5px dashed var(--pf-color-warning);
+  background-color: color-mix(in srgb, var(--pf-color-warning) 10%, transparent);
+}
+
+.focused {
+  position: absolute;
+  margin: -3px;
+  padding: 3px;
+  border: 2px solid var(--pf-color-danger);
+  border-radius: 2px;
+  box-sizing: content-box;
+}

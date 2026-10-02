@@ -32,8 +32,8 @@ export function HomeScreen({
       <p className={styles.note}>
         <Info className={styles.noteIcon} aria-hidden="true" strokeWidth={1.75} />
         <span>
-          Open a PDF or drop one on the window to start. A tool below that is not built yet is shown
-          greyed out, with what it is waiting for.
+          Open a PDF or drop one on the window to start. Tools that work on a document are greyed
+          out until one is open.
         </span>
       </p>
 

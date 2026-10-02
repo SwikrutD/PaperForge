@@ -133,7 +133,7 @@ describe('AppShell layout', () => {
     // Making a document needs no document, so these work from the start.
     expect(screen.getByRole('button', { name: /Create PDF/ })).toBeEnabled();
     expect(screen.getByRole('button', { name: /Combine Files/ })).toBeEnabled();
-    // A tool that needs a document, and one that is not built, are both absent.
+    // Tools that need a document are absent until one is open.
     expect(screen.queryByRole('button', { name: /Organize Pages/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Edit PDF/ })).not.toBeInTheDocument();
     await Promise.resolve();

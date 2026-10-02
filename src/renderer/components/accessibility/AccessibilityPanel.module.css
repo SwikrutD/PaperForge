@@ -1,0 +1,237 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-150);
+  padding: var(--pf-space-150);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-050);
+}
+
+.title {
+  margin: 0;
+  color: var(--pf-color-text-primary);
+  font-size: var(--pf-font-size-300);
+  font-weight: var(--pf-font-weight-medium);
+}
+
+.note,
+.empty,
+.hint,
+.counts {
+  margin: 0;
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+}
+
+.counts {
+  color: var(--pf-color-text-primary);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--pf-space-150);
+}
+
+.checks,
+.items {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checks {
+  gap: var(--pf-space-050);
+}
+
+.items {
+  gap: var(--pf-space-025);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.check {
+  border: 1px solid var(--pf-color-border);
+  border-left-width: 3px;
+  border-radius: var(--pf-radius-sm);
+  background-color: var(--pf-color-bg-surface);
+}
+
+.failed {
+  border-left-color: var(--pf-color-danger);
+}
+
+.warning {
+  border-left-color: var(--pf-color-warning);
+}
+
+.manual {
+  border-left-color: var(--pf-color-accent);
+}
+
+.passed {
+  border-left-color: var(--pf-color-success);
+}
+
+.notApplicable {
+  border-left-color: var(--pf-color-border-strong);
+}
+
+.checkHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-space-100);
+  width: 100%;
+  min-height: var(--pf-control-height-md);
+  padding: var(--pf-space-050) var(--pf-space-100);
+  border: none;
+  background: none;
+  color: var(--pf-color-text-primary);
+  font: inherit;
+  font-size: var(--pf-font-size-200);
+  text-align: left;
+  cursor: pointer;
+}
+
+.checkHeader:hover {
+  background-color: var(--pf-color-bg-hover);
+}
+
+.checkHeader:focus-visible {
+  outline: 2px solid var(--pf-color-focus-ring);
+  outline-offset: -2px;
+}
+
+.twisty,
+.statusIcon {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+}
+
+.failed .statusIcon {
+  color: var(--pf-color-danger);
+}
+
+.warning .statusIcon {
+  color: var(--pf-color-warning);
+}
+
+.manual .statusIcon {
+  color: var(--pf-color-accent);
+}
+
+.passed .statusIcon {
+  color: var(--pf-color-success);
+}
+
+.notApplicable .statusIcon {
+  color: var(--pf-color-text-secondary);
+}
+
+.checkTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: var(--pf-font-weight-medium);
+}
+
+.statusWord {
+  flex: 0 0 auto;
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-100);
+}
+
+.checkBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-100);
+  padding: 0 var(--pf-space-100) var(--pf-space-100) calc(var(--pf-space-100) + 20px);
+}
+
+.summary {
+  margin: 0;
+  color: var(--pf-color-text-primary);
+  font-size: var(--pf-font-size-200);
+}
+
+.fix {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-050);
+}
+
+.fixRow {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--pf-space-100);
+}
+
+.textarea {
+  height: auto;
+  min-height: 64px;
+  padding: var(--pf-space-050) var(--pf-space-100);
+  resize: vertical;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pf-space-050);
+  border-radius: var(--pf-radius-sm);
+  background-color: var(--pf-color-bg-subtle);
+}
+
+.itemSelected {
+  padding-bottom: var(--pf-space-100);
+  background-color: var(--pf-color-bg-selected);
+}
+
+.itemSelected .fix {
+  padding: 0 var(--pf-space-100);
+}
+
+.itemButton {
+  display: flex;
+  align-items: baseline;
+  gap: var(--pf-space-100);
+  padding: var(--pf-space-050) var(--pf-space-100);
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.itemButton:disabled {
+  cursor: default;
+}
+
+.itemButton:focus-visible {
+  outline: 2px solid var(--pf-color-focus-ring);
+  outline-offset: -2px;
+}
+
+.itemLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--pf-color-text-primary);
+  font-size: var(--pf-font-size-200);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemPage {
+  flex: 0 0 auto;
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-100);
+  font-variant-numeric: tabular-nums;
+}
