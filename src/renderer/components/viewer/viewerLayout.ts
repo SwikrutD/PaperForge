@@ -137,6 +137,31 @@ export interface FitOptions {
 }
 
 /** Scale for a fit mode, based on the page the user is looking at. */
+/** Jumps further than this many screens go straight there instead of gliding. */
+export const SMOOTH_JUMP_SCREENS = 2;
+
+/**
+ * How a jump should scroll. A short one glides, so the reader sees where they
+ * went; a long one goes straight there, because gliding past hundreds of pages
+ * would start and cancel a render for every one of them. Reduced motion never
+ * glides.
+ */
+export function scrollBehaviorFor(
+  distance: number,
+  viewportHeight: number,
+  reducedMotion: boolean,
+): ScrollBehavior {
+  if (reducedMotion) return 'auto';
+  return Math.abs(distance) <= viewportHeight * SMOOTH_JUMP_SCREENS ? 'smooth' : 'auto';
+}
+
+/** True when Windows (or the browser) asks for less animation. */
+export function prefersReducedMotion(): boolean {
+  return typeof window.matchMedia === 'function'
+    ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    : false;
+}
+
 export function scaleForMode(mode: ZoomMode, options: FitOptions, currentScale = 1): number {
   if (mode === 'actual') return 1;
   if (mode === 'custom') return clampScale(currentScale);

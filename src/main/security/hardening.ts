@@ -65,6 +65,52 @@ export function applyDevSecurityHeaders(session: Session, policy: string, origin
   });
 }
 
+/** Every scheme a request could leave the machine by. */
+const NETWORK_URL_PATTERNS = ['http://*/*', 'https://*/*', 'ws://*/*', 'wss://*/*', 'ftp://*/*'];
+
+/**
+ * True when a request may proceed: only the development server, when there is
+ * one. Matching is on the exact origin, so a look-alike host is refused.
+ */
+export function isAllowedNetworkRequest(url: string, allowedOrigins: readonly string[]): boolean {
+  let origin: string;
+  try {
+    origin = new URL(url).origin;
+  } catch {
+    return false;
+  }
+  return allowedOrigins.some((allowed) => {
+    try {
+      const parsed = new URL(allowed);
+      return parsed.origin === origin || parsed.origin.replace(/^http/, 'ws') === origin;
+    } catch {
+      return false;
+    }
+  });
+}
+
+/**
+ * Refuses every request that would leave the machine. PaperForge is offline:
+ * the renderer's Content Security Policy already forbids remote content, and
+ * this stops the main process and anything else using the session too, so a
+ * mistake in either cannot quietly reach the network. The development build
+ * may still reach its own Vite server.
+ */
+export function blockNetwork(
+  session: Session,
+  allowedOrigins: readonly string[],
+  logger: Logger,
+): void {
+  session.webRequest.onBeforeRequest({ urls: NETWORK_URL_PATTERNS }, (details, callback) => {
+    if (isAllowedNetworkRequest(details.url, allowedOrigins)) {
+      callback({});
+      return;
+    }
+    logger.warn('Blocked a network request.', new URL(details.url).origin);
+    callback({ cancel: true });
+  });
+}
+
 /** Refuses TLS errors outright instead of prompting; PaperForge is offline. */
 export function rejectInsecureCertificates(logger: Logger): void {
   app.on('certificate-error', (event, _contents, url, error) => {

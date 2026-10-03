@@ -106,6 +106,12 @@ export function toAppError(error: unknown): AppError {
   });
 }
 
+/**
+ * Pages whose rendering state is kept between draws: enough for the pages on
+ * screen, the band either side, and the thumbnails in view.
+ */
+export const MAX_CACHED_PAGES = 48;
+
 class PdfjsDocument implements LoadedPdfDocument {
   private readonly pageCache = new Map<number, Promise<PDFPageProxy>>();
   private readonly textCache = new Map<number, Promise<PdfPageText>>();
@@ -119,12 +125,34 @@ class PdfjsDocument implements LoadedPdfDocument {
     private readonly optionalContent: OptionalContentConfig | null,
   ) {}
 
+  /**
+   * Pages are kept most-recently-used first, and a page that falls off the end
+   * is cleaned up: PDF.js otherwise holds every page's drawing instructions
+   * and decoded pictures for as long as the document is open, which on a long
+   * scan is most of the memory the window uses. Cleaning a page that is still
+   * drawing is deferred by PDF.js until it finishes.
+   */
   private getPage(pageNumber: number): Promise<PDFPageProxy> {
     const existing = this.pageCache.get(pageNumber);
-    if (existing !== undefined) return existing;
+    if (existing !== undefined) {
+      this.pageCache.delete(pageNumber);
+      this.pageCache.set(pageNumber, existing);
+      return existing;
+    }
     const promise = this.document.getPage(pageNumber);
     this.pageCache.set(pageNumber, promise);
+    this.evictPages();
     return promise;
+  }
+
+  private evictPages(): void {
+    while (this.pageCache.size > MAX_CACHED_PAGES) {
+      const oldest = this.pageCache.keys().next();
+      if (oldest.done === true) return;
+      const promise = this.pageCache.get(oldest.value);
+      this.pageCache.delete(oldest.value);
+      void promise?.then((page) => page.cleanup()).catch(() => undefined);
+    }
   }
 
   pageSize(pageNumber: number, scale: number, rotation: number): RenderedPageSize {

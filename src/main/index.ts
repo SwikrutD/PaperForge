@@ -6,6 +6,7 @@ import { createEventBroadcaster, registerIpcHandlers } from './ipc/registerHandl
 import { buildContentSecurityPolicy } from './security/csp';
 import {
   applyDevSecurityHeaders,
+  blockNetwork,
   hardenSession,
   hardenWebContents,
   rejectInsecureCertificates,
@@ -220,6 +221,7 @@ async function bootstrap(): Promise<void> {
     devServerUrl === null ? [RENDERER_ORIGIN] : [RENDERER_ORIGIN, devServerUrl];
 
   hardenSession(session.defaultSession, logger);
+  blockNetwork(session.defaultSession, devServerUrl === null ? [] : [devServerUrl], logger);
   rejectInsecureCertificates(logger);
   app.on('web-contents-created', (_event, contents) => {
     hardenWebContents(contents, trustedOrigins, logger);

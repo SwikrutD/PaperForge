@@ -9,6 +9,7 @@ import {
   PAGE_MARGIN,
   rotatedSize,
   scaleForMode,
+  scrollBehaviorFor,
   scrollTopForPage,
   visiblePages,
 } from '../../../src/renderer/components/viewer/viewerLayout';
@@ -177,5 +178,16 @@ describe('zoom', () => {
     expect(nextZoomStep(1, -1)).toBe(0.75);
     expect(nextZoomStep(8, 1)).toBe(8);
     expect(nextZoomStep(0.25, -1)).toBe(0.25);
+  });
+
+  it('glides to a nearby page and goes straight to a distant one', () => {
+    expect(scrollBehaviorFor(900, 600, false)).toBe('smooth');
+    expect(scrollBehaviorFor(-1200, 600, false)).toBe('smooth');
+    expect(scrollBehaviorFor(50_000, 600, false)).toBe('auto');
+    expect(scrollBehaviorFor(-50_000, 600, false)).toBe('auto');
+  });
+
+  it('never glides when the reader asked for less motion', () => {
+    expect(scrollBehaviorFor(100, 600, true)).toBe('auto');
   });
 });

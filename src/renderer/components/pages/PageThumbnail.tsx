@@ -60,9 +60,19 @@ export function PageThumbnail({
     return () => controller.abort();
   }, [pdf, page.pageNumber, page.width, width, visible, version]);
 
+  // Out of view, the pixels go: a canvas otherwise keeps them for as long as
+  // it exists, and a long document's panel would hold every page it passed.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas === null || visible) return;
+    canvas.width = 0;
+    canvas.height = 0;
+  }, [visible]);
+
   return (
     <span className={styles.frame} style={{ width: `${width}px`, height: `${height}px` }}>
-      <canvas className={styles.canvas} ref={canvasRef} />
+      {/* Empty until drawn: an unsized canvas would still be 300 by 150. */}
+      <canvas className={styles.canvas} ref={canvasRef} width={0} height={0} />
     </span>
   );
 }

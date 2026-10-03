@@ -49,6 +49,7 @@ export function PdfPageView({
   const textRef = useRef<HTMLDivElement>(null);
   const [links, setLinks] = useState<PdfLink[]>([]);
   const [failed, setFailed] = useState(false);
+  const [rendered, setRendered] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -57,6 +58,7 @@ export function PdfPageView({
     if (canvas === null || textLayer === null) return;
 
     setFailed(false);
+    setRendered(false);
     const render = async (): Promise<void> => {
       await pdf.renderPage({
         pageNumber: box.pageNumber,
@@ -68,6 +70,7 @@ export function PdfPageView({
         signal: controller.signal,
       });
       if (controller.signal.aborted) return;
+      setRendered(true);
       await pdf.renderTextLayer({
         pageNumber: box.pageNumber,
         scale,
@@ -83,6 +86,18 @@ export function PdfPageView({
 
     return () => controller.abort();
   }, [pdf, box.pageNumber, scale, rotation, layersVersion, hideFormFields]);
+
+  // A canvas's pixels are only released when it is collected, which can be
+  // long after a page scrolls away. Emptying it on unmount gives the memory
+  // back at once — on a long scan, that is most of what the viewer holds.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    return () => {
+      if (canvas === null) return;
+      canvas.width = 0;
+      canvas.height = 0;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -104,6 +119,7 @@ export function PdfPageView({
       className={styles.page}
       style={{ top: `${box.top}px`, width: `${box.width}px`, height: `${box.height}px` }}
       data-page-number={box.pageNumber}
+      data-rendered={rendered ? 'true' : undefined}
       aria-label={`Page ${label ?? String(box.pageNumber)}`}
     >
       <canvas className={styles.canvas} ref={canvasRef} />

@@ -58,8 +58,10 @@ import { ViewerToolbar } from './ViewerToolbar';
 import {
   currentPage as currentPageOf,
   layoutPages,
+  prefersReducedMotion,
   rotatedSize,
   scaleForMode,
+  scrollBehaviorFor,
   scrollTopForPage,
   visiblePages,
 } from './viewerLayout';
@@ -226,7 +228,15 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
       const element = scrollerRef.current;
       const clamped = Math.min(Math.max(1, pageNumber), Math.max(1, pages.length));
       if (element === null) return;
-      element.scrollTo({ top: scrollTopForPage(layout, clamped), behavior: 'smooth' });
+      const top = scrollTopForPage(layout, clamped);
+      element.scrollTo({
+        top,
+        behavior: scrollBehaviorFor(
+          top - element.scrollTop,
+          element.clientHeight,
+          prefersReducedMotion(),
+        ),
+      });
     },
     [layout, pages.length],
   );
@@ -315,9 +325,14 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
     if (top >= visibleFrom && bottom <= visibleTo) return;
 
     // A third of the way down reads better than flush against the top edge.
+    const target = Math.max(0, top - element.clientHeight / 3);
     element.scrollTo({
-      top: Math.max(0, top - element.clientHeight / 3),
-      behavior: 'smooth',
+      top: target,
+      behavior: scrollBehaviorFor(
+        target - element.scrollTop,
+        element.clientHeight,
+        prefersReducedMotion(),
+      ),
     });
   }, [hitForThisTab, state.status, layout, pages, scale, view.rotation]);
 
