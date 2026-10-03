@@ -59,7 +59,7 @@ export function PagesPanel({ document, sessionId, currentPage }: PagesPanelProps
       <ul
         className={styles.list}
         style={{ height: `${layout.contentHeight}px` }}
-        aria-label={`${document.pages.length} pages`}
+        aria-label="Thumbnails"
       >
         {mounted.map((pageNumber) => {
           const page = document.pages[pageNumber - 1];

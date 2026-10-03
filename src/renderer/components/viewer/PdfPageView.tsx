@@ -87,18 +87,6 @@ export function PdfPageView({
     return () => controller.abort();
   }, [pdf, box.pageNumber, scale, rotation, layersVersion, hideFormFields]);
 
-  // A canvas's pixels are only released when it is collected, which can be
-  // long after a page scrolls away. Emptying it on unmount gives the memory
-  // back at once — on a long scan, that is most of what the viewer holds.
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    return () => {
-      if (canvas === null) return;
-      canvas.width = 0;
-      canvas.height = 0;
-    };
-  }, []);
-
   useEffect(() => {
     let cancelled = false;
     void pdf

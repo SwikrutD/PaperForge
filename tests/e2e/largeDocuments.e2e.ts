@@ -131,7 +131,7 @@ test('the thumbnails of a 1,000-page document are drawn only near the view', asy
     await page.getByRole('button', { name: 'Page Thumbnails' }).click();
   await expect(panel).toBeVisible();
   // The list is as long as a thousand entries, but only those near the view exist.
-  await expect(panel.getByRole('list', { name: '1000 pages' })).toBeVisible();
+  await expect(panel.getByRole('list', { name: 'Thumbnails' })).toBeVisible();
   expect(await panel.locator('li').count()).toBeLessThanOrEqual(MAX_DRAWN_THUMBNAILS);
   await expect.poll(async () => drawnThumbnails(panel)).toBeGreaterThan(0);
   expect(await drawnThumbnails(panel)).toBeLessThanOrEqual(MAX_DRAWN_THUMBNAILS);
