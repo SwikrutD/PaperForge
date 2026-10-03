@@ -88,3 +88,38 @@ button {
     transition-duration: 0.01ms !important;
   }
 }
+
+/*
+ * Windows high contrast themes replace every colour with a system colour, and
+ * drop backgrounds and shadows. State that the design shows with a tinted
+ * background — the open tab, a pressed toggle, the current page or result —
+ * is redrawn here with the theme's own highlight, so it never depends on a
+ * colour the theme has taken away. The rules are marked important because a
+ * component's own state styles would otherwise win on source order, and in
+ * this mode the system colours must.
+ */
+@media (forced-colors: active) {
+  [aria-pressed='true'],
+  [aria-selected='true'],
+  [aria-current]:not([aria-current='false']),
+  [role='menuitemcheckbox'][aria-checked='true'],
+  [role='menuitemradio'][aria-checked='true'] {
+    forced-color-adjust: none;
+    background-color: Highlight !important;
+    color: HighlightText !important;
+  }
+
+  :disabled,
+  [aria-disabled='true'] {
+    color: GrayText !important;
+  }
+
+  :focus-visible {
+    outline-color: Highlight;
+  }
+
+  ::selection {
+    background-color: Highlight;
+    color: HighlightText;
+  }
+}

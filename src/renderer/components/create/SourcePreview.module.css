@@ -1,4 +1,7 @@
 .frame {
+  /* A page is the document's own colours, never the system's: in a high
+     contrast theme the invisible text layer would otherwise be drawn. */
+  forced-color-adjust: none;
   display: flex;
   align-items: center;
   justify-content: center;
