@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import { watch, type FSWatcher } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import path from 'node:path';
 import { AppError } from '@shared/errors/appError';
 import type {
   DocumentSession,
@@ -30,6 +31,13 @@ export interface DocumentServiceDeps {
   onFileChange: (event: FileChangeEvent) => void;
   /** Called whenever the set of open paths changes, for session restore. */
   onOpenPathsChanged: (paths: string[]) => void;
+}
+
+/** What the editor tells the journal after every change, undo, redo or save. */
+export interface EditJournalState {
+  dirty: boolean;
+  /** Absolute path of the revision being shown, once there is one. */
+  workingCopy: string | undefined;
 }
 
 interface TrackedSession {
@@ -164,17 +172,28 @@ export class DocumentService {
     }
   }
 
-  /** Records unsaved changes in the journal. Used by the editing segments. */
-  async setDirty(sessionId: string, dirty: boolean): Promise<void> {
+  /**
+   * Records in the journal whether the document has unsaved changes and which
+   * revision holds them, so a crash loses neither.
+   */
+  async recordEditState(sessionId: string, state: EditJournalState): Promise<void> {
     const entry = this.tracked.get(sessionId);
-    if (entry === undefined || entry.session.dirty === dirty) return;
+    if (entry === undefined) return;
 
-    entry.session = { ...entry.session, dirty };
+    entry.session = { ...entry.session, dirty: state.dirty };
     const journal = await this.deps.workspaces.read(sessionId);
     if (journal === undefined) return;
+
+    const workingCopy =
+      state.workingCopy === undefined
+        ? null
+        : path.relative(this.deps.workspaces.directoryFor(sessionId), state.workingCopy);
+    if (journal.dirty === state.dirty && (journal.workingCopy ?? null) === workingCopy) return;
+
     await this.deps.workspaces.write({
       ...journal,
-      dirty,
+      dirty: state.dirty,
+      workingCopy,
       lastTouchedAt: new Date().toISOString(),
     });
   }

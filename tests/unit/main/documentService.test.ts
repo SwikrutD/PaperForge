@@ -126,10 +126,15 @@ describe('DocumentService', () => {
     const { sessions } = await service.openPaths([filePath]);
     const sessionId = sessions[0]!.id;
 
-    await service.setDirty(sessionId, true);
+    const workingCopy = path.join(workspaces.directoryFor(sessionId), 'revisions', '0001.pdf');
+    await service.recordEditState(sessionId, { dirty: true, workingCopy });
 
     expect(service.get(sessionId)?.dirty).toBe(true);
-    expect((await workspaces.read(sessionId))?.dirty).toBe(true);
+    // The working copy is kept relative to the session's own directory.
+    expect(await workspaces.read(sessionId)).toMatchObject({
+      dirty: true,
+      workingCopy: path.join('revisions', '0001.pdf'),
+    });
 
     await service.closeAll();
   });

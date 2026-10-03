@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { RecoveryEntry } from '@shared/schemas/document';
 import { writeFileAtomic } from '../filesystem/atomicWrite';
 import { readJsonFile } from '../filesystem/readJsonFile';
+import { resolveWithinRoot } from '../filesystem/pathSafety';
 import type { Logger } from '../logging/logger';
 
 export const JOURNAL_FILE_NAME = 'journal.json';
@@ -18,6 +19,12 @@ export const journalSchema = z.object({
   openedAt: z.string().min(1),
   lastTouchedAt: z.string().min(1),
   dirty: z.boolean(),
+  /**
+   * The revision being shown, relative to the session directory, once the
+   * document has been changed. With `dirty` it is what a crash would lose, and
+   * what recovery offers back.
+   */
+  workingCopy: z.string().min(1).max(260).nullable().optional(),
   /** The process that owned the session, for diagnostics only. */
   pid: z.number().int().nonnegative(),
 });
@@ -31,8 +38,9 @@ export type Journal = z.infer<typeof journalSchema>;
  * next start is therefore the remains of a crash, which is what the recovery
  * screen offers back to the user.
  *
- * Segment 5 writes working copies and change entries into the same directory;
- * the journal already carries the dirty flag those will set.
+ * The editor keeps each revision of a changed document in the same directory,
+ * and the journal names the one being shown, so unsaved changes outlive a
+ * crash as a file the next run can open.
  */
 export class SessionWorkspaces {
   readonly root: string;
@@ -75,6 +83,20 @@ export class SessionWorkspaces {
       this.logger.warn('A recovery journal could not be read.', sessionId, error);
       return undefined;
     }
+  }
+
+  /**
+   * The unsaved revision a journal names, when there is one and it is still on
+   * disk. The name is resolved inside the session's own directory: a journal
+   * is never allowed to point PaperForge at a file somewhere else.
+   */
+  async unsavedCopyOf(journal: Journal): Promise<string | undefined> {
+    if (!journal.dirty || journal.workingCopy === undefined || journal.workingCopy === null) {
+      return undefined;
+    }
+    const resolved = resolveWithinRoot(this.directoryFor(journal.sessionId), journal.workingCopy);
+    if (resolved === null || !(await fileExists(resolved))) return undefined;
+    return resolved;
   }
 
   /** Removes a session directory. Used on clean close and on discard. */
@@ -120,6 +142,7 @@ export class SessionWorkspaces {
         openedAt: journal.openedAt,
         lastTouchedAt: journal.lastTouchedAt,
         dirty: journal.dirty,
+        unsavedChanges: (await this.unsavedCopyOf(journal)) !== undefined,
         fileStillExists: await fileExists(journal.path),
       });
     }

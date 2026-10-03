@@ -14,6 +14,7 @@ import type { PdfMutationEngine, StagedAsset } from '@pdf/mutate/types';
 import { writeFileAtomic } from '../filesystem/atomicWrite';
 import type { Logger } from '../logging/logger';
 import type { QpdfService } from '../qpdf/qpdfService';
+import type { EditJournalState } from './documentService';
 import { RevisionHistory } from './revisionHistory';
 
 const REVISIONS_DIR_NAME = 'revisions';
@@ -37,8 +38,11 @@ export interface DocumentEditorDeps {
   logger: Logger;
   /** The working directory PaperForge owns for a session. */
   workspaceDirectory: (sessionId: string) => string;
-  /** Records unsaved changes in the recovery journal. */
-  setDirty: (sessionId: string, dirty: boolean) => Promise<void>;
+  /**
+   * Records unsaved changes, and the revision holding them, in the recovery
+   * journal.
+   */
+  recordState: (sessionId: string, state: EditJournalState) => Promise<void>;
   /** Files staged for this session, which a change may need to embed. */
   stagedAssets: (sessionId: string) => ReadonlyMap<string, StagedAsset>;
 }
@@ -149,7 +153,7 @@ export class DocumentEditor {
 
     delete entry.annotations;
     await entry.history.push(transaction.label, result.bytes);
-    await this.markDirty(sessionId, entry);
+    await this.recordState(sessionId);
     this.deps.logger.info('Applied a change.', session.file.displayName, transaction.label);
     return this.state(sessionId);
   }
@@ -176,7 +180,7 @@ export class DocumentEditor {
     const entry = await this.ensureStarted(sessionId, await this.readCurrentBytes(session));
     delete entry.annotations;
     await entry.history.push(label, bytes);
-    await this.markDirty(sessionId, entry);
+    await this.recordState(sessionId);
     this.deps.logger.info('Applied a change.', session.file.displayName, label);
     return this.state(sessionId);
   }
@@ -205,7 +209,7 @@ export class DocumentEditor {
   async undo(sessionId: string): Promise<DocumentEditState> {
     const entry = this.edited.get(sessionId);
     if (entry !== undefined && entry.history.undo() !== undefined) {
-      await this.markDirty(sessionId, entry);
+      await this.recordState(sessionId);
     }
     return this.state(sessionId);
   }
@@ -213,7 +217,7 @@ export class DocumentEditor {
   async redo(sessionId: string): Promise<DocumentEditState> {
     const entry = this.edited.get(sessionId);
     if (entry !== undefined && entry.history.redo() !== undefined) {
-      await this.markDirty(sessionId, entry);
+      await this.recordState(sessionId);
     }
     return this.state(sessionId);
   }
@@ -233,7 +237,7 @@ export class DocumentEditor {
         details: `revision ${entry.savedRevision} is outside the history kept on disk`,
       });
     }
-    await this.markDirty(sessionId, entry);
+    await this.recordState(sessionId);
     return this.state(sessionId);
   }
 
@@ -288,7 +292,7 @@ export class DocumentEditor {
         ? await this.deps.documents.retarget(request.sessionId, destination)
         : await this.deps.documents.markSavedByUs(request.sessionId);
 
-    await this.deps.setDirty(request.sessionId, false);
+    await this.recordState(request.sessionId);
     this.deps.logger.info('Saved a document.', destination);
 
     return {
@@ -323,8 +327,12 @@ export class DocumentEditor {
     return entry;
   }
 
-  private async markDirty(sessionId: string, entry: EditedDocument): Promise<void> {
-    await this.deps.setDirty(sessionId, entry.history.currentRevision !== entry.savedRevision);
+  private async recordState(sessionId: string): Promise<void> {
+    const entry = this.edited.get(sessionId);
+    await this.deps.recordState(sessionId, {
+      dirty: entry !== undefined && entry.history.currentRevision !== entry.savedRevision,
+      workingCopy: entry?.history.current?.filePath,
+    });
   }
 
   private async readCurrentBytes(session: DocumentSession): Promise<Uint8Array> {

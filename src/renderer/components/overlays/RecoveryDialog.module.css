@@ -33,3 +33,8 @@
   font-size: var(--pf-font-size-200);
   overflow-wrap: anywhere;
 }
+
+.actions {
+  display: flex;
+  margin-top: var(--pf-space-050);
+}

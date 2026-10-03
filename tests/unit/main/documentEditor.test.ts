@@ -135,18 +135,18 @@ function makeDocuments(session: DocumentSession): EditorDocuments & { session: D
 function makeEditor(
   documents: EditorDocuments,
   options: { engine?: PdfMutationEngine; qpdf?: QpdfService } = {},
-): { editor: DocumentEditor; setDirty: Mock } {
-  const setDirty = vi.fn(() => Promise.resolve());
+): { editor: DocumentEditor; recordState: Mock } {
+  const recordState = vi.fn(() => Promise.resolve());
   const editor = new DocumentEditor({
     documents,
     engine: options.engine ?? new PdfLibMutationEngine(),
     qpdf: options.qpdf ?? qpdfMissing,
     logger,
     workspaceDirectory: () => workspace,
-    setDirty,
+    recordState,
     stagedAssets: () => new Map(),
   });
-  return { editor, setDirty };
+  return { editor, recordState };
 }
 
 /** Page count and rotations, read back with the render engine. */
@@ -191,14 +191,18 @@ describe('DocumentEditor', () => {
 
   it('changes a document without touching the file it came from', async () => {
     const documents = makeDocuments(await makeSession(documentPath));
-    const { editor, setDirty } = makeEditor(documents);
+    const { editor, recordState } = makeEditor(documents);
     const before = await fs.readFile(documentPath);
 
     const state = await editor.apply(SESSION_ID, rotate(2));
 
     expect(state).toMatchObject({ revision: 1, dirty: true, canUndo: true, canRedo: false });
     expect(state.undoLabel).toBe('Rotate page 2');
-    expect(setDirty).toHaveBeenLastCalledWith(SESSION_ID, true);
+    // The journal names the revision holding the change, so a crash keeps it.
+    expect(recordState).toHaveBeenLastCalledWith(SESSION_ID, {
+      dirty: true,
+      workingCopy: editor.currentBytesPath(SESSION_ID),
+    });
 
     // The original is untouched; the change lives in the working copy.
     expect(await fs.readFile(documentPath)).toEqual(before);
@@ -237,7 +241,7 @@ describe('DocumentEditor', () => {
 
   it('saves the current revision and reopens what it wrote', async () => {
     const documents = makeDocuments(await makeSession(documentPath));
-    const { editor, setDirty } = makeEditor(documents);
+    const { editor, recordState } = makeEditor(documents);
     await editor.apply(SESSION_ID, rotate(2));
 
     const outcome = await editor.save({ sessionId: SESSION_ID, mode: 'save' });
@@ -246,7 +250,10 @@ describe('DocumentEditor', () => {
     expect(outcome.path).toBe(documentPath);
     expect(outcome.edit).toMatchObject({ dirty: false, revision: 1 });
     expect(outcome.checkedWithQpdf).toBe(false);
-    expect(setDirty).toHaveBeenLastCalledWith(SESSION_ID, false);
+    expect(recordState).toHaveBeenLastCalledWith(SESSION_ID, {
+      dirty: false,
+      workingCopy: editor.currentBytesPath(SESSION_ID),
+    });
 
     // The change is in the file the reader opened.
     expect(await readBack(documentPath)).toEqual({ pages: 3, rotations: [0, 90, 0] });

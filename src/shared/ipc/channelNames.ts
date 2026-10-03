@@ -86,6 +86,7 @@ export const INVOKE_CHANNEL_NAMES = [
   'tools:locateQpdf',
   'recovery:list',
   'recovery:restore',
+  'recovery:saveCopy',
   'recovery:discard',
   'shell:openExternal',
   'print:printers',

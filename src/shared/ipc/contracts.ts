@@ -538,6 +538,13 @@ export const invokeContracts = {
     request: z.strictObject({ sessionIds: z.array(z.string().min(1)).min(1).max(50) }),
     response: openResultSchema,
   },
+  'recovery:saveCopy': {
+    request: z.strictObject({
+      sessionId: z.string().min(1),
+      displayName: z.string().min(1).max(260),
+    }),
+    response: openResultSchema,
+  },
   'recovery:discard': {
     request: z.strictObject({ sessionIds: z.array(z.string().min(1)).min(1).max(50) }),
     response: z.array(recoveryEntrySchema),

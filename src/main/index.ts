@@ -35,6 +35,7 @@ import { PdfLibMutationEngine } from '@pdf/mutate/pdfLibEngine';
 import { createLogger, parseLogLevel, type Logger } from './services/logging/logger';
 import { RecentFilesStore } from './services/recentFiles/recentFilesStore';
 import { SessionWorkspaces } from './services/recovery/recoveryJournal';
+import { SessionRecovery } from './services/recovery/sessionRecovery';
 import { SettingsStore } from './services/settings/settingsStore';
 import { ThemeController } from './theme/themeController';
 import { registerDocumentProtocol, registerDocumentScheme } from './windows/documentProtocol';
@@ -172,7 +173,7 @@ async function bootstrap(): Promise<void> {
     qpdf,
     logger,
     workspaceDirectory: (sessionId) => workspaces.directoryFor(sessionId),
-    setDirty: (sessionId, dirty) => documents.setDirty(sessionId, dirty),
+    recordState: (sessionId, state) => documents.recordEditState(sessionId, state),
     stagedAssets: (sessionId: string) => stagedAssets.assetsFor(sessionId),
   });
   // Document administration reads the revision the reader is looking at, and
@@ -267,7 +268,7 @@ async function bootstrap(): Promise<void> {
     library,
     creator,
     conversions,
-    workspaces,
+    recovery: new SessionRecovery({ workspaces, documents, editor, logger }),
     theme,
     logger,
     trustedOrigins,

@@ -15,7 +15,7 @@ import type { TesseractService } from '../services/tesseract/tesseractService';
 import type { ExportSessions } from '../services/conversion/exportSession';
 import type { LibreOfficeProvider } from '../services/conversion/libreOffice';
 import type { RecentFilesStore } from '../services/recentFiles/recentFilesStore';
-import type { SessionWorkspaces } from '../services/recovery/recoveryJournal';
+import type { SessionRecovery } from '../services/recovery/sessionRecovery';
 import type { SettingsStore } from '../services/settings/settingsStore';
 import type { Logger } from '../services/logging/logger';
 import type { ThemeController } from '../theme/themeController';
@@ -66,7 +66,7 @@ export interface IpcDependencies {
   library: SourceLibrary;
   creator: DocumentCreator;
   conversions: ConversionRegistry;
-  workspaces: SessionWorkspaces;
+  recovery: SessionRecovery;
   theme: ThemeController;
   logger: Logger;
   trustedOrigins: readonly string[];
@@ -215,7 +215,7 @@ export function registerIpcHandlers(deps: IpcDependencies): void {
     documents: deps.documents,
     recentFiles: deps.recentFiles,
     settings: deps.settings,
-    workspaces: deps.workspaces,
+    recovery: deps.recovery,
     senderWindow,
   });
 

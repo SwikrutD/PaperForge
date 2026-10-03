@@ -1,18 +1,19 @@
-import { dialog, shell, type BrowserWindow } from 'electron';
+import { app, dialog, shell, type BrowserWindow } from 'electron';
+import path from 'node:path';
 import fs from 'node:fs/promises';
 import { AppError } from '@shared/errors/appError';
 import type { OpenResult } from '@shared/schemas/document';
 import type { DocumentService } from '../../services/documents/documentService';
 import type { RecentFilesStore } from '../../services/recentFiles/recentFilesStore';
 import type { SettingsStore } from '../../services/settings/settingsStore';
-import type { SessionWorkspaces } from '../../services/recovery/recoveryJournal';
+import type { SessionRecovery } from '../../services/recovery/sessionRecovery';
 import type { RegisterInvoke } from '../registry';
 
 export interface FileHandlerDeps {
   documents: DocumentService;
   recentFiles: RecentFilesStore;
   settings: SettingsStore;
-  workspaces: SessionWorkspaces;
+  recovery: SessionRecovery;
   senderWindow: (event: Electron.IpcMainInvokeEvent) => BrowserWindow;
 }
 
@@ -99,26 +100,29 @@ export function registerFileHandlers(registerInvoke: RegisterInvoke, deps: FileH
   );
   registerInvoke('recentFiles:remove', ({ path: filePath }) => deps.recentFiles.remove(filePath));
 
-  registerInvoke('recovery:list', () =>
-    deps.workspaces.listRecoverable(deps.documents.activeSessionIds()),
-  );
+  registerInvoke('recovery:list', () => deps.recovery.list());
 
-  registerInvoke('recovery:restore', async ({ sessionIds }) => {
-    const paths: string[] = [];
-    for (const sessionId of sessionIds) {
-      const journal = await deps.workspaces.read(sessionId);
-      if (journal !== undefined) paths.push(journal.path);
+  registerInvoke('recovery:restore', ({ sessionIds }) => deps.recovery.restore(sessionIds));
+
+  /** Unsaved changes whose file has gone are written wherever the reader chooses. */
+  registerInvoke('recovery:saveCopy', async ({ sessionId, displayName }, event) => {
+    const result = await dialog.showSaveDialog(deps.senderWindow(event), {
+      title: 'Save recovered changes',
+      buttonLabel: 'Save',
+      defaultPath: path.join(app.getPath('documents'), recoveredName(displayName)),
+      filters: [{ name: 'PDF documents', extensions: ['pdf'] }],
+    });
+    if (result.canceled || result.filePath === undefined || result.filePath === '') {
+      return { ...EMPTY_RESULT, canceled: true };
     }
-    if (paths.length === 0) return EMPTY_RESULT;
-
-    const result = await deps.documents.openPaths(paths, { recordAsRecent: false });
-    // The stale directories are replaced by the freshly opened sessions.
-    for (const sessionId of sessionIds) await deps.workspaces.remove(sessionId);
-    return result;
+    return deps.recovery.saveCopy(sessionId, result.filePath);
   });
 
-  registerInvoke('recovery:discard', async ({ sessionIds }) => {
-    for (const sessionId of sessionIds) await deps.workspaces.remove(sessionId);
-    return deps.workspaces.listRecoverable(deps.documents.activeSessionIds());
-  });
+  registerInvoke('recovery:discard', ({ sessionIds }) => deps.recovery.discard(sessionIds));
+}
+
+/** "Report.pdf" becomes "Report (recovered).pdf". */
+export function recoveredName(displayName: string): string {
+  const base = displayName.replace(/\.pdf$/i, '');
+  return `${base} (recovered).pdf`;
 }

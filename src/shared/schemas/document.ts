@@ -67,6 +67,8 @@ export const recoveryEntrySchema = z.object({
   openedAt: z.string().min(1),
   lastTouchedAt: z.string().min(1),
   dirty: z.boolean(),
+  /** True when the changes themselves were kept and can be reopened. */
+  unsavedChanges: z.boolean(),
   /** False when the original file is no longer where it was. */
   fileStillExists: z.boolean(),
 });
