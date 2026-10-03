@@ -96,6 +96,10 @@ Run in both light and dark themes:
       documents come back. With the setting off, they do not.
 - [ ] Kill PaperForge from Task Manager with a document open, then start it again: the recovery
       dialog lists that document; Reopen restores it, Discard forgets it.
+- [ ] Do the same after changing the document without saving: the dialog says the unsaved changes
+      were kept; Reopen brings the document back with the change, marked unsaved, and Undo returns
+      to the file as it is on disk. With the file deleted before restarting, "Save changes as…"
+      writes the changed document to a new file and opens it.
 - [ ] After a normal exit, `%TEMP%/PaperForge/sessions` is empty.
 - [ ] Open the same file twice: it activates the existing tab instead of opening a duplicate.
 - [ ] Files with spaces and non-ASCII names in their path open and display correctly.
@@ -730,3 +734,36 @@ Run in both light and dark themes:
       pages and controls stay crisp.
 - [ ] Uninstall from Settings → Apps: shortcuts, the Start menu folder, the Open With entry and the
       Apps entry are gone, and other apps' PDF associations are untouched.
+
+## Segment 19 — release candidate
+
+Automated, in addition to the gates above: `npm run licenses`, and the `recovery`, `offline`,
+`largeDocuments` and `keyboardAndContrast` end-to-end suites. By hand:
+
+### Large documents
+
+- [ ] A real 300-page or longer report: first page appears within about a second, scrolling and
+      paging stay smooth, search finds results on late pages, thumbnails fill in as they scroll.
+- [ ] A real scanned book of 100 pages or more: page through it end to end and watch PaperForge's
+      memory in Task Manager — it should rise and level off, not climb with every page.
+- [ ] Close the document: memory falls back, and the next document opens as quickly as the first.
+
+### Keyboard and high contrast
+
+- [ ] Unplug the mouse (or do not touch it): open a recent file, read, search, change the zoom,
+      open Document Properties and Settings, save a copy and close the document, all by keyboard.
+- [ ] Windows Settings → Accessibility → Contrast themes → Aquatic, then Desert: the open tab,
+      pressed rail buttons, the current thumbnail and the selected command are all visible; disabled
+      buttons are greyed; pages show the document's own colours and no text is drawn over them.
+- [ ] Windows Settings → Accessibility → Visual effects → Animation effects off: jumping to a page
+      goes straight there.
+- [ ] Narrator: the shell regions, tabs, rail buttons and dialogs are announced by name.
+
+### Offline
+
+- [ ] Disconnect the network (or block PaperForge in the firewall) and repeat Scenarios A–J of
+      `CLAUDE.md` section 44: nothing fails or waits because the network is gone.
+
+### Release
+
+- [ ] Walk `docs/RELEASE_CHECKLIST.md`.

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import type { LoadedPdfDocument, PdfPageGeometry } from '@pdf/render/types';
+import { observeVisibility } from '../../utils/visibility';
 import styles from './PageThumbnail.module.css';
 
 interface PageThumbnailProps {
@@ -33,12 +34,7 @@ export function PageThumbnail({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas === null) return;
-    const observer = new IntersectionObserver(
-      (entries) => setVisible(entries.some((entry) => entry.isIntersecting)),
-      { rootMargin: '200px' },
-    );
-    observer.observe(canvas);
-    return () => observer.disconnect();
+    return observeVisibility(canvas, setVisible);
   }, []);
 
   useEffect(() => {

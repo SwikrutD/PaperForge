@@ -76,7 +76,9 @@ test.beforeAll(async () => {
   sandbox = await fs.mkdtemp(path.join(os.tmpdir(), 'paperforge-large-'));
   longPath = path.join(sandbox, 'Thousand pages.pdf');
   scanPath = path.join(sandbox, 'Scanned book.pdf');
-  await fs.writeFile(longPath, await longDocument(1000));
+  const long = await longDocument(1000);
+  await fs.writeFile(longPath, long);
+  await fs.writeFile(path.join(sandbox, 'Thousand pages again.pdf'), long);
   await fs.writeFile(scanPath, await scannedBook(120));
 
   app = await electron.launch({
@@ -128,7 +130,9 @@ test('the thumbnails of a 1,000-page document are drawn only near the view', asy
   if (!(await panel.isVisible()))
     await page.getByRole('button', { name: 'Page Thumbnails' }).click();
   await expect(panel).toBeVisible();
-  await expect(panel.locator('li')).toHaveCount(1000);
+  // The list is as long as a thousand entries, but only those near the view exist.
+  await expect(panel.getByRole('list', { name: '1000 pages' })).toBeVisible();
+  expect(await panel.locator('li').count()).toBeLessThanOrEqual(MAX_DRAWN_THUMBNAILS);
   await expect.poll(async () => drawnThumbnails(panel)).toBeGreaterThan(0);
   expect(await drawnThumbnails(panel)).toBeLessThanOrEqual(MAX_DRAWN_THUMBNAILS);
 
@@ -176,4 +180,43 @@ test('the window stays responsive while a long scan is being drawn', async () =>
   await expect(palette).toBeVisible({ timeout: 2000 });
   await page.keyboard.press('Escape');
   await expect(page.locator('[data-page-number="120"][data-rendered="true"]')).toBeVisible();
+});
+
+test('a long comparison can be cancelled from the progress centre', async () => {
+  await openOnly(longPath);
+  // The second document comes in through File > Open, with the picker answered.
+  await app.evaluate(
+    ({ dialog }, target: string) => {
+      dialog.showOpenDialog = () => Promise.resolve({ canceled: false, filePaths: [target] });
+    },
+    path.join(sandbox, 'Thousand pages again.pdf'),
+  );
+  await page.keyboard.press('Control+o');
+  await expect(page.getByRole('tab')).toHaveCount(2);
+
+  await page.keyboard.press('Control+k');
+  await page.getByPlaceholder('Search commands').fill('Compare Files');
+  await page
+    .getByRole('option', { name: /^Compare Files/ })
+    .first()
+    .click();
+  await page.getByLabel('Original', { exact: true }).selectOption({ label: 'Thousand pages.pdf' });
+  await page
+    .getByLabel('Revised', { exact: true })
+    .selectOption({ label: 'Thousand pages again.pdf' });
+  await page.getByRole('button', { name: 'Compare', exact: true }).click();
+
+  // A thousand page pairs take a while: stop it part of the way through.
+  await page.getByRole('button', { name: 'Background tasks' }).click();
+  const tasks = page.getByRole('dialog', { name: 'Background tasks' });
+  await expect(tasks.getByRole('progressbar')).toBeVisible();
+  await tasks.getByRole('button', { name: 'Cancel' }).click();
+  await expect(tasks.getByText('cancelled')).toBeVisible();
+  await expect(page.getByText(/Stopped early\./)).toBeVisible();
+
+  // The window is still free to use.
+  await tasks.getByRole('button', { name: 'Close' }).click();
+  await page.keyboard.press('Control+k');
+  await expect(page.getByRole('dialog', { name: 'Command palette' })).toBeVisible();
+  await page.keyboard.press('Escape');
 });

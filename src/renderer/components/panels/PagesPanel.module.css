@@ -1,18 +1,31 @@
+.scroller {
+  height: 100%;
+  overflow: auto;
+}
+
+/* Entries are placed by `thumbnailLayout.ts`; the list is only as tall as all of them. */
 .list {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--pf-space-100);
+  position: relative;
   margin: 0;
-  padding: var(--pf-space-150) var(--pf-space-100);
+  padding: 0;
   list-style: none;
 }
 
+.entry {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+}
+
+/* Padding, border, gap and label add up to THUMBNAIL_CHROME (30px). */
 .item {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--pf-space-050);
+  height: 100%;
   padding: var(--pf-space-050);
   border: 1px solid transparent;
   border-radius: var(--pf-radius-md);
@@ -32,6 +45,7 @@
 .label {
   color: var(--pf-color-text-secondary);
   font-size: var(--pf-font-size-200);
+  line-height: 16px;
 }
 
 .current .label {

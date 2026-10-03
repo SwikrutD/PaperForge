@@ -50,6 +50,16 @@ Development additionally allows the Vite dev server origin, its websocket, and t
 React Refresh injects. That relaxation exists only while `MAIN_WINDOW_VITE_DEV_SERVER_URL` is set,
 which never happens in a packaged build.
 
+## No network
+
+The CSP keeps the renderer from loading or fetching anything remote. Behind it,
+`blockNetwork()` (`src/main/security/hardening.ts`) cancels every `http`, `https`, `ws`, `wss` and
+`ftp` request the default session sees — from the main process's own `net` module as much as from
+the window — except, in a development build only, requests to the Vite dev server's exact origin.
+The hidden windows that convert web pages and print have their own sessions, which refuse the same.
+The `offline` end-to-end suite records every request a reading session makes and checks that none
+leaves the machine, and that the main process cannot fetch either.
+
 ## Renderer origin and path safety
 
 The packaged renderer is served from `app://renderer/` rather than `file://`, so it has a real
@@ -67,6 +77,10 @@ logged and answered with 403. This is covered by unit tests including spaces and
 - There is no generic "run this command" or "read this file" channel, and there never will be.
 
 ## Files and paths
+
+A recovery journal is read back after a crash, so it is treated as untrusted: the revision it names
+is resolved inside that session's own directory with `resolveWithinRoot()`, and a journal that
+points anywhere else offers nothing to recover.
 
 - Opening is read-only. PaperForge reads a header and a trailer slice to identify a PDF, and never
   writes to the file the user opened.
@@ -224,8 +238,8 @@ calls the updater.
 
 Logs are local only, in `%APPDATA%/PaperForge/logs/paperforge.log`, rotated at 1 MB. The logger
 redacts password, passphrase, secret and token values before writing. Document content is not
-logged; file names appear only in the open/close lines. Nothing is transmitted anywhere: PaperForge makes no network requests, and the dev server
-is bound to `127.0.0.1`.
+logged; file names appear only in the open/close lines. Nothing is transmitted anywhere: PaperForge makes no network requests (and the session refuses
+any it is asked to make), and the dev server is bound to `127.0.0.1`.
 
 ## Planned controls
 

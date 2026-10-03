@@ -103,7 +103,12 @@ export function ViewerToolbar({
             value={pageInput}
             disabled={disabled}
             onChange={(event) => setDraft(event.target.value)}
-            onBlur={commitPage}
+            // Leaving the field goes to what was typed, if anything was. After
+            // Enter there is no draft, and the page shown may not have caught up
+            // with the jump yet, so committing it would jump straight back.
+            onBlur={() => {
+              if (draft !== null) commitPage();
+            }}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
                 event.preventDefault();

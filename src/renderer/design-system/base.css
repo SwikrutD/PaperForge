@@ -109,6 +109,18 @@ button {
     color: HighlightText !important;
   }
 
+  /* Their labels and icons too, which would otherwise keep an accent colour. */
+  :is(
+      [aria-pressed='true'],
+      [aria-selected='true'],
+      [aria-current]:not([aria-current='false']),
+      [role='menuitemcheckbox'][aria-checked='true'],
+      [role='menuitemradio'][aria-checked='true']
+    )
+    * {
+    color: HighlightText !important;
+  }
+
   :disabled,
   [aria-disabled='true'] {
     color: GrayText !important;

@@ -46,8 +46,8 @@ function JobRow({ job }: { job: Job }): ReactElement {
 }
 
 /**
- * One place to watch long operations. It is wired to the job store now, so OCR,
- * export, combine and large saves report here the moment those land.
+ * One place to watch long operations — recognising text, exporting, combining,
+ * comparing, optimising, printing — and to stop the ones that can be stopped.
  */
 export function ProgressCenter(): ReactElement {
   const jobs = useJobStore((state) => state.jobs);

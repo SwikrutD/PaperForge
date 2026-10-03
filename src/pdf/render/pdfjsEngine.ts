@@ -431,17 +431,26 @@ class PdfjsDocument implements LoadedPdfDocument {
   }
 }
 
-/** Reads every page's intrinsic size once, so the viewer can lay pages out. */
+/** Pages whose sizes are asked of the worker at once while a document opens. */
+const GEOMETRY_BATCH = 64;
+
+/**
+ * Reads every page's intrinsic size once, so the viewer can lay pages out.
+ * Requests go to the worker a batch at a time rather than one after another,
+ * which on a long document is the difference between waiting on a thousand
+ * round trips and waiting on a few dozen.
+ */
 async function readGeometry(document: PDFDocumentProxy): Promise<PdfPageGeometry[]> {
   const labels = await document.getPageLabels().catch(() => null);
   const geometry: PdfPageGeometry[] = [];
 
-  for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+  const readOne = async (pageNumber: number): Promise<PdfPageGeometry> => {
     const page = await document.getPage(pageNumber);
     const viewport = page.getViewport({ scale: 1 });
     const label = labels?.[pageNumber - 1] ?? null;
     const [x1 = 0, y1 = 0, x2 = 0, y2 = 0] = page.view;
-    geometry.push({
+    page.cleanup();
+    return {
       pageNumber,
       width: viewport.width,
       height: viewport.height,
@@ -449,8 +458,16 @@ async function readGeometry(document: PDFDocumentProxy): Promise<PdfPageGeometry
       label: label === String(pageNumber) ? null : label,
       viewBox: [x1, y1, x2, y2],
       userUnit: page.userUnit,
-    });
-    page.cleanup();
+    };
+  };
+
+  for (let first = 1; first <= document.numPages; first += GEOMETRY_BATCH) {
+    const last = Math.min(document.numPages, first + GEOMETRY_BATCH - 1);
+    const batch: Promise<PdfPageGeometry>[] = [];
+    for (let pageNumber = first; pageNumber <= last; pageNumber += 1) {
+      batch.push(readOne(pageNumber));
+    }
+    geometry.push(...(await Promise.all(batch)));
   }
   return geometry;
 }

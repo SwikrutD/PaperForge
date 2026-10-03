@@ -4,11 +4,14 @@ PaperForge is an offline-first PDF workspace for Windows. It is being built to c
 work people do with a PDF tool — read, annotate, organize, edit, recognize text, convert, protect
 and redact — on a local machine, with no account, no telemetry and no cloud services.
 
-**Status: early development.** This repository currently contains Segments 0 to 13 of the build plan
-in [`CLAUDE.md`](./CLAUDE.md):
+**Status: release candidate.** All twenty segments of the build plan in
+[`CLAUDE.md`](./CLAUDE.md) are in place. What the build does not do is listed in
+[`docs/KNOWN_LIMITATIONS.md`](./docs/KNOWN_LIMITATIONS.md), and what has to happen before a build is
+handed to anyone is in [`docs/RELEASE_CHECKLIST.md`](./docs/RELEASE_CHECKLIST.md). It contains:
 
 - the secure Electron foundation and the Fluent Workspace shell with its command system;
-- the file layer — tabs, recent files, watching, session restore, crash recovery;
+- the file layer — tabs, recent files, watching, session restore, and crash recovery that brings
+  back unsaved changes;
 - the viewer: PDFs render with selectable text, working links, zoom, rotation and password support;
 - the way around a document: page thumbnails, bookmarks, attachments, layers, page labels, reading
   mode, and text search across pages and open documents;
@@ -59,7 +62,14 @@ in [`CLAUDE.md`](./CLAUDE.md):
 
 - cropping by a frame drawn on the page, applied to one page, all of them or a range.
 
-Accessibility checking, printing and Windows integration arrive in later segments.
+- the Accessibility Check, bookmark editing, measuring and layer defaults;
+
+- printing to a Windows printer, opening from Explorer, the jump list and taskbar, and a per-user
+  installer.
+
+The viewer stays fast on long documents and scans: only the pages near the view are drawn, and
+what scrolls away gives its memory back. A Windows high contrast theme, the keyboard alone and a
+machine with no network are all supported and tested.
 
 [`PROGRESS.md`](./PROGRESS.md) is the authoritative status file.
 
@@ -76,13 +86,14 @@ Accessibility checking, printing and Windows integration arrive in later segment
 - Node.js 20.19 or newer (developed on Node 24)
 - npm 10 or newer
 
-Optional local tools used by later segments — none are downloaded at runtime:
+Optional local tools — none is bundled and none is downloaded; PaperForge finds an installed copy
+or one chosen in Settings:
 
-| Tool        | Used for                                | Status in this build                               |
-| ----------- | --------------------------------------- | -------------------------------------------------- |
-| qpdf        | encryption, repair, structural rewrites | optional; used to check saved files when installed |
-| Tesseract   | local OCR                               | not integrated yet                                 |
-| LibreOffice | optional Office-to-PDF conversion       | not integrated yet                                 |
+| Tool        | Used for                                                    |
+| ----------- | ----------------------------------------------------------- |
+| qpdf        | Protect PDF; checking saved files; stronger repair; packing |
+| Tesseract   | Recognize Text (with its tessdata)                          |
+| LibreOffice | Office documents to PDF                                     |
 
 ## Development
 
@@ -99,6 +110,7 @@ npm run lint        # ESLint with type-aware rules
 npm test            # Vitest unit tests
 npm run test:e2e    # packages the app, then runs the Playwright end-to-end suite
 npm run format      # Prettier
+npm run licenses    # audits the license of every package that ships
 ```
 
 Packaging:
@@ -127,6 +139,8 @@ user; Settings → Windows opens the right page. Uninstall from Settings → App
 - [`docs/DEPENDENCIES.md`](./docs/DEPENDENCIES.md) — why each dependency is here, and its license
 - [`docs/KEYBOARD_SHORTCUTS.md`](./docs/KEYBOARD_SHORTCUTS.md) — planned and implemented shortcuts
 - [`docs/QA_CHECKLIST.md`](./docs/QA_CHECKLIST.md) — manual checks per segment
+- [`docs/KNOWN_LIMITATIONS.md`](./docs/KNOWN_LIMITATIONS.md) — what this build does not do
+- [`docs/RELEASE_CHECKLIST.md`](./docs/RELEASE_CHECKLIST.md) — the steps before a build leaves the machine
 - [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) — third-party licenses
 
 ## License

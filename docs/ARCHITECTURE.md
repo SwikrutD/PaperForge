@@ -181,10 +181,17 @@ open → inspect → session id + document id → working directory + journal
 - The **document id** is a hash of the folded absolute path, so the same file opened twice reuses
   its session rather than opening a second copy of it.
 - Each session owns a directory under `%TEMP%/PaperForge/sessions/<session id>` holding its
-  recovery journal. Segment 5 puts working copies and change entries in the same place.
+  recovery journal and, once the document has been changed, every revision the editor wrote
+  (`revisions/0000.pdf` is the file as opened). After every change, undo, redo, revert and save
+  the journal records whether the document is dirty and which revision is being shown
+  (`workingCopy`, relative to the directory).
 - The directory exists exactly as long as the document is open. A clean close removes it, and the
   app removes every one of them before quitting — so **anything still there at startup is the
-  remains of a crash**, which is what the recovery dialog offers back.
+  remains of a crash**, which is what the recovery dialog offers back. `SessionRecovery`
+  (`services/recovery/sessionRecovery.ts`) reopens such a document from its file and then makes the
+  kept revision the next one — "Recovered unsaved changes", still unsaved, with Undo going back to
+  the file on disk. A document whose file has gone can have its kept revision saved somewhere new.
+  A journal's `workingCopy` is resolved inside its own directory and nowhere else.
 - A `fs.watch` per session, debounced, reports a file modified or deleted outside PaperForge. The
   tab marks it, the document view explains it, and nothing is written back.
 - `settings.session.openDocuments` tracks what is open so the next start can restore it, subject to
