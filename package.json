@@ -22,6 +22,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "icons": "node scripts/generate-icon.mjs",
+    "licenses": "node scripts/check-licenses.mjs",
     "test:e2e": "electron-forge package && playwright test"
   },
   "dependencies": {

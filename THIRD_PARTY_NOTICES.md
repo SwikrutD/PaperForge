@@ -70,18 +70,34 @@ the application archive. electron-winstaller's build-time tools — NuGet (Apach
 (LGPL-2.1 with the unRAR restriction) and rcedit (MIT) — run on the build machine only and are not
 part of either distributable.
 
-## Planned components
+### Licenses other than MIT, ISC, Apache-2.0 and BSD
 
-Not present in the repository yet. Listed so licensing stays visible as they are integrated.
+`npm run licenses` audits every package that ships, from `package-lock.json`. Besides the
+common permissive licenses it finds:
 
-| Component     | Expected license | Segment | Distribution intent                                                                                             |
-| ------------- | ---------------- | ------- | --------------------------------------------------------------------------------------------------------------- |
-| qpdf          | Apache-2.0       | 14      | Local sidecar binary, staged separately. PaperForge uses one that is already installed; nothing is bundled yet. |
-| Tesseract OCR | Apache-2.0       | 12      | Local sidecar binary plus tessdata, staged separately                                                           |
-| LibreOffice   | MPL-2.0 / LGPL   | 13      | Optional, never bundled; invoked only if the user already has it installed                                      |
+| Package            | Version      | License           | Reached through             | Notes                                                                                                                                                             |
+| ------------------ | ------------ | ----------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| jszip              | 3.10.2       | MIT OR GPL        | docx, pptxgenjs, exceljs    | Taken under MIT (see above)                                                                                                                                       |
+| pako               | 1.0.11       | MIT AND Zlib      | pdf-lib, jszip              | Both permissive                                                                                                                                                   |
+| sax                | 1.6.1        | BlueOak-1.0.0     | docx > xml-js               | Permissive                                                                                                                                                        |
+| big-integer        | 1.6.52       | Unlicense         | exceljs > unzipper          | Public-domain dedication                                                                                                                                          |
+| chainsaw, traverse | 0.1.0, 0.3.9 | MIT/X11           | exceljs > unzipper > binary | The MIT licence                                                                                                                                                   |
+| buffers            | 0.1.1        | **none declared** | exceljs > unzipper > binary | The package states no license and its upstream repository is gone. Flagged by the audit as needing review before redistribution; see `docs/RELEASE_CHECKLIST.md`. |
 
-No AGPL-licensed component is used in the core product. Ghostscript and MuPDF are deliberately
-avoided for licensing reasons (see `CLAUDE.md` section 2.5).
+## Local tools PaperForge can use
+
+None of these is bundled. PaperForge finds a copy that is already installed (or one the user
+points it at in Settings) and runs it as a separate program; nothing is downloaded.
+
+| Component     | License        | Used for                                                    |
+| ------------- | -------------- | ----------------------------------------------------------- |
+| qpdf          | Apache-2.0     | Protect PDF; checking saved files; stronger repair; packing |
+| Tesseract OCR | Apache-2.0     | Recognize Text (with the user's tessdata)                   |
+| LibreOffice   | MPL-2.0 / LGPL | Office documents to PDF, optional                           |
+
+If a later build bundles qpdf or Tesseract, their notices must be added to the package and to this
+file. No AGPL-licensed component is used in the core product. Ghostscript and MuPDF are
+deliberately avoided for licensing reasons (see `CLAUDE.md` section 2.5).
 
 ## Fonts
 
