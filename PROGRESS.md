@@ -2,13 +2,15 @@
 
 ## Current status
 
-- Last completed segment: **18 — Printing and Windows integration**
-- Next segment: **19 — Performance, polish, QA, release candidate**
+- Last completed segment: **19 — Performance, polish, QA, release candidate**
+- Next segment: none — the build plan is complete. What remains is the manual release work in
+  `docs/RELEASE_CHECKLIST.md`.
 - Build status: `npm run package` and `npm run make` succeed (`PaperForge-Setup.exe` and a zip);
   the end-to-end suite drives the built application
-- Test status: 852 unit tests (76 files) and 174 Playwright end-to-end tests passing;
-  typecheck, lint and format clean. qpdf 12.4.2 is installed on the build machine; the Protect
-  walkthrough is still a manual step.
+- Test status: 867 unit tests (79 files) and 189 Playwright end-to-end tests passing;
+  typecheck, lint, format and the licence audit clean. The manual release walkthroughs in
+  `docs/RELEASE_CHECKLIST.md` (clean VM, physical printer, screen reader, real documents) are not
+  yet done.
 
 ## Completed segments
 
@@ -31,7 +33,7 @@
 - [x] 16 Compare, optimize, repair, crop
 - [x] 17 Accessibility and practical advanced tools
 - [x] 18 Printing and Windows integration
-- [ ] 19 Performance, polish, QA, release candidate
+- [x] 19 Performance, polish, QA, release candidate
 
 ## Segment 0 — what landed
 
@@ -784,218 +786,37 @@ Recognize Text rather than writing an empty file.
      never be written over the file that was opened.
 110. **The crop tool and the page grid share one piece of arithmetic.** A frame is margins measured
      from what the page shows, which is what lets one frame crop pages of different sizes.
+111. **Recovery reapplies a revision, not a history.** The journal names the revision being shown;
+     after a crash the document is opened from its file and that revision becomes one new step,
+     "Recovered unsaved changes". Undo goes back to the file on disk. Restoring the whole undo
+     history would mean trusting more of a crashed run's state for little gain.
+112. **A journal is untrusted input.** The revision it names is resolved inside the session's own
+     directory or ignored.
+113. **The network is closed in the main process too.** The CSP already stops the window; the default
+     session now cancels every http, https, ws, wss and ftp request, so neither process can reach
+     the network by mistake. Only a development build may reach its own dev server.
+114. **Memory follows the view, not the document.** PDF.js keeps rendering state (drawing
+     instructions, decoded pictures) for the 48 most recently used pages only and cleans up the
+     rest; thumbnails out of view empty their canvases. Emptying a page canvas on unmount was tried
+     and dropped: it broke drawing comments on a freshly reloaded revision, and the measured memory
+     was the same without it.
+115. **The thumbnail list is laid out from page sizes.** Each entry's height is known from its page's
+     proportions, so only entries near the view are mounted; one IntersectionObserver serves all
+     thumbnails.
+116. **Long jumps do not glide.** A jump of more than two screens (or any jump under reduced motion)
+     goes straight there; gliding past hundreds of pages would start and cancel a render for each.
+117. **High contrast is handled by state, globally.** `base.css` redraws pressed, selected and
+     current items with the theme's highlight, keyed on ARIA attributes rather than per component;
+     page surfaces opt out of forced colours so documents keep their own.
+118. **Licenses are audited from the lockfile.** `npm run licenses` fails on any shipped package that
+     is not permissive or explicitly reviewed, and on a direct dependency missing from the notices.
 
 ## Known limitations
 
-- The viewer is continuous scrolling only. Single page, two-page spread, cover page, the hand and
-  marquee-zoom tools and presentation mode are part of the fuller viewer in `CLAUDE.md` section 10
-  and are not built yet.
-- Changing a layer's visibility applies to the view; Save as default writes it into the document.
-  Layers locked by the document are not shown as locked, and per-layer usage settings (print or
-  export visibility) are not edited.
-- Attachments are listed but cannot be saved, added or removed; that is Segment 14. No size is
-  shown, because the listing PDF.js returns does not carry one.
-- Bookmarks are moved with buttons and keys, not by dragging. Expanding and collapsing an entry in
-  the panel is not written to the file (the operation exists; the panel does not use it). A
-  bookmark goes to a page and a height on it, at the reader's zoom; PaperForge does not write other
-  destination kinds, though it keeps them on entries it renames or moves.
-- Search covers text. Searching bookmarks and annotations, and regular expressions, are not
-  implemented; a query is matched literally, so punctuation searches for itself.
-- A search stops collecting at 5,000 matches and says so rather than growing without bound.
-- Search highlights are placed from text-run geometry, so on a run with unusual per-glyph spacing a
-  highlight can be a fraction of a character out. It never affects what is found, only what is
-  drawn.
-- Word export writes paragraphs, headings and tab-separated table rows — not real Word tables,
-  columns, or headers and footers.
-- Excel export writes what looks like a table and a line a row where nothing does, with no
-  formulas.
-- PowerPoint's editable mode places text boxes where the words sat; complex layouts change.
-- A web page export is a picture of each page with its words over it, not a reflowing rendering.
-- Office conversion needs a local LibreOffice; without one those files are refused with a reason.
-- Recognised words are drawn with the standard fourteen fonts, which cover Latin-1: a language
-  whose script needs other characters is read but searchable only as far as that encoding reaches.
-- PaperForge does not deskew or despeckle a scan. The optional cleanup is greyscale and contrast,
-  and Tesseract's own orientation detection does the rest.
-- Confidence is reported, not acted on: every word read goes on the page, and the dialog says how
-  sure Tesseract was overall.
-- Certificate-based signing, and the validation of one, are out of scope for v1: PaperForge places
-  a visual mark and says as much wherever a reader might wonder.
-- PaperForge runs no document JavaScript. A form that calculates with a script keeps it, untouched
-  and unrun; PaperForge's own arithmetic is sum, product and average.
-- A radio group's options are fixed when the field is made — each is a widget in its own right, so
-  changing them means making the field again.
-- A new field takes the border and fill colours `pdf-lib` gives it; the panel does not offer them.
-- XFA forms are not supported. PaperForge reads the AcroForm underneath, which is what most such
-  documents also carry.
-- The encryption marker shown in the properties panel is still a trailer scan. The viewer knows the
-  truth once a document is open, and the two are not yet reconciled.
-- An image inside a form XObject is not listed, for the same reason text inside one is not: the
-  editor reads the page's own content stream.
-- A CMYK image cannot be written out yet; a JPEG comes out untouched and everything else is written
-  as a PNG of its samples, which an indexed or ICC image will have in its own space rather than
-  converted.
-- A link can be pointed at a page or at an http, https or mailto address. Named destinations, launch
-  actions and document JavaScript are described where they are found but cannot be authored, and
-  PaperForge never follows them.
-- A link's rectangle is axis-aligned: `/QuadPoints` on a rotated link is not authored.
-- Page furniture is put on with a dialog and taken off with the same dialog. There is no listing of
-  which pages already carry a watermark or a header; Remove simply takes off whatever PaperForge
-  put on the pages chosen.
-- A watermark sits in the middle of the page. The engine takes a position, and the dialog does not
-  offer the other eight yet.
-- Editing covers pages, comments, text, images, links and page furniture: rotate, delete, move,
-  duplicate, insert, replace, crop and renumber pages; annotations; the text a page draws; the
-  images it draws; the links it carries; and the watermarks, backgrounds, headers and footers
-  PaperForge puts on. Form fields are Segment 11.
-- Text editing rewrites a run in its own font where that works, and otherwise replaces it with text
-  drawn in a standard font, with the reader asked first.
-- PaperForge draws text with the fourteen standard fonts, which cover Latin-1. Cyrillic, Greek and
-  CJK cannot be written yet: embedding a system font is `CLAUDE.md` section 13.4's work and is not
-  built.
-- Text inside a form XObject is not listed by the editor, which reads the page's own content
-  stream. The toolbar says when it finds nothing it can edit on a page.
-- A rewritten page's content is written as one uncompressed stream; compression belongs with the
-  optimizer in Segment 16.
-- Reflow is not attempted: a run keeps its position, and changing its length moves what follows it
-  only as far as the stream's own positioning does. Paragraph reflow needs a block model, which is
-  where multi-line text boxes will start.
-- Bookmarks are not rewritten when pages move. A destination follows its page through a reorder,
-  because it points at the page object; a bookmark whose page is deleted is left pointing at
-  nothing. Editing the outline is Segment 17.
-- Extracted and split documents carry the pages, the title and the author — not the outline,
-  attachments or form. Carrying bookmarks across is part of Combine in Segment 8.
-- Cropping is numeric. Dragging a crop frame on the page, and editing the bleed, trim and art
-  boxes, belong with the crop and page-box tools in Segment 16.
-- Inserting from another PDF in the page grid takes the whole of it; choosing which of its pages to
-  take is what the Combine workspace does.
-- Office documents cannot be made into PDFs yet: the provider interface is in place and the file
-  dialog offers only what really works. Local LibreOffice lands in Segment 13, as does exporting a
-  PDF to images, text, Word, Excel or PowerPoint.
-- A staged source is converted once, when it is added. A file changed on disk afterwards is combined
-  as it was; removing and adding it again picks up the change.
-- Text files are set in Courier, a standard PDF font, so no font is embedded and no licence is in
-  question. Choosing a font belongs with the text editor in Segment 9.
-- A web page is converted without running its scripts, deliberately. A page that builds itself with
-  JavaScript converts as the markup it shipped with.
-- Staged sources are held in memory, which is why one file is limited to 512 MB and one window to
-  500 files.
-- A comment can be moved but not resized by handle: changing a shape's size means drawing it
-  again. Text markup and ink are deliberately not resizable — one belongs to the words it marks,
-  the other to the movement of the hand.
-- Text in a text box, callout or stamp is drawn in Helvetica. The comment itself keeps whatever was
-  typed, in full Unicode; the drawn appearance shows a question mark for a character Helvetica
-  cannot draw.
-- XFDF import and export is not implemented, so comments cannot be sent to or from Acrobat as a
-  separate file. File attachment annotations wait for the embedded-file work in Segment 14, and
-  measurement annotations for the practical tools in Segment 17.
-- An encrypted document can be read but not changed, and says so.
-- Every change rewrites the whole document. That is fine for page operations on ordinary files; a
-  very large document and a rapid series of changes would be the first thing to batch.
-- Unsaved changes are not recovered after a crash. The revisions are in the session directory and
-  the journal records that the document was dirty, but the recovery screen reopens the file as it
-  is on disk rather than offering the working copy. That is Segment 19 territory, and until then
-  the honest description is "PaperForge knows a document had unsaved changes, not what they were".
-- PaperForge does not claim byte-level incremental saving: pdf-lib rewrites the file. The internal
-  recovery journal is the "incremental" of `CLAUDE.md` section 9.
-- Nine of the fifteen home-screen tool cards are disabled because their capability is not built; a
-  card whose tool exists but needs a document open says that instead.
-- Tabs reorder by dragging or the context menu; there is no keyboard chord for reordering yet.
-- The encryption marker is a trailer scan, not a parse. The viewer will confirm it properly.
-- File watching uses `fs.watch`, which reports a change but not who made it; a file replaced by a
-  rename is reported as modified.
-- Tooltips use the native `title` attribute.
-- `resources/bundled-tools` and `resources/tessdata` exist but are empty and git-ignored. qpdf,
-  Tesseract and LibreOffice are not bundled; each is discovered locally or pointed at in Settings.
-- Protecting a document needs qpdf. Without it the dialog explains that and does nothing else;
-  reading a document's security needs nothing at all.
-- A password is passed to qpdf on its command line when the document is being encrypted, because
-  that is the only way qpdf accepts one for `--encrypt`. Another program on the same machine could
-  read it from the process list for the moment qpdf runs. The input password for `--decrypt` goes
-  on standard input instead. Neither is written to a log, a settings file or the recovery journal.
-- PaperForge writes the permissions qpdf writes: printing, how much may be changed, copying, and
-  reading by assistive software. The other permission bits are reported when a document carries
-  them but are not offered as separate choices, because no tool sets them independently.
-- 40-bit RC4 has only four permission bits, so the finer choices are folded into them rather than
-  passed to a qpdf that would refuse the run.
-- `openPasswordRequired` is worked out for the standard security handler at revisions 2 to 6. A
-  document with some other handler reports it as unknown rather than guessing.
-- Fonts are listed from the pages' own resources. A font used only inside a form XObject is not
-  listed, for the same reason text inside one is not editable.
-- The sanitizer removes hidden layers by taking the group out of the catalogue's listing; the
-  marked content stays on the page and simply stops being optional. It is no longer revealable,
-  but it is not deleted, and a page-level removal belongs with redaction in Segment 15.
-- XMP is removed as a whole packet or left alone; PaperForge does not edit XMP, so it cannot keep
-  the two copies of the metadata in step. Removing it is offered where the document carries one.
-- Removing hidden information does not attempt to rewrite an incrementally-updated file's earlier
-  revisions on its own — but every PaperForge save is a full rewrite, which is what leaves them
-  behind. The dialog says so where the file has been written more than once.
-- The Windows installer, file associations and "Open with" are not built (Segment 18); `npm run make`
-  produces a zip.
-- Prettier reformatted `CLAUDE.md` once during Segment 0 (whitespace only) before it was added to
-  `.prettierignore`.
-
-- Redaction marks are pending renderer state: they are not written into the file and are lost if
-  the document is closed before they are applied. Applied redactions are an ordinary undoable edit
-  until the document is saved.
-- Redaction cuts the page's own content stream. Text or pictures inside a reusable group (form
-  XObject) that a mark only partly covers, text in a font whose widths are unknown (Type 3, a
-  non-standard font without `/Widths`, a non-Identity or vertical composite font), inline images,
-  and JPEG, masked or predictor-compressed pictures only partly covered make that page a picture
-  instead (200 dpi JPEG, marks painted on). Its text is then no longer selectable until Recognize
-  Text is run. The review dialog lists such pages and the reason.
-- A path that crosses the edge of a mark is painted over, not cut; only paths wholly under a mark
-  are removed. Shadings and patterns are not cut.
-- Redaction by area does not change bookmark titles or descriptions in a tagged document's
-  structure tree (the review says so when present). Metadata and other hidden information are
-  removed only when "Also remove hidden information" is chosen.
-- Find text to mark searches the page's own text; it does not look inside reusable groups or read
-  scans (those pages are reported, and can be marked by area or recognised first).
-- A widget under a mark removes its whole form field, on every page, because the value belongs to
-  the field.
-
-- Compare pairs pages by position plus one offset; it does not find a page that moved further, and
-  compares the words in the order PDF.js gives them, so a reflowed paragraph reads as changed text.
-  Word boxes share a run's width by character, as search highlights do.
-- A document that needs a password to open cannot be compared yet: the viewer keeps the password
-  to itself and the comparison does not ask a second time.
-- Pages are compared at no more than 1,400 pixels along their longer side; a change smaller than a
-  few pixels at that size is not reported.
-- Optimize does not subset, merge or remove fonts, and does not merge duplicate objects. Pictures in
-  CMYK, indexed or Lab colour, JBIG2, JPEG 2000, colour-keyed or with a decode array are left
-  exactly as they are, and are counted as such in the dialog.
-- A grey picture re-encoded as JPEG is written as a colour JPEG, because Chromium's encoder writes
-  colour; it is described as RGB and still looks grey.
-- Optimizing runs in the main process; on a very large document the window waits for it, although
-  it stays drawn. Fast web view is lost again by the next edit, which rewrites the file.
-- A repaired copy is made from the revision being shown. qpdf cannot repair an encrypted document
-  that needs a password to open.
-- The crop frame is drawn on one page at a time; bleed, trim and art boxes are shown but not edited.
-
-- The Accessibility Check reads structure; it does not certify anything, add tags, repair a tag
-  tree, edit reading order or judge colour contrast. Alternate text is offered for `Figure` and
-  `Formula` elements only. A figure is located by the page content its marked-content identifiers
-  own; content drawn inside a group under its own identifiers is not located. The title fix writes
-  the information dictionary and leaves an XMP title as it was.
-- "Text outside the tags" counts show operations outside marked content on the page itself; text
-  drawn inside a group is not checked. Image-only pages are judged by counting: a page that paints a
-  picture and shows no text at all.
-- Printing sends pictures of the pages (150 or 300 dpi), not the PDF's vector content, so very
-  fine print is limited by that resolution and large jobs take a moment per page to prepare. Paper
-  trays, both-sided printing and finishing are left to the Windows print dialog. Whether a silent
-  job honours colour, copies and collation is up to the printer driver; grey is also applied to the
-  pictures. Printing has been checked through Chromium's PDF output in the end-to-end suite, not on
-  a physical printer.
-- Windows does not let an app make itself the default PDF handler; PaperForge adds itself to Open
-  With and Default apps and opens the Settings page. Uninstalling leaves Squirrel's `Update.exe`
-  and a folder marked `.dead` in `%LOCALAPPDATA%\PaperForge`, which Squirrel removes on its next
-  run; delete the folder by hand otherwise. There is no auto-update, and no arm64 installer yet.
-- The jump list, taskbar AppUserModelID and file association are set by installed copies only; a
-  development build or the zip leaves the registry alone. Notifications need the Start menu
-  shortcut the installer makes, so the zip build may not show them.
-- Measurements use one rectilinear scale per document for as long as it is open; a page's own
-  viewport measure dictionaries (`/VP`) and `/UserUnit` are not read. Angles, radius and
-  geographic (`/GEO`) measures are not offered. A measurement can be moved and restyled; its
-  scale is fixed when it is made.
+[`docs/KNOWN_LIMITATIONS.md`](./docs/KNOWN_LIMITATIONS.md) is the current list. It was rewritten in
+Segment 19 from the notes each segment used to add here, several of which later segments had
+already resolved (attachments, the crop frame, Office conversion, the installer, crash recovery of
+unsaved changes).
 
 ## Segment 14 — what landed
 
@@ -1244,7 +1065,77 @@ With entry alone. Not yet run on a clean VM.
 | Tests    | `unit/main/{printing,registry,windowsIntegration}`, `unit/{shared/printPages,renderer/desktopIntegration}` |
 | Tests    | `e2e/print.e2e.ts`, `e2e/windows.e2e.ts`                                                                   |
 
+## Segment 19 — what landed
+
+**Crash recovery that brings the work back.** The recovery journal now names the revision being
+shown (`workingCopy`, relative to the session directory) after every change, undo, redo, revert
+and save. After a crash the recovery dialog says which documents had their unsaved changes kept;
+Reopen opens each from its file and makes the kept revision the next one ("Recovered unsaved
+changes"), still unsaved, with Undo going back to the file on disk. A document whose file has gone
+offers "Save changes as…". A journal pointing outside its own directory is ignored. Proven by unit
+tests over two simulated runs and by an end-to-end test that kills the whole process tree.
+
+**Offline, enforced.** The default session cancels every http, https, ws, wss and ftp request
+(the dev server excepted in development). An end-to-end suite records every request a reading
+session makes and checks none leaves the machine, and that the main process cannot fetch either.
+
+**Long documents and scans.** Measured on the build machine with generated documents:
+
+| Measure                                         | Before | After         |
+| ----------------------------------------------- | ------ | ------------- |
+| 1,000 pages, first page drawn (thumbnails open) | ~1.4 s | ~0.6 s        |
+| 3,000 pages, first page drawn (thumbnails open) | ~2.8 s | ~0.9 s        |
+| Jumping through five far-apart pages of 1,000   | 10.4 s | under 1 s     |
+| Paging through a 120-page scan, every 4th page  | 28 s   | ~5 s          |
+| Renderer memory over that scan (peak)           | 438 MB | ~700 MB, flat |
+
+(The memory figures are Windows working sets, which include freed-but-unreturned heap; across
+three open/close cycles of a 1,000-page document the JS heap and working set returned to the same
+level each time.) What changed: page sizes are read from the worker in batches of 64; the
+thumbnail list is laid out from page proportions and mounts only entries near the view, with one
+shared IntersectionObserver; thumbnails out of view give their pixels back; PDF.js keeps rendering
+state for the 48 most recently used pages; jumps of more than two screens (or any, under reduced
+motion) go straight there.
+
+**Keyboard, labels and high contrast.** A new suite opens and reads a document with the keyboard
+alone (Tab to a recent file, F6 through the regions, find, the palette, Document Properties) and
+checks that every visible control on the home screen, in each navigation panel and each tab of the
+properties pane has an accessible name. In a Windows high contrast theme, pressed, selected and
+current items use the theme's highlight, disabled controls its grey, and page surfaces keep the
+document's colours so the invisible text layer is never painted.
+
+**Licences.** `npm run licenses` audits every shipped package from the lockfile. It found one
+open item: `buffers` 0.1.1 (exceljs → unzipper → binary) declares no license and its upstream
+repository is gone. It is recorded as needing review before redistribution, in
+`THIRD_PARTY_NOTICES.md`, `docs/KNOWN_LIMITATIONS.md` and `docs/RELEASE_CHECKLIST.md`.
+
+**Release documents.** `docs/RELEASE_CHECKLIST.md` (gates, packaged-app checks, clean-VM install,
+acceptance scenarios, licences, publishing) and `docs/KNOWN_LIMITATIONS.md` (rewritten from the
+per-segment notes, several of which were stale). README, ARCHITECTURE, SECURITY and the QA
+checklist updated.
+
+**Fixed on the way.** Leaving the page box right after pressing Enter committed the page shown
+before the jump, so the viewer jumped straight back (found by the large-document suite). Labels of
+selected items were unreadable in high contrast. The progress centre's description was stale.
+
+**Reviewed, no change needed.** No placeholder or "coming soon" UI, no dev-only paths, developer
+tools off in packaged builds, no auto-update call anywhere.
+
+| Area     | Files                                                                                                                 |
+| -------- | --------------------------------------------------------------------------------------------------------------------- |
+| Main     | `services/recovery/sessionRecovery.ts`, `recoveryJournal.ts`, `documentService.recordEditState`, `security/hardening` |
+| Renderer | `overlays/RecoveryDialog`, `panels/{PagesPanel,thumbnailLayout}`, `utils/visibility.ts`, `design-system/base.css`     |
+| Engine   | `pdf/render/pdfjsEngine.ts` (page LRU, batched geometry)                                                              |
+| Scripts  | `scripts/check-licenses.mjs` (`npm run licenses`)                                                                     |
+| Tests    | `unit/main/{sessionRecovery,networkGuard}`, `unit/renderer/thumbnailLayout`, `fixtures/large.ts`                      |
+| Tests    | `e2e/{recovery,offline,largeDocuments,keyboardAndContrast}.e2e.ts`                                                    |
+
 ## What is not yet verified
+
+**Segment 19 by hand and on a clean machine.** The release-candidate checks were automated against
+generated documents on the build machine. A clean-VM install, a real screen reader, Windows'
+own contrast themes, display scaling, and real long reports and scanned books are still to be
+walked: `docs/RELEASE_CHECKLIST.md` lists them, with the earlier segments' open walkthroughs below.
 
 **Segment 18 on paper and on a clean machine.** Printing was proven through Chromium's PDF output,
 and the installer on the build machine. Walk the Segment 18 section of `docs/QA_CHECKLIST.md` with
@@ -1287,38 +1178,39 @@ Nothing is downloaded at runtime, then or now.
 
 ## Last validation
 
-Run on Windows 11 x64, Node 24.19.0, npm 11.17.0:
+Run on Windows 11 x64, Node 24.19.0, npm 11.17.0, at the end of Segment 19:
 
-| Command                | Result                                                                                         |
-| ---------------------- | ---------------------------------------------------------------------------------------------- |
-| `npm install`          | Pass; adds `@electron-forge/maker-squirrel` 7.11.2 (and `electron-winstaller` 5.4.4)           |
-| `npm run typecheck`    | Pass; four projects, no errors                                                                 |
-| `npm run lint`         | Pass; no errors, no warnings                                                                   |
-| `npm test`             | Pass; 852 tests in 76 files                                                                    |
-| `npm run test:e2e`     | Pass; 174 Playwright tests against the built application                                       |
-| `npm run format:check` | Pass; Prettier clean                                                                           |
-| `npm run dev`          | Pass; Vite dev server and Electron window                                                      |
-| `npm run package`      | Pass; `out/PaperForge-win32-x64/PaperForge.exe`; launch/close smoke passed                     |
-| `npm run make`         | Pass; `out/make/squirrel.windows/x64/PaperForge-Setup.exe` and the zip                         |
-| Installer smoke        | Pass, twice, on the build machine: install, open from the command line, hand-over, uninstall   |
-| Print layout           | Checked by rendering Chromium's output: fitted, turned and centred pages in light of the paper |
+| Command                | Result                                                                                   |
+| ---------------------- | ---------------------------------------------------------------------------------------- |
+| `npm run typecheck`    | Pass; four projects, no errors                                                           |
+| `npm run lint`         | Pass; no errors, no warnings                                                             |
+| `npm run format:check` | Pass                                                                                     |
+| `npm test`             | Pass; 867 tests in 79 files                                                              |
+| `npm run licenses`     | Pass; one package recorded for review (`buffers` 0.1.1)                                  |
+| `npm run test:e2e`     | Pass; 189 Playwright tests against the built application, in 2.6 minutes                 |
+| `npm run make`         | Pass; `PaperForge-Setup.exe`, the nupkg and the zip                                      |
+| Packaged launch        | `out/PaperForge-win32-x64/PaperForge.exe` opened its window ("PaperForge") and was ended |
+| Installer smoke        | Not repeated this segment (last passed in Segment 18); a clean-VM run is still to do     |
 
 ## Manual setup required
 
 None beyond `npm install`. On npm 11 the first install asks to approve the Electron and
 electron-winstaller install scripts; `package.json` already records both approvals (`allowScripts`).
 
-## Where Segment 19 starts
+## What comes next
 
-- Segment 19 is the release candidate pass: profiling, 1,000-page and large scanned documents,
-  keyboard-only and high-contrast passes, a check that no mocked feature or dev-only path is
-  visible, and `docs/RELEASE_CHECKLIST.md` and `docs/KNOWN_LIMITATIONS.md` (the Known limitations
-  section above is their starting point).
-- The manual walkthroughs listed under "What is not yet verified" belong there too, along with a
-  clean-VM install.
-- `npm run make` produces the installer; the e2e suite still launches the built main bundle with
-  the stock Electron binary, because the packaged app's fuses refuse an inspector.
+The build plan in `CLAUDE.md` is complete. Before a build is handed to anyone:
+
+- walk `docs/RELEASE_CHECKLIST.md`, including the clean-VM install and the manual walkthroughs
+  above;
+- decide the `buffers` 0.1.1 licence question (review, or drop exceljs for the Excel export);
+- set the release version in `package.json`.
+
+The largest gap against `CLAUDE.md` itself is the viewer of section 10: single-page, two-page and
+cover layouts, the hand tool, marquee zoom and presentation mode were never built. They are listed
+first in `docs/KNOWN_LIMITATIONS.md` and would make a natural follow-up if the scope is reopened.
 
 ## Next-session instruction
 
-Read CLAUDE.md and execute only the next incomplete segment.
+All segments are complete. Continue only on an explicit request — the release checklist, or a
+scope extension such as the remaining viewer layouts.

@@ -17,8 +17,11 @@ and are worded so.
 - Changing a layer's visibility applies to the view; Save as default writes it into the document.
   Layers locked by the document are not shown as locked, and per-layer print or export settings are
   not edited.
-- Thumbnails in the navigation panel are list items for every page (only those near the view are
-  drawn). Documents of many thousands of pages have not been measured.
+- Only the thumbnails near the view exist, so `Tab` reaches those and not the whole document; the
+  page box, `PageUp`/`PageDown` and `Home`/`End` move through the rest.
+- Measured on the build machine: the first page of a 1,000-page document appears in about 0.6 s,
+  of a 3,000-page one in under 1 s. Every page's size is still read before the first is drawn, so
+  documents far larger than that take proportionally longer to open; they have not been measured.
 - Tooltips use the native `title` attribute.
 
 ## Search
