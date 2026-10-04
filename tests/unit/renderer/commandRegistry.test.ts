@@ -19,6 +19,7 @@ function makeContext(overrides: Partial<CommandContext> = {}): CommandContext {
     fullScreen: false,
     readingMode: false,
     commenting: false,
+    viewerTool: 'select',
     organizing: false,
     creating: false,
     editingText: false,

@@ -66,6 +66,7 @@ import { ViewerToolbar } from './ViewerToolbar';
 import { isolatePages } from './singlePage';
 import { rowIndexOf, rowOf, rowOptionsFor, stepPage } from './pageRows';
 import { usePageTurning, type PageTurn } from './usePageTurning';
+import { usePanning } from './usePanning';
 import {
   currentPage as currentPageOf,
   layoutPages,
@@ -137,6 +138,13 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const readingOrders = useAccessibilityStore((store) => store.orders);
   const readingOrderFor = useAccessibilityStore((store) => store.orderFor);
   const accessibilityFocus = useAccessibilityStore((store) => store.focused);
+
+  const viewerTool = useUiStore((store) => store.viewerTool);
+  // Any tool that works on the pages — editing, marking, measuring, drawing a
+  // comment — has the pointer; the hand only has it when none of them does.
+  const pagesTaken =
+    editing || filling || redacting || cropping || checkingAccessibility || measuring || toolActive;
+  const activeViewerTool = pagesTaken ? 'select' : viewerTool;
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
@@ -320,6 +328,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
     [pages.length, view.pageNumber, rowOptions, showPage],
   );
   usePageTurning(scrollerRef, single && state.status === 'ready', turnPage);
+  usePanning(scrollerRef, activeViewerTool === 'hand' && state.status === 'ready');
 
   // A turned page is scrolled to the end it was entered from, once it is laid out.
   useLayoutEffect(() => {
@@ -558,6 +567,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
         tabIndex={0}
         role="region"
         aria-label="Document pages"
+        data-tool={activeViewerTool}
       >
         {state.status === 'ready' && state.document !== null ? (
           <div

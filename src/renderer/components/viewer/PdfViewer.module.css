@@ -14,6 +14,25 @@
   outline-offset: -2px;
 }
 
+/* The hand tool: the pages are dragged, so nothing on them is selected. */
+.scroller[data-tool='hand'] {
+  cursor: grab;
+}
+
+.scroller[data-tool='hand'][data-panning='true'] {
+  cursor: grabbing;
+}
+
+.scroller[data-tool='hand'] * {
+  cursor: inherit;
+  user-select: none;
+}
+
+/* Links still follow on a click, and say so. */
+.scroller[data-tool='hand'] button {
+  cursor: pointer;
+}
+
 .content {
   position: relative;
   margin: 0 auto;

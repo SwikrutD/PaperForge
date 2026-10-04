@@ -17,6 +17,7 @@ import type { PageMode } from '../components/viewer/singlePage';
 import type { SpreadMode } from '../components/viewer/pageRows';
 import type { DocumentViewState } from '../stores/documentStore';
 import type { DialogId, ToastInput } from '../types/ui';
+import type { ViewerTool } from '../stores/uiStore';
 
 export type CommandCategory = 'file' | 'edit' | 'view' | 'tools' | 'window' | 'help';
 
@@ -39,6 +40,8 @@ export interface CommandContext {
   readonly readingMode: boolean;
   /** True while the comment tools are on show. */
   readonly commenting: boolean;
+  /** How the pointer acts on the pages when no other tool has them. */
+  readonly viewerTool: ViewerTool;
   /** True while the page grid has taken the workspace. */
   readonly organizing: boolean;
   /** True while the workspace for making a new document has the window. */
@@ -84,6 +87,7 @@ export interface CommandActions {
   setSpread(spread: SpreadMode): void;
   /** Shows the first page alone in two-page view, turning that view on. */
   setCoverPage(coverPage: boolean): void;
+  setViewerTool(tool: ViewerTool): void;
   zoomBy(direction: 1 | -1): void;
   rotateView(direction: 1 | -1): void;
   goToPage(pageNumber: number): void;

@@ -39,6 +39,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
   const activeTabId = useDocumentStore((state) => state.activeId);
   const readingMode = useUiStore((state) => state.readingMode);
   const commenting = useUiStore((state) => state.commenting);
+  const viewerTool = useUiStore((state) => state.viewerTool);
   const organizing = useOrganizeStore((state) => state.active);
   const creating = useCreateStore((state) => state.open);
   const editingText = useTextEditStore((state) => state.active);
@@ -113,6 +114,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
           documents().updateView(id, coverPage ? { coverPage, spread: 'twoPage' } : { coverPage });
         }
       },
+      setViewerTool: (tool) => ui().setViewerTool(tool),
       zoomBy: (direction) => {
         const id = activeSessionId();
         const current = documents().tabs.find((tab) => tab.session.id === id);
@@ -433,6 +435,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
       fullScreen: windowState?.fullScreen ?? false,
       readingMode,
       commenting,
+      viewerTool,
       organizing,
       creating,
       editingText,
@@ -460,6 +463,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     activeTabId,
     readingMode,
     commenting,
+    viewerTool,
     organizing,
     creating,
     editingText,

@@ -35,6 +35,9 @@ import {
   type DocumentTab,
 } from '../../../src/renderer/stores/documentStore';
 import { installBridgeStub, renderWithCommands } from './testUtils';
+import { panScroll } from '../../../src/renderer/components/viewer/usePanning';
+import { useUiStore } from '../../../src/renderer/stores/uiStore';
+import { useAnnotationStore } from '../../../src/renderer/stores/annotationStore';
 import { fireEvent } from '@testing-library/react';
 
 function page(pageNumber: number, width = 600, height = 800): PdfPageGeometry {
@@ -383,5 +386,65 @@ describe('cover page', () => {
       'aria-pressed',
       'false',
     );
+  });
+});
+
+describe('hand tool', () => {
+  beforeEach(() => {
+    useUiStore.setState({ viewerTool: 'select' });
+    useAnnotationStore.setState({ tool: 'select' });
+  });
+
+  it('moves the pages with the pointer', () => {
+    const start = { left: 100, top: 1000 };
+    // Dragging up and to the left shows what is below and to the right.
+    expect(panScroll(start, { x: 300, y: 300 }, { x: 250, y: 100 })).toEqual({
+      left: 150,
+      top: 1200,
+    });
+    expect(panScroll(start, { x: 0, y: 0 }, { x: 0, y: 0 })).toEqual(start);
+  });
+
+  it('is a named toggle next to the select tool, each reporting its state', async () => {
+    renderWithCommands(<LiveToolbar />);
+    const select = screen.getByRole('button', { name: 'Select Tool' });
+    const hand = screen.getByRole('button', { name: 'Hand Tool' });
+    expect(select).toHaveAttribute('aria-pressed', 'true');
+    expect(hand).toHaveAttribute('aria-pressed', 'false');
+    expect(hand).toHaveAttribute('title', 'Hand Tool (Ctrl+Shift+H)');
+
+    hand.focus();
+    await userEvent.keyboard('{Enter}');
+    expect(useUiStore.getState().viewerTool).toBe('hand');
+    expect(screen.getByRole('button', { name: 'Hand Tool' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Select Tool' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+
+    screen.getByRole('button', { name: 'Select Tool' }).focus();
+    await userEvent.keyboard(' ');
+    expect(useUiStore.getState().viewerTool).toBe('select');
+  });
+
+  it('turns on and off with Ctrl+Shift+H', async () => {
+    renderWithCommands(<LiveToolbar />);
+    await userEvent.keyboard('{Control>}{Shift>}h{/Shift}{/Control}');
+    expect(useUiStore.getState().viewerTool).toBe('hand');
+    await userEvent.keyboard('{Control>}{Shift>}h{/Shift}{/Control}');
+    expect(useUiStore.getState().viewerTool).toBe('select');
+  });
+
+  it('gives way to a comment tool, and says why it cannot be chosen', () => {
+    useUiStore.setState({ viewerTool: 'hand' });
+    useAnnotationStore.setState({ tool: 'highlight' });
+    renderWithCommands(<LiveToolbar />);
+    const hand = screen.getByRole('button', { name: 'Hand Tool' });
+    expect(hand).toBeDisabled();
+    expect(hand).toHaveAttribute('aria-pressed', 'false');
+    expect(hand).toHaveAttribute('title', 'A comment tool has the pages.');
   });
 });

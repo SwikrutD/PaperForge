@@ -366,3 +366,88 @@ test('paging through a long scan with a cover page keeps memory flat', async () 
   await pressToggle('Show Cover Page');
   await pressToggle('Two-Page View');
 });
+
+/** The pages' scroll position, as the scroller reports it. */
+async function scrollPosition(): Promise<{ left: number; top: number }> {
+  return pagesRegion().evaluate((element) => ({
+    left: element.scrollLeft,
+    top: element.scrollTop,
+  }));
+}
+
+/** Drags across the middle of the pages by the given distance. */
+async function dragPages(dx: number, dy: number): Promise<void> {
+  const area = await pagesRegion().boundingBox();
+  if (area === null) throw new Error('The pages are not on screen.');
+  const x = area.x + area.width / 2;
+  const y = area.y + area.height * 0.75;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + dx / 2, y + dy / 2, { steps: 4 });
+  await page.mouse.move(x + dx, y + dy, { steps: 4 });
+  await page.mouse.up();
+}
+
+test('the hand tool drags the pages instead of selecting text', async () => {
+  await openOnly(longPath);
+  await page.keyboard.press('Control+Shift+H');
+  const hand = page.getByRole('button', { name: 'Hand Tool', exact: true });
+  await expect(hand).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Select Tool', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+  await expect(pagesRegion()).toHaveAttribute('data-tool', 'hand');
+
+  const before = await scrollPosition();
+  await dragPages(0, -400);
+  const after = await scrollPosition();
+  expect(after.top - before.top).toBeGreaterThan(350);
+  expect(await page.evaluate(() => window.getSelection()?.toString() ?? '')).toBe('');
+  // The pages keep the keyboard, so the arrow keys move them as well.
+  await expect(pagesRegion()).toBeFocused();
+
+  // Dragging down brings the reader back.
+  await dragPages(0, 400);
+  expect((await scrollPosition()).top).toBeLessThan(after.top - 350);
+
+  // Zoomed in, the hand moves the page sideways too.
+  for (let step = 0; step < 4; step += 1) await page.keyboard.press('Control+=');
+  const wide = await scrollPosition();
+  await dragPages(-300, 0);
+  expect((await scrollPosition()).left - wide.left).toBeGreaterThan(250);
+  await page.keyboard.press('Control+2');
+});
+
+test('the hand tool gives way to the comment tools and comes back after', async () => {
+  await page.keyboard.press('Control+m');
+  await page.getByRole('button', { name: 'Highlight', exact: true }).click();
+  await expect(pagesRegion()).toHaveAttribute('data-tool', 'select');
+  await expect(page.getByRole('button', { name: 'Hand Tool', exact: true })).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Control+m');
+  await expect(pagesRegion()).toHaveAttribute('data-tool', 'hand');
+});
+
+test('dragging through a long scan with the hand tool keeps memory flat', async () => {
+  await openOnly(scanPath);
+  await expect(pagesRegion()).toHaveAttribute('data-tool', 'hand');
+  const before = await rendererMemoryMb();
+  let peak = before;
+  for (let drag = 0; drag < 60; drag += 1) {
+    await dragPages(0, -1200);
+    if (drag % 10 === 0) peak = Math.max(peak, await rendererMemoryMb());
+  }
+  const reached = Number(await pageBox().inputValue());
+  await expect(rendered(reached)).toBeVisible();
+  const after = await rendererMemoryMb();
+  peak = Math.max(peak, after);
+  report(
+    `120-page scan, hand tool to page ${reached}: renderer ${before} MB before, ${peak} MB peak, ${after} MB after`,
+  );
+  expect(reached).toBeGreaterThan(20);
+  expect(await mountedPages().count()).toBeLessThanOrEqual(12);
+  expect(peak - before).toBeLessThan(MAX_MEMORY_GROWTH_MB);
+  await page.keyboard.press('Control+Shift+H');
+  await expect(pagesRegion()).toHaveAttribute('data-tool', 'select');
+});

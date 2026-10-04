@@ -4,6 +4,12 @@ import { createId } from '../utils/ids';
 
 const DEFAULT_TOAST_MS = 4000;
 
+/**
+ * How the pointer acts on the pages when no other tool has them: selecting
+ * text and following links, or dragging the pages around.
+ */
+export type ViewerTool = 'select' | 'hand';
+
 export interface UiStore {
   /** Only one modal at a time; the shell is not a stack of dialogs. */
   dialog: DialogId | null;
@@ -16,6 +22,7 @@ export interface UiStore {
   readingMode: boolean;
   /** True while the comment tools are on show. */
   commenting: boolean;
+  viewerTool: ViewerTool;
   toasts: Toast[];
   /** Pending confirmation, shown over everything else. */
   confirmation: ConfirmationRequest | null;
@@ -25,6 +32,7 @@ export interface UiStore {
   setProgressCenterOpen: (open: boolean) => void;
   setReadingMode: (readingMode: boolean) => void;
   setCommenting: (commenting: boolean) => void;
+  setViewerTool: (tool: ViewerTool) => void;
   showToast: (toast: ToastInput) => string;
   dismissToast: (id: string) => void;
   requestConfirmation: (request: ConfirmationRequest) => void;
@@ -37,6 +45,7 @@ export const useUiStore = create<UiStore>((set) => ({
   progressCenterOpen: false,
   readingMode: false,
   commenting: false,
+  viewerTool: 'select',
   toasts: [],
   confirmation: null,
 
@@ -46,6 +55,7 @@ export const useUiStore = create<UiStore>((set) => ({
   setProgressCenterOpen: (open) => set({ progressCenterOpen: open }),
   setReadingMode: (readingMode) => set({ readingMode }),
   setCommenting: (commenting) => set({ commenting }),
+  setViewerTool: (viewerTool) => set({ viewerTool }),
 
   showToast: (input) => {
     const intent = input.intent ?? 'info';

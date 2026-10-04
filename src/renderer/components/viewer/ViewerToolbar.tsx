@@ -4,6 +4,8 @@ import {
   ChevronDown,
   ChevronUp,
   Columns2,
+  Hand,
+  MousePointer2,
   Maximize,
   MoveHorizontal,
   RectangleVertical,
@@ -144,6 +146,9 @@ export function ViewerToolbar({
       </div>
 
       <div className={cx(styles.group, styles.trailing)}>
+        <CommandIconButton id="view.selectTool" icon={MousePointer2} disabled={disabled} />
+        <CommandIconButton id="view.handTool" icon={Hand} disabled={disabled} />
+        <span className={styles.divider} aria-hidden="true" />
         <IconButton
           icon={ZoomOut}
           label="Zoom out"
