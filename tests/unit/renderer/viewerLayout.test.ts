@@ -52,10 +52,17 @@ describe('layoutPages', () => {
   it('stacks pages with a gap and margins', () => {
     const layout = layoutPages([page(1, 100, 200), page(2, 100, 100)], 1, 0);
 
-    expect(layout.boxes[0]).toEqual({ pageNumber: 1, top: PAGE_MARGIN, width: 100, height: 200 });
+    expect(layout.boxes[0]).toEqual({
+      pageNumber: 1,
+      top: PAGE_MARGIN,
+      left: -50,
+      width: 100,
+      height: 200,
+    });
     expect(layout.boxes[1]).toEqual({
       pageNumber: 2,
       top: PAGE_MARGIN + 200 + PAGE_GAP,
+      left: -50,
       width: 100,
       height: 100,
     });

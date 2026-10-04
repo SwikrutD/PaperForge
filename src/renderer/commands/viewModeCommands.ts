@@ -1,4 +1,4 @@
-import { RectangleVertical } from 'lucide-react';
+import { Columns2, RectangleVertical } from 'lucide-react';
 import type { CommandAvailability, CommandContext, CommandDefinition } from './types';
 
 const documentRequired = (context: CommandContext): boolean | CommandAvailability =>
@@ -23,6 +23,19 @@ export function viewModeCommands(): CommandDefinition[] {
         context.actions.setPageMode(
           context.activeView?.pageMode === 'single' ? 'continuous' : 'single',
         ),
+    },
+    {
+      id: 'view.twoPage',
+      title: 'Two-Page View',
+      description: 'Show pages in pairs side by side, like an open book.',
+      category: 'view',
+      group: 'pageLayout',
+      icon: Columns2,
+      keywords: ['page layout', 'spread', 'facing pages', 'book', 'side by side'],
+      isAvailable: documentRequired,
+      isChecked: (context) => context.activeView?.spread === 'twoPage',
+      run: (context) =>
+        context.actions.setSpread(context.activeView?.spread === 'twoPage' ? 'none' : 'twoPage'),
     },
   ];
 }

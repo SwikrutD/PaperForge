@@ -2,9 +2,8 @@
   /* A page is the document's own colours, never the system's: in a high
      contrast theme the invisible text layer would otherwise be drawn. */
   forced-color-adjust: none;
+  /* Placed from the centre line of the content; the viewer sets `left`. */
   position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
   background-color: var(--pf-color-page);
   box-shadow: var(--pf-shadow-8);
   border-radius: 2px;

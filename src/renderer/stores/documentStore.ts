@@ -9,6 +9,7 @@ import type {
 import type { DocumentEditState, EditTransaction, SaveMode } from '@shared/schemas/edit';
 import type { ZoomMode } from '../components/viewer/viewerLayout';
 import type { PageMode } from '../components/viewer/singlePage';
+import type { SpreadMode } from '../components/viewer/pageRows';
 import { invoke, subscribe } from '../services/ipcClient';
 import { useUiStore } from './uiStore';
 
@@ -19,6 +20,8 @@ export interface DocumentViewState {
   rotation: 0 | 90 | 180 | 270;
   /** One scrolling column, or one page at a time. */
   pageMode: PageMode;
+  /** One page to a row, or two side by side. */
+  spread: SpreadMode;
   pageNumber: number;
   scrollTop: number;
   /**
@@ -36,6 +39,7 @@ export const DEFAULT_VIEW_STATE: DocumentViewState = {
   scale: 1,
   rotation: 0,
   pageMode: 'continuous',
+  spread: 'none',
   pageNumber: 1,
   scrollTop: 0,
   viewTop: null,

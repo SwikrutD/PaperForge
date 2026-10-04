@@ -64,6 +64,7 @@ import { PasswordPrompt } from './PasswordPrompt';
 import { PdfPageView } from './PdfPageView';
 import { ViewerToolbar } from './ViewerToolbar';
 import { isolatePages } from './singlePage';
+import { rowIndexOf, rowOf, stepPage } from './pageRows';
 import { usePageTurning, type PageTurn } from './usePageTurning';
 import {
   currentPage as currentPageOf,
@@ -146,9 +147,22 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const { view } = tab;
   const pages = useMemo(() => state.document?.pages ?? [], [state.document]);
 
+  const rowOptions = useMemo(() => ({ spread: view.spread }), [view.spread]);
+  const spread = view.spread !== 'none';
+
   // Fit modes depend on the page currently being read, and on the widest page
-  // so that fit width never leaves part of a page off screen.
-  const referencePage = pages[Math.min(view.pageNumber, pages.length) - 1] ?? pages[0] ?? null;
+  // so that fit width never leaves part of a page off screen. In a spread the
+  // pages side by side are fitted together.
+  const referencePage = useMemo(() => {
+    const row = rowOf(view.pageNumber, pages.length, rowOptions)
+      .map((pageNumber) => pages[pageNumber - 1])
+      .filter((page) => page !== undefined);
+    if (row.length === 0) return pages[0] ?? null;
+    return {
+      width: Math.max(...row.map((page) => page.width)),
+      height: Math.max(...row.map((page) => page.height)),
+    };
+  }, [pages, view.pageNumber, rowOptions]);
   const widestPage = useMemo(() => {
     let widest = pages[0] ?? null;
     for (const page of pages) {
@@ -168,10 +182,12 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
         viewportWidth: viewport.width,
         viewportHeight: viewport.height,
         viewRotation: view.rotation,
+        columns: spread ? 2 : 1,
       },
       view.scale,
     );
   }, [
+    spread,
     referencePage,
     widestPage,
     viewport.width,
@@ -195,12 +211,15 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   // view lays out the whole column and mounts what is near the viewport.
   const single = view.pageMode === 'single';
   const shownPages = useMemo(
-    () => (single && view.pageNumber <= pages.length ? [view.pageNumber] : null),
-    [single, view.pageNumber, pages.length],
+    () =>
+      single && view.pageNumber <= pages.length
+        ? rowOf(view.pageNumber, pages.length, rowOptions)
+        : null,
+    [single, view.pageNumber, pages.length, rowOptions],
   );
   const columnLayout = useMemo(
-    () => layoutPages(pages, scale, view.rotation),
-    [pages, scale, view.rotation],
+    () => layoutPages(pages, scale, view.rotation, rowOptions),
+    [pages, scale, view.rotation, rowOptions],
   );
   const layout = useMemo(
     () => (shownPages === null ? columnLayout : isolatePages(columnLayout, shownPages)),
@@ -251,14 +270,14 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const showPage = useCallback(
     (pageNumber: number, edge: 'top' | 'bottom') => {
       const element = scrollerRef.current;
-      if (pageNumber === view.pageNumber) {
+      if (rowIndexOf(pageNumber, rowOptions) === rowIndexOf(view.pageNumber, rowOptions)) {
         if (element !== null) element.scrollTop = edge === 'top' ? 0 : element.scrollHeight;
         return;
       }
       pendingEdge.current = edge;
       updateView(sessionId, { pageNumber, viewTop: null });
     },
-    [view.pageNumber, sessionId, updateView],
+    [view.pageNumber, rowOptions, sessionId, updateView],
   );
 
   const goToPage = useCallback(
@@ -289,13 +308,13 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
         turn === 'first'
           ? 1
           : turn === 'last'
-            ? pages.length
-            : view.pageNumber + (turn === 'next' ? 1 : -1);
-      if (target < 1 || target > pages.length || target === view.pageNumber) return;
+            ? stepPage(pages.length, 0, pages.length, rowOptions)
+            : stepPage(view.pageNumber, turn === 'next' ? 1 : -1, pages.length, rowOptions);
+      if (rowIndexOf(target, rowOptions) === rowIndexOf(view.pageNumber, rowOptions)) return;
       // Turning back lands at the foot of the page, as reading backwards would.
       showPage(target, turn === 'previous' ? 'bottom' : 'top');
     },
-    [pages.length, view.pageNumber, showPage],
+    [pages.length, view.pageNumber, rowOptions, showPage],
   );
   usePageTurning(scrollerRef, single && state.status === 'ready', turnPage);
 
@@ -308,15 +327,17 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
     element.scrollTop = edge === 'top' ? 0 : element.scrollHeight;
   }, [layout]);
 
-  // Changing between continuous and single-page view keeps the page being read.
-  const shownMode = useRef(view.pageMode);
+  // Changing the page layout — continuous or single page, column or spread —
+  // keeps the page being read.
+  const layoutKey = `${view.pageMode}/${view.spread}`;
+  const shownLayout = useRef(layoutKey);
   useLayoutEffect(() => {
     const element = scrollerRef.current;
-    if (shownMode.current === view.pageMode || element === null) return;
-    shownMode.current = view.pageMode;
+    if (shownLayout.current === layoutKey || element === null) return;
+    shownLayout.current = layoutKey;
     element.scrollTop = single ? 0 : scrollTopForPage(layout, view.pageNumber);
     updateView(sessionId, { scrollTop: element.scrollTop });
-  }, [view.pageMode, single, layout, view.pageNumber, sessionId, updateView]);
+  }, [layoutKey, single, layout, view.pageNumber, sessionId, updateView]);
 
   // A command asked for a page; scroll there and clear the request.
   useEffect(() => {

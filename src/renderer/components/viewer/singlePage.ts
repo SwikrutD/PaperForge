@@ -1,4 +1,4 @@
-import { PAGE_MARGIN, type PageLayout } from './viewerLayout';
+import { contentWidthOf, PAGE_MARGIN, type PageLayout } from './viewerLayout';
 
 /**
  * How pages follow one another: one long scrolling column, or one page at a
@@ -24,7 +24,7 @@ export function isolatePages(layout: PageLayout, pageNumbers: readonly number[])
   return {
     boxes: layout.boxes.map((box) => ({ ...box, top: box.top - shift })),
     contentHeight: bottom - top + PAGE_MARGIN * 2,
-    contentWidth: Math.max(...shown.map((box) => box.width)) + PAGE_MARGIN * 2,
+    contentWidth: contentWidthOf(shown),
   };
 }
 

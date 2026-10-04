@@ -223,3 +223,76 @@ test('paging through a long scan in single page view keeps memory flat', async (
   expect(memory.peak - memory.before).toBeLessThan(MAX_MEMORY_GROWTH_MB);
   await pressToggle('Single Page View');
 });
+
+test('two-page view sets pages side by side and steps a pair at a time', async () => {
+  await openOnly(longPath);
+  const toggle = await pressToggle('Two-Page View');
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(rendered(1)).toBeVisible();
+  await expect(rendered(2)).toBeVisible();
+  await expect(page.getByText(/Two pages/).first()).toBeVisible();
+
+  // Page one on the left, page two on the right, level with each other.
+  const left = await rendered(1).boundingBox();
+  const right = await rendered(2).boundingBox();
+  if (left === null || right === null) throw new Error('The pair is not on screen.');
+  expect(Math.round(left.y)).toBe(Math.round(right.y));
+  expect(left.x + left.width).toBeLessThanOrEqual(right.x);
+
+  await page.getByRole('button', { name: 'Next page' }).click();
+  await expect(pageBox()).toHaveValue('3');
+  await expect(rendered(3)).toBeVisible();
+  await expect(rendered(4)).toBeVisible();
+
+  await goToPage(700);
+  await expect(rendered(699)).toBeVisible();
+  await expect(rendered(700)).toBeVisible();
+  expect(await mountedPages().count()).toBeLessThanOrEqual(12);
+});
+
+test('two-page view with single page view shows one pair at a time', async () => {
+  await pressToggle('Single Page View');
+  await expect(mountedPages()).toHaveCount(2);
+  await expect(rendered(699)).toBeVisible();
+  await pagesRegion().focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(rendered(701)).toBeVisible();
+  await expect(rendered(702)).toBeVisible();
+  await expect(mountedPages()).toHaveCount(2);
+  await page.keyboard.press('End');
+  await expect(rendered(999)).toBeVisible();
+  await expect(rendered(1000)).toBeVisible();
+  await pressToggle('Single Page View');
+  await pressToggle('Two-Page View');
+  await expect(rendered(999)).toBeVisible();
+});
+
+test('paging through a long scan two pages at a time keeps memory flat', async () => {
+  await openOnly(scanPath);
+  await pressToggle('Two-Page View');
+  await pressToggle('Single Page View');
+  await expect(mountedPages()).toHaveCount(2);
+  await pagesRegion().focus();
+
+  const targets = Array.from({ length: 59 }, (_, index) => index * 2 + 3);
+  const memory = await pageThroughScan(
+    '120-page scan, two-page single page view',
+    async () => {
+      await page.keyboard.press('ArrowRight');
+    },
+    targets,
+  );
+  await expect(mountedPages()).toHaveCount(2);
+  expect(memory.peak - memory.before).toBeLessThan(MAX_MEMORY_GROWTH_MB);
+
+  // And scrolling the continuous spread from end to end.
+  await pressToggle('Single Page View');
+  const scrolled = await pageThroughScan(
+    '120-page scan, continuous two-page view',
+    goToPage,
+    Array.from({ length: 30 }, (_, index) => 120 - index * 4 - 1),
+  );
+  expect(await mountedPages().count()).toBeLessThanOrEqual(12);
+  expect(scrolled.peak - scrolled.before).toBeLessThan(MAX_MEMORY_GROWTH_MB);
+  await pressToggle('Two-Page View');
+});

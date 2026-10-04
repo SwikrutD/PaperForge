@@ -2,6 +2,7 @@ import { useState, type ReactElement } from 'react';
 import {
   ChevronDown,
   ChevronUp,
+  Columns2,
   Maximize,
   MoveHorizontal,
   RectangleVertical,
@@ -22,6 +23,7 @@ import { cx } from '../../utils/classNames';
 import { CommandIconButton } from '../controls/CommandIconButton';
 import { IconButton } from '../controls/IconButton';
 import { resolvePageEntry } from './pageEntry';
+import { rowIndexOf, stepPage } from './pageRows';
 import { nextZoomStep, type ZoomMode } from './viewerLayout';
 import styles from './ViewerToolbar.module.css';
 
@@ -60,6 +62,11 @@ export function ViewerToolbar({
   const [draft, setDraft] = useState<string | null>(null);
   const currentLabel = pageLabels[view.pageNumber - 1] ?? null;
   const pageInput = draft ?? currentLabel ?? String(view.pageNumber);
+  // Previous and next move a row at a time: a pair of pages in a spread.
+  const rowOptions = { spread: view.spread };
+  const row = rowIndexOf(view.pageNumber, rowOptions);
+  const previousPage = stepPage(view.pageNumber, -1, pageCount, rowOptions);
+  const nextPage = stepPage(view.pageNumber, 1, pageCount, rowOptions);
 
   const setZoom = (mode: ZoomMode, nextScale?: number): void => {
     updateView(tab.session.id, {
@@ -85,14 +92,14 @@ export function ViewerToolbar({
         <IconButton
           icon={ChevronUp}
           label="Previous page"
-          disabled={disabled || view.pageNumber <= 1}
-          onClick={() => onGoToPage(view.pageNumber - 1)}
+          disabled={disabled || row === 0}
+          onClick={() => onGoToPage(previousPage)}
         />
         <IconButton
           icon={ChevronDown}
           label="Next page"
-          disabled={disabled || view.pageNumber >= pageCount}
-          onClick={() => onGoToPage(view.pageNumber + 1)}
+          disabled={disabled || rowIndexOf(nextPage, rowOptions) === row}
+          onClick={() => onGoToPage(nextPage)}
         />
         <span className={styles.pageBox}>
           <input
@@ -163,6 +170,7 @@ export function ViewerToolbar({
 
         <span className={styles.divider} aria-hidden="true" />
         <CommandIconButton id="view.singlePage" icon={RectangleVertical} disabled={disabled} />
+        <CommandIconButton id="view.twoPage" icon={Columns2} disabled={disabled} />
 
         <span className={styles.divider} aria-hidden="true" />
         {/*

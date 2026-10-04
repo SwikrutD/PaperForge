@@ -1,4 +1,5 @@
 import type { PdfPageGeometry } from '@pdf/render/types';
+import { rowIndexOf, sideOf, type RowOptions } from './pageRows';
 
 /** Gap between pages, in CSS pixels. */
 export const PAGE_GAP = 16;
@@ -14,6 +15,11 @@ export interface PageBox {
   pageNumber: number;
   /** Offset of the page top within the scrollable content, in CSS pixels. */
   top: number;
+  /**
+   * Offset of the page's left edge from the centre line of the content. A
+   * page in a column straddles the line; in a spread the two pages meet at it.
+   */
+  left: number;
   width: number;
   height: number;
 }
@@ -45,33 +51,69 @@ export function rotatedSize(
     : { width: page.width, height: page.height };
 }
 
+/** Where a page sits across the content, relative to the centre line. */
+function leftOf(pageNumber: number, width: number, options: RowOptions): number {
+  switch (sideOf(pageNumber, options)) {
+    case 'left':
+      return -PAGE_GAP / 2 - width;
+    case 'right':
+      return PAGE_GAP / 2;
+    default:
+      return -width / 2;
+  }
+}
+
 /**
- * Stacks the pages vertically. Every page keeps its own size, so documents
- * that mix portrait and landscape lay out correctly.
+ * Content width that keeps every given page on screen. Pages are placed about
+ * the centre line, so the content has to reach as far on both sides of it.
+ */
+export function contentWidthOf(boxes: readonly PageBox[]): number {
+  let reach = 0;
+  for (const box of boxes) reach = Math.max(reach, -box.left, box.left + box.width);
+  return Math.ceil(reach * 2) + PAGE_MARGIN * 2;
+}
+
+/**
+ * Stacks the pages vertically, a row at a time: one page to a row in a
+ * column, two in a spread, meeting at the centre line like an open book.
+ * Every page keeps its own size, so documents that mix portrait and landscape
+ * lay out correctly; a row is as tall as its tallest page.
  */
 export function layoutPages(
   pages: readonly PdfPageGeometry[],
   scale: number,
   viewRotation: number,
+  options: RowOptions = { spread: 'none' },
 ): PageLayout {
   const boxes: PageBox[] = [];
   let top = PAGE_MARGIN;
-  let contentWidth = 0;
+  let rowHeight = 0;
+  let row = -1;
 
   for (const page of pages) {
+    const pageRow = rowIndexOf(page.pageNumber, options);
+    if (pageRow !== row) {
+      if (row >= 0) top += rowHeight + PAGE_GAP;
+      row = pageRow;
+      rowHeight = 0;
+    }
     const size = rotatedSize(page, viewRotation);
     const width = Math.max(1, Math.round(size.width * scale));
     const height = Math.max(1, Math.round(size.height * scale));
-    boxes.push({ pageNumber: page.pageNumber, top, width, height });
-    contentWidth = Math.max(contentWidth, width);
-    top += height + PAGE_GAP;
+    boxes.push({
+      pageNumber: page.pageNumber,
+      top,
+      left: leftOf(page.pageNumber, width, options),
+      width,
+      height,
+    });
+    rowHeight = Math.max(rowHeight, height);
   }
 
   return {
     boxes,
-    // The last gap becomes the bottom margin.
-    contentHeight: pages.length === 0 ? 0 : top - PAGE_GAP + PAGE_MARGIN,
-    contentWidth: contentWidth + PAGE_MARGIN * 2,
+    contentHeight: pages.length === 0 ? 0 : top + rowHeight + PAGE_MARGIN,
+    contentWidth: contentWidthOf(boxes),
   };
 }
 
@@ -105,11 +147,16 @@ export function currentPage(layout: PageLayout, scrollTop: number, viewportHeigh
   if (first === undefined) return 1;
 
   // A page counts as current once its top passes a quarter into the viewport.
+  // In a spread the row is current, and it is reported by its first page.
   const anchor = scrollTop + Math.min(viewportHeight * 0.25, viewportHeight);
   let current = first.pageNumber;
+  let currentTop = first.top;
   for (const box of layout.boxes) {
-    if (box.top <= anchor) current = box.pageNumber;
-    else break;
+    if (box.top > anchor) break;
+    if (box.top !== currentTop) {
+      current = box.pageNumber;
+      currentTop = box.top;
+    }
   }
   return current;
 }
@@ -134,6 +181,8 @@ export interface FitOptions {
   viewRotation: number;
   /** Width taken by the scrollbar, so fit-width does not overflow. */
   scrollbarWidth?: number;
+  /** Pages side by side: two in a spread, each fitted to its half. */
+  columns?: 1 | 2;
 }
 
 /** Scale for a fit mode, based on the page the user is looking at. */
@@ -167,7 +216,13 @@ export function scaleForMode(mode: ZoomMode, options: FitOptions, currentScale =
   if (mode === 'custom') return clampScale(currentScale);
 
   const size = rotatedSize(options.page, options.viewRotation);
-  const availableWidth = options.viewportWidth - PAGE_MARGIN * 2 - (options.scrollbarWidth ?? 0);
+  const columns = options.columns ?? 1;
+  const availableWidth =
+    (options.viewportWidth -
+      PAGE_MARGIN * 2 -
+      (options.scrollbarWidth ?? 0) -
+      PAGE_GAP * (columns - 1)) /
+    columns;
   if (mode === 'fitWidth') {
     const widest = rotatedSize(options.widestPage ?? options.page, options.viewRotation);
     return clampScale(availableWidth / widest.width);

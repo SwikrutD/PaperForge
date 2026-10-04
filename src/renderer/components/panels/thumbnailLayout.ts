@@ -27,7 +27,13 @@ export function layoutThumbnails(pages: readonly PdfPageGeometry[]): PageLayout 
   let top = THUMBNAIL_GAP;
   const boxes = pages.map((page) => {
     const height = thumbnailHeight(page) + THUMBNAIL_CHROME;
-    const box = { pageNumber: page.pageNumber, top, width: THUMBNAIL_WIDTH, height };
+    const box = {
+      pageNumber: page.pageNumber,
+      top,
+      left: -THUMBNAIL_WIDTH / 2,
+      width: THUMBNAIL_WIDTH,
+      height,
+    };
     top += height + THUMBNAIL_GAP;
     return box;
   });

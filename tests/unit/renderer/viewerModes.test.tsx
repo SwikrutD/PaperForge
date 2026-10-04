@@ -14,7 +14,20 @@ import {
   keyTurn,
   wheelTurn,
 } from '../../../src/renderer/components/viewer/singlePage';
-import { layoutPages, PAGE_MARGIN } from '../../../src/renderer/components/viewer/viewerLayout';
+import {
+  currentPage,
+  layoutPages,
+  PAGE_GAP,
+  PAGE_MARGIN,
+  scaleForMode,
+  visiblePages,
+} from '../../../src/renderer/components/viewer/viewerLayout';
+import {
+  rowCount,
+  rowIndexOf,
+  rowOf,
+  stepPage,
+} from '../../../src/renderer/components/viewer/pageRows';
 import {
   DEFAULT_VIEW_STATE,
   initialEditState,
@@ -22,6 +35,7 @@ import {
   type DocumentTab,
 } from '../../../src/renderer/stores/documentStore';
 import { installBridgeStub, renderWithCommands } from './testUtils';
+import { fireEvent } from '@testing-library/react';
 
 function page(pageNumber: number, width = 600, height = 800): PdfPageGeometry {
   return {
@@ -210,5 +224,105 @@ describe('single-page view control', () => {
     expect(view().pageMode).toBe('single');
     await userEvent.keyboard(' ');
     expect(view().pageMode).toBe('continuous');
+  });
+});
+
+describe('two-page rows', () => {
+  const twoPage = { spread: 'twoPage' as const };
+
+  it('pairs pages one and two, three and four', () => {
+    expect(rowOf(1, 5, twoPage)).toEqual([1, 2]);
+    expect(rowOf(2, 5, twoPage)).toEqual([1, 2]);
+    expect(rowOf(4, 5, twoPage)).toEqual([3, 4]);
+    // An odd last page stands alone.
+    expect(rowOf(5, 5, twoPage)).toEqual([5]);
+    expect(rowCount(5, twoPage)).toBe(3);
+  });
+
+  it('steps a pair at a time and stays inside the document', () => {
+    expect(stepPage(1, 1, 5, twoPage)).toBe(3);
+    expect(stepPage(2, 1, 5, twoPage)).toBe(3);
+    expect(stepPage(4, -1, 5, twoPage)).toBe(1);
+    expect(stepPage(5, 1, 5, twoPage)).toBe(5);
+    expect(stepPage(1, -1, 5, twoPage)).toBe(1);
+    expect(stepPage(3, 1, 5, { spread: 'none' })).toBe(4);
+  });
+
+  it('works out rows without listing them', () => {
+    expect(rowIndexOf(999, twoPage)).toBe(499);
+    expect(rowIndexOf(999, { spread: 'none' })).toBe(998);
+  });
+});
+
+describe('two-page layout', () => {
+  const twoPage = { spread: 'twoPage' as const };
+
+  it('places a pair either side of the centre line, like an open book', () => {
+    const layout = layoutPages(pages(4), 1, 0, twoPage);
+    const [one, two, three] = layout.boxes;
+    expect(one).toMatchObject({ top: PAGE_MARGIN, left: -PAGE_GAP / 2 - 600 });
+    expect(two).toMatchObject({ top: PAGE_MARGIN, left: PAGE_GAP / 2 });
+    expect(three?.top).toBe(PAGE_MARGIN + 800 + PAGE_GAP);
+    expect(layout.contentHeight).toBe(PAGE_MARGIN * 2 + 800 * 2 + PAGE_GAP);
+    expect(layout.contentWidth).toBe(600 * 2 + PAGE_GAP + PAGE_MARGIN * 2);
+  });
+
+  it('makes a row as tall as its tallest page', () => {
+    const layout = layoutPages([page(1, 600, 800), page(2, 600, 1000), page(3)], 1, 0, twoPage);
+    expect(layout.boxes[2]?.top).toBe(PAGE_MARGIN + 1000 + PAGE_GAP);
+  });
+
+  it('reports a row by its first page', () => {
+    const layout = layoutPages(pages(6), 1, 0, twoPage);
+    expect(currentPage(layout, 0, 900)).toBe(1);
+    expect(currentPage(layout, 830, 900)).toBe(3);
+  });
+
+  it('mounts both pages of the rows near the view, and no more', () => {
+    const layout = layoutPages(pages(1000), 1, 0, twoPage);
+    const mounted = visiblePages(layout, 200_000, 900, 900);
+    expect(mounted.length % 2).toBe(0);
+    expect(mounted.length).toBeLessThanOrEqual(10);
+  });
+
+  it('fits two pages across the window', () => {
+    const options = { page: page(1), viewportWidth: 1300, viewportHeight: 2000, viewRotation: 0 };
+    const scale = scaleForMode('fitWidth', { ...options, columns: 2 });
+    expect(scale).toBeCloseTo((1300 - PAGE_MARGIN * 2 - PAGE_GAP) / 2 / 600, 5);
+  });
+});
+
+describe('two-page view control', () => {
+  it('is a named toggle, and next page then moves a pair at a time', async () => {
+    let wentTo = 0;
+    function Toolbar(): ReactElement {
+      const tab = useDocumentStore((store) => store.tabs[0]!);
+      return (
+        <ViewerToolbar
+          tab={tab}
+          pageCount={10}
+          pageLabels={[]}
+          scale={1}
+          disabled={false}
+          onGoToPage={(pageNumber) => {
+            wentTo = pageNumber;
+          }}
+        />
+      );
+    }
+    renderWithCommands(<Toolbar />);
+    const toggle = screen.getByRole('button', { name: 'Two-Page View' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    toggle.focus();
+    await userEvent.keyboard('{Enter}');
+    expect(view().spread).toBe('twoPage');
+    expect(screen.getByRole('button', { name: 'Two-Page View' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+    expect(wentTo).toBe(3);
+    expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled();
   });
 });

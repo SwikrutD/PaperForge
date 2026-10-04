@@ -105,7 +105,12 @@ export function PdfPageView({
   return (
     <div
       className={styles.page}
-      style={{ top: `${box.top}px`, width: `${box.width}px`, height: `${box.height}px` }}
+      style={{
+        top: `${box.top}px`,
+        left: `calc(50% + ${box.left}px)`,
+        width: `${box.width}px`,
+        height: `${box.height}px`,
+      }}
       data-page-number={box.pageNumber}
       data-rendered={rendered ? 'true' : undefined}
       aria-label={`Page ${label ?? String(box.pageNumber)}`}
