@@ -129,6 +129,28 @@ Run in both light and dark themes:
 - [ ] In dark mode the page itself stays white; only the surroundings are dark.
 - [ ] Pages stay sharp on a high-DPI display and after changing Windows scaling.
 
+### Page layouts and pointer tools (section 10 follow-up)
+
+- [ ] Single Page View: one page on screen; the mouse wheel and a touchpad scroll a tall page to its
+      foot before turning it, and a flick does not race through several pages. Page Up and Page
+      Down, the side arrows, Home and End do what `docs/KEYBOARD_SHORTCUTS.md` says.
+- [ ] Two-Page View on a book-like PDF: pairs meet in the middle; next page moves a pair; Fit page
+      and Fit width fit the pair. Show Cover Page puts page 1 alone on the right and pairs 2–3,
+      4–5 after it, as the printed book does.
+- [ ] Changing layout keeps the page being read, in each direction, at several zoom levels and with
+      the view rotated.
+- [ ] Hand Tool: dragging moves the pages both ways when zoomed in; no text is selected; a link
+      still follows on a click; choosing a comment tool takes over and the hand comes back after.
+      Touch scrolling on a touch screen still works.
+- [ ] Marquee Zoom: a rectangle drawn round a paragraph fills the window with it, centred; a click
+      zooms in a step and `Shift`+click out; `Escape` while dragging abandons it. At very deep zoom
+      the page softens rather than the window running out of memory (watch Task Manager).
+- [ ] Presentation Mode (`Ctrl+L`): full screen, black surround, one page; a presentation clicker
+      (which sends Page Up and Page Down) moves through the pages; `Esc` returns to the viewer at
+      the page reached and leaves full screen; started from full screen, it stays full screen.
+- [ ] With a screen reader: the layout and tool buttons announce their names and whether they are
+      on; entering presentation announces it, and each page change is announced.
+
 ## Segment 4 — navigation panels and search
 
 - [ ] Thumbnails: every page has one, the current page is marked and stays in view while scrolling,

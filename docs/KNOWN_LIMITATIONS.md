@@ -9,9 +9,22 @@ and are worded so.
 
 ## Viewing
 
-- **Continuous scrolling only.** Single page, two-page spread and cover-page layouts, the hand
-  (pan) tool, marquee zoom and presentation mode from `CLAUDE.md` section 10 are not built. Full
-  screen (`F11`) and reading mode (`Ctrl+Shift+R`) are.
+- The page layout — single page view, two-page view, cover page — is kept per open document while
+  it is open, and starts as one continuous column each time a document is opened. There is no
+  default page layout or default zoom setting (`CLAUDE.md` section 35 lists both).
+- In single page view a page turns when Page Down is pressed at its foot. Page Down glides, so a
+  press made while an earlier one is still gliding scrolls instead, and one more press turns it.
+- Presentation mode shows single pages, not spreads, with no transitions, timer, automatic
+  advance or presenter view, and the pointer stays visible. Comment, form and editing tools are not
+  available in it.
+- The hand tool works with a mouse or pen; touch keeps Windows' own panning. There is no
+  hold-Space-to-pan.
+- Marquee zoom has no keyboard equivalent for drawing a rectangle; Zoom In and Zoom Out are the
+  keyboard route. `Ctrl+wheel` zooms around the page being read, not around the pointer.
+- One page's canvas on screen holds at most about 16.7 million pixels (64 MB). Zoomed further than
+  that — roughly beyond 400% for a Letter page on a 150% display — the page is drawn at that
+  resolution and stretched, so it looks softer; the text layer, selection and search stay exact.
+  Exports and printing are not limited.
 - A jump of more than two screens goes straight to the page rather than gliding; nearer jumps glide
   unless Windows asks for reduced motion.
 - Changing a layer's visibility applies to the view; Save as default writes it into the document.

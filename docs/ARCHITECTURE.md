@@ -220,7 +220,27 @@ pfdoc://document/<session id>   →   PDF.js worker   →   page canvas
   the renderer bundle at build time, so nothing is fetched at runtime.
 - **Layout.** `viewerLayout.ts` is pure arithmetic: page boxes, the visible
   range, the current page, and the scale for each zoom mode. It is unit-tested
-  and knows nothing about React or PDF.js.
+  and knows nothing about React or PDF.js. Pages are laid out in rows
+  (`pageRows.ts`): one page to a row in a column, two in two-page view, with
+  the first page alone when a cover is shown. Rows are computed from page
+  numbers, never stored, and each box is placed from the content's centre line
+  so a pair meets at the spine. Single page view (`singlePage.ts`) lays out
+  only the current row; `usePageTurning` turns pages from the wheel and keys.
+- **Pointer tools.** The select, hand (`usePanning`) and marquee zoom
+  (`useMarqueeZoom`, `marqueeZoom.ts`) tools act on the page scroller only
+  while no editing, marking or comment tool has the pages. They catch the
+  press on its way down, so no layer under the pointer starts a drag of its
+  own. Marquee zoom ties the point it zooms on to a page (`PageAnchor`) and
+  centres it once the new zoom is laid out.
+- **Presentation.** `PresentationView` is a modal portal over the whole
+  window that mounts one `PdfPageView` at a time. Its page lives in `uiStore`,
+  so however the presentation ends (`stores/presentation.ts`) the viewer comes
+  back at the page reached and leaves full screen only if presenting entered
+  it.
+- **Canvas ceiling.** The viewer asks the engine to keep a page's canvas within
+  16.7 million pixels (`maxCanvasPixels`); past that the page is drawn at a
+  lower resolution and stretched. Export, print and OCR renders pass no
+  ceiling.
 - **Virtualization.** Only pages within a viewport-height band above and below
   the screen are mounted. Unmounted pages keep their space but hold no canvas,
   which is what bounds memory: a thousand-page document costs the same as a
@@ -233,8 +253,8 @@ pfdoc://document/<session id>   →   PDF.js worker   →   page canvas
 - **Passwords.** An encrypted document raises the prompt inside the renderer.
   The password goes straight to the PDF engine in that process: never over IPC,
   never to disk, never to the log.
-- **View state** (zoom mode, scale, rotation, page, scroll offset) lives with
-  the tab, so switching documents returns the reader exactly where they were.
+- **View state** (zoom mode, scale, rotation, page layout, page, scroll
+  offset) lives with the tab, so switching documents returns the reader exactly where they were.
 - **Page coordinates.** `pageGeometry.ts` converts a rectangle in PDF user
   space — where the origin is the bottom left of the unrotated page — into a
   box on the page as displayed. It mirrors the transform PDF.js builds for a

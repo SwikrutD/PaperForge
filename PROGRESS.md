@@ -2,12 +2,13 @@
 
 ## Current status
 
-- Last completed segment: **19 — Performance, polish, QA, release candidate**
+- Last completed segment: **19 — Performance, polish, QA, release candidate**, plus the section 10
+  viewer follow-up (page layouts, hand tool, marquee zoom, presentation mode)
 - Next segment: none — the build plan is complete. What remains is the manual release work in
   `docs/RELEASE_CHECKLIST.md`.
 - Build status: `npm run package` and `npm run make` succeed (`PaperForge-Setup.exe` and a zip);
   the end-to-end suite drives the built application
-- Test status: 867 unit tests (79 files) and 189 Playwright end-to-end tests passing;
+- Test status: 915 unit tests (81 files) and 208 Playwright end-to-end tests passing;
   typecheck, lint, format and the licence audit clean. The manual release walkthroughs in
   `docs/RELEASE_CHECKLIST.md` (clean VM, physical printer, screen reader, real documents) are not
   yet done.
@@ -1130,7 +1131,66 @@ tools off in packaged builds, no auto-update call anywhere.
 | Tests    | `unit/main/{sessionRecovery,networkGuard}`, `unit/renderer/thumbnailLayout`, `fixtures/large.ts`                      |
 | Tests    | `e2e/{recovery,offline,largeDocuments,keyboardAndContrast}.e2e.ts`                                                    |
 
+## Section 10 follow-up — the viewer features that were never built
+
+Built after Segment 19, one commit each, in the order below. Each has unit tests (layout
+arithmetic, keys, commands, and the toolbar control's name and pressed state from the keyboard) and
+end-to-end tests in `tests/e2e/viewerModes.e2e.ts` that drive it from the keyboard and page
+through a 120-page scan while measuring the window's memory.
+
+- **Single Page View** — one page at a time; only that page is laid out and mounted. The wheel
+  turns the page once the reader keeps scrolling past its foot or top; Page Up/Down scroll a tall
+  page and turn it at its ends; the side arrows turn it; Home/End go to the ends. Search, the page
+  box, thumbnails and bookmarks turn to their page.
+- **Two-Page View** — pairs meet at the centre line, odd pages on the left; fit modes fit the pair;
+  next and previous page move a pair (toolbar, View menu, palette). Combines with single page
+  view.
+- **Show Cover Page** — page 1 alone to the right of the spine, then 2–3, 4–5; asking for it turns
+  two-page view on.
+- **Hand Tool** (`Ctrl+Shift+H`) — drags the pages, sideways too; links still follow; touch keeps
+  native panning. Gives way to any tool that has the pages (Edit PDF, Fill & Sign, redaction, crop,
+  measuring, Accessibility Check, a comment tool), with the reason on the disabled button.
+- **Marquee Zoom** (`Ctrl+Shift+M`) — zooms to a dragged rectangle and centres it; click zooms in a
+  step, `Shift`+click out, `Escape` abandons a drag. Deep zoom pushed a single page canvas to
+  ~190 MB, so the viewer now caps an on-screen page canvas at 16.7 million pixels and stretches
+  beyond that; exports, printing and OCR are not capped.
+- **Presentation Mode** (`Ctrl+L`) — one page at a time, fitted to the screen on black, full
+  screen unless it already was; clicker keys, Space, Enter, Backspace, click and wheel move
+  between pages; `Esc` or `Ctrl+L` stop, back at the page reached. A named modal dialog that keeps
+  focus and announces each page.
+
+Memory while paging the 120-page scan (Windows working set of the renderer, on the build machine):
+
+| Mode                                  | Before | Peak   | After  |
+| ------------------------------------- | ------ | ------ | ------ |
+| Continuous column (existing test)     | 358 MB | 465 MB | 465 MB |
+| Single page view, every page          | 365 MB | 391 MB | 377 MB |
+| Two-page single page view, every pair | 354 MB | 497 MB | 453 MB |
+| Continuous two-page view              | 466 MB | 466 MB | 392 MB |
+| Cover page, single page view          | 405 MB | 571 MB | 453 MB |
+| Hand tool, sixty drags to page 80     | 546 MB | 557 MB | 474 MB |
+| Presentation mode, every page         | 391 MB | 391 MB | 352 MB |
+| Marquee zoom into 24 pages (~440%)    | 583 MB | 893 MB | —      |
+
+The spread modes climb until PDF.js's 48-page cache is full and then hold (sampled page by page,
+they level off near 400–440 MB from about page 60). Marquee zoom holds two 64 MB canvases at a
+time; over sixty deep zooms it rose and fell between 400 and 720 MB with no upward trend, and the
+test compares the peak of the second twelve zooms with the first (893 vs 891 MB here).
+
+| Area     | Files                                                                                                                      |
+| -------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Viewer   | `viewer/{pageRows,singlePage,marqueeZoom,presentationControls}.ts`, `viewer/{usePageTurning,usePanning,useMarqueeZoom}.ts` |
+| Viewer   | `viewer/{PdfViewer,PdfPageView,ViewerToolbar,PresentationView}.tsx`, `viewer/viewerLayout.ts`                              |
+| Commands | `commands/viewModeCommands.ts`, `controls/CommandIconButton.tsx` (pressed state for toggles)                               |
+| Stores   | `stores/{documentStore,uiStore,presentation}.ts`                                                                           |
+| Engine   | `pdf/render/{canvasSize,pdfjsEngine,types}.ts` (`maxCanvasPixels`)                                                         |
+| Tests    | `unit/renderer/{viewerModes.test.tsx,canvasSize.test.ts}`, `e2e/viewerModes.e2e.ts`                                        |
+
 ## What is not yet verified
+
+**The new viewer layouts and tools by hand.** Touchpads, a presentation clicker, a touch screen
+and a screen reader have not been tried; the "Page layouts and pointer tools" items in
+`docs/QA_CHECKLIST.md` list what to walk.
 
 **Segment 19 by hand and on a clean machine.** The release-candidate checks were automated against
 generated documents on the build machine. A clean-VM install, a real screen reader, Windows'
@@ -1178,17 +1238,17 @@ Nothing is downloaded at runtime, then or now.
 
 ## Last validation
 
-Run on Windows 11 x64, Node 24.19.0, npm 11.17.0, at the end of Segment 19:
+Run on Windows 11 x64, Node 24.19.0, npm 11.17.0, after the section 10 viewer follow-up:
 
 | Command                | Result                                                                                   |
 | ---------------------- | ---------------------------------------------------------------------------------------- |
 | `npm run typecheck`    | Pass; four projects, no errors                                                           |
 | `npm run lint`         | Pass; no errors, no warnings                                                             |
 | `npm run format:check` | Pass                                                                                     |
-| `npm test`             | Pass; 867 tests in 79 files                                                              |
+| `npm test`             | Pass; 915 tests in 81 files                                                              |
 | `npm run licenses`     | Pass; one package recorded for review (`buffers` 0.1.1)                                  |
-| `npm run test:e2e`     | Pass; 189 Playwright tests against the built application, in 2.6 minutes                 |
-| `npm run make`         | Pass; `PaperForge-Setup.exe`, the nupkg and the zip                                      |
+| `npm run test:e2e`     | Pass; 208 Playwright tests against the built application, in 4.3 minutes                 |
+| `npm run make`         | Not repeated for the follow-up (`npm run package` was, for the e2e run)                  |
 | Packaged launch        | `out/PaperForge-win32-x64/PaperForge.exe` opened its window ("PaperForge") and was ended |
 | Installer smoke        | Not repeated this segment (last passed in Segment 18); a clean-VM run is still to do     |
 
@@ -1206,11 +1266,11 @@ The build plan in `CLAUDE.md` is complete. Before a build is handed to anyone:
 - decide the `buffers` 0.1.1 licence question (review, or drop exceljs for the Excel export);
 - set the release version in `package.json`.
 
-The largest gap against `CLAUDE.md` itself is the viewer of section 10: single-page, two-page and
-cover layouts, the hand tool, marquee zoom and presentation mode were never built. They are listed
-first in `docs/KNOWN_LIMITATIONS.md` and would make a natural follow-up if the scope is reopened.
+The viewer features of `CLAUDE.md` section 10 that were missing are now built (see "Section 10
+follow-up" above). A default page layout and default zoom setting (section 35) are still not
+offered; `docs/KNOWN_LIMITATIONS.md` lists that and the limits of the new modes.
 
 ## Next-session instruction
 
-All segments are complete. Continue only on an explicit request — the release checklist, or a
-scope extension such as the remaining viewer layouts.
+All segments are complete, and so is the section 10 viewer follow-up. Continue only on an explicit
+request — the release checklist, or another scope extension.
