@@ -82,6 +82,8 @@ export interface CommandActions {
   setZoomMode(mode: ZoomMode): void;
   setPageMode(mode: PageMode): void;
   setSpread(spread: SpreadMode): void;
+  /** Shows the first page alone in two-page view, turning that view on. */
+  setCoverPage(coverPage: boolean): void;
   zoomBy(direction: 1 | -1): void;
   rotateView(direction: 1 | -1): void;
   goToPage(pageNumber: number): void;

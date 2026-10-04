@@ -326,3 +326,62 @@ describe('two-page view control', () => {
     expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled();
   });
 });
+
+describe('cover page', () => {
+  const cover = { spread: 'twoPage' as const, cover: true };
+
+  it('stands the first page alone and pairs two with three', () => {
+    expect(rowOf(1, 6, cover)).toEqual([1]);
+    expect(rowOf(2, 6, cover)).toEqual([2, 3]);
+    expect(rowOf(3, 6, cover)).toEqual([2, 3]);
+    expect(rowOf(6, 6, cover)).toEqual([6]);
+    expect(rowCount(6, cover)).toBe(4);
+    expect(rowCount(1, cover)).toBe(1);
+  });
+
+  it('steps from the cover to the first pair and back', () => {
+    expect(stepPage(1, 1, 6, cover)).toBe(2);
+    expect(stepPage(2, 1, 6, cover)).toBe(4);
+    expect(stepPage(3, -1, 6, cover)).toBe(1);
+  });
+
+  it('means nothing without two-page view', () => {
+    expect(rowOf(2, 6, { spread: 'none', cover: true })).toEqual([2]);
+  });
+
+  it('puts the cover on the right of the spine and even pages on the left', () => {
+    const layout = layoutPages(pages(4), 1, 0, cover);
+    const [one, two, three, four] = layout.boxes;
+    expect(one).toMatchObject({ top: PAGE_MARGIN, left: PAGE_GAP / 2 });
+    expect(two).toMatchObject({ top: PAGE_MARGIN + 800 + PAGE_GAP, left: -PAGE_GAP / 2 - 600 });
+    expect(three).toMatchObject({ top: two?.top, left: PAGE_GAP / 2 });
+    // A lone even last page sits on the left.
+    expect(four?.left).toBe(-PAGE_GAP / 2 - 600);
+    // The content stays symmetrical so the spine is in the middle.
+    expect(layout.contentWidth).toBe(600 * 2 + PAGE_GAP + PAGE_MARGIN * 2);
+  });
+
+  it('is a named toggle that turns on two-page view', async () => {
+    renderWithCommands(<LiveToolbar />);
+    const toggle = screen.getByRole('button', { name: 'Show Cover Page' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    toggle.focus();
+    await userEvent.keyboard('{Enter}');
+    expect(view()).toMatchObject({ spread: 'twoPage', coverPage: true });
+    expect(screen.getByRole('button', { name: 'Show Cover Page' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Two-Page View' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    // Turning two-page view off leaves no cover showing.
+    fireEvent.click(screen.getByRole('button', { name: 'Two-Page View' }));
+    expect(screen.getByRole('button', { name: 'Show Cover Page' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+  });
+});

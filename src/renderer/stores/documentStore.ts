@@ -22,6 +22,8 @@ export interface DocumentViewState {
   pageMode: PageMode;
   /** One page to a row, or two side by side. */
   spread: SpreadMode;
+  /** In two-page view, the first page stands alone like a book's cover. */
+  coverPage: boolean;
   pageNumber: number;
   scrollTop: number;
   /**
@@ -40,6 +42,7 @@ export const DEFAULT_VIEW_STATE: DocumentViewState = {
   rotation: 0,
   pageMode: 'continuous',
   spread: 'none',
+  coverPage: false,
   pageNumber: 1,
   scrollTop: 0,
   viewTop: null,

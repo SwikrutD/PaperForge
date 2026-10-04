@@ -64,7 +64,7 @@ import { PasswordPrompt } from './PasswordPrompt';
 import { PdfPageView } from './PdfPageView';
 import { ViewerToolbar } from './ViewerToolbar';
 import { isolatePages } from './singlePage';
-import { rowIndexOf, rowOf, stepPage } from './pageRows';
+import { rowIndexOf, rowOf, rowOptionsFor, stepPage } from './pageRows';
 import { usePageTurning, type PageTurn } from './usePageTurning';
 import {
   currentPage as currentPageOf,
@@ -147,7 +147,10 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const { view } = tab;
   const pages = useMemo(() => state.document?.pages ?? [], [state.document]);
 
-  const rowOptions = useMemo(() => ({ spread: view.spread }), [view.spread]);
+  const rowOptions = useMemo(
+    () => rowOptionsFor({ spread: view.spread, coverPage: view.coverPage }),
+    [view.spread, view.coverPage],
+  );
   const spread = view.spread !== 'none';
 
   // Fit modes depend on the page currently being read, and on the widest page
@@ -329,7 +332,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
 
   // Changing the page layout — continuous or single page, column or spread —
   // keeps the page being read.
-  const layoutKey = `${view.pageMode}/${view.spread}`;
+  const layoutKey = `${view.pageMode}/${view.spread}/${String(view.coverPage)}`;
   const shownLayout = useRef(layoutKey);
   useLayoutEffect(() => {
     const element = scrollerRef.current;

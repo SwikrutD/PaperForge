@@ -1,5 +1,6 @@
 import { useState, type ReactElement } from 'react';
 import {
+  BookImage,
   ChevronDown,
   ChevronUp,
   Columns2,
@@ -23,7 +24,7 @@ import { cx } from '../../utils/classNames';
 import { CommandIconButton } from '../controls/CommandIconButton';
 import { IconButton } from '../controls/IconButton';
 import { resolvePageEntry } from './pageEntry';
-import { rowIndexOf, stepPage } from './pageRows';
+import { rowIndexOf, rowOptionsFor, stepPage } from './pageRows';
 import { nextZoomStep, type ZoomMode } from './viewerLayout';
 import styles from './ViewerToolbar.module.css';
 
@@ -63,7 +64,7 @@ export function ViewerToolbar({
   const currentLabel = pageLabels[view.pageNumber - 1] ?? null;
   const pageInput = draft ?? currentLabel ?? String(view.pageNumber);
   // Previous and next move a row at a time: a pair of pages in a spread.
-  const rowOptions = { spread: view.spread };
+  const rowOptions = rowOptionsFor(view);
   const row = rowIndexOf(view.pageNumber, rowOptions);
   const previousPage = stepPage(view.pageNumber, -1, pageCount, rowOptions);
   const nextPage = stepPage(view.pageNumber, 1, pageCount, rowOptions);
@@ -171,6 +172,7 @@ export function ViewerToolbar({
         <span className={styles.divider} aria-hidden="true" />
         <CommandIconButton id="view.singlePage" icon={RectangleVertical} disabled={disabled} />
         <CommandIconButton id="view.twoPage" icon={Columns2} disabled={disabled} />
+        <CommandIconButton id="view.coverPage" icon={BookImage} disabled={disabled} />
 
         <span className={styles.divider} aria-hidden="true" />
         {/*

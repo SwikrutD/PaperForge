@@ -1,6 +1,8 @@
 /**
  * How pages pair up into rows. A row is what the reader sees side by side:
- * one page in a plain column, two in a spread.
+ * one page in a plain column, two in a spread. With a cover page the first
+ * page stands alone, on the right, and the pairs after it start on an even
+ * page — the way a printed book opens.
  *
  * Rows are worked out arithmetically rather than stored, so asking which row
  * page 900 of a thousand-page document sits in costs nothing.
@@ -9,18 +11,37 @@ export type SpreadMode = 'none' | 'twoPage';
 
 export interface RowOptions {
   spread: SpreadMode;
+  /** In a spread, the first page stands alone. Ignored without a spread. */
+  cover?: boolean;
+}
+
+/** The row options a tab's view asks for. */
+export function rowOptionsFor(view: { spread: SpreadMode; coverPage: boolean }): RowOptions {
+  return { spread: view.spread, cover: view.coverPage };
+}
+
+function hasCover(options: RowOptions): boolean {
+  return options.spread === 'twoPage' && options.cover === true;
 }
 
 /** Zero-based index of the row a page sits in. */
 export function rowIndexOf(pageNumber: number, options: RowOptions): number {
-  const index = Math.max(0, pageNumber - 1);
-  return options.spread === 'twoPage' ? Math.floor(index / 2) : index;
+  const page = Math.max(1, pageNumber);
+  if (options.spread !== 'twoPage') return page - 1;
+  return hasCover(options) ? Math.floor(page / 2) : Math.floor((page - 1) / 2);
 }
 
 /** The pages in a row, left to right, leaving out any past the end of the document. */
 export function rowPages(rowIndex: number, pageCount: number, options: RowOptions): number[] {
-  const first = options.spread === 'twoPage' ? rowIndex * 2 + 1 : rowIndex + 1;
-  const last = options.spread === 'twoPage' ? first + 1 : first;
+  let first = rowIndex + 1;
+  let last = first;
+  if (hasCover(options)) {
+    first = rowIndex === 0 ? 1 : rowIndex * 2;
+    last = rowIndex === 0 ? 1 : first + 1;
+  } else if (options.spread === 'twoPage') {
+    first = rowIndex * 2 + 1;
+    last = first + 1;
+  }
   const pages: number[] = [];
   for (let pageNumber = first; pageNumber <= Math.min(last, pageCount); pageNumber += 1) {
     pages.push(pageNumber);
@@ -56,8 +77,12 @@ export function stepPage(
   return rowPages(target, pageCount, options)[0] ?? 1;
 }
 
-/** Which side of the spine a page sits on: left pages are odd in a plain spread. */
+/**
+ * Which side of the spine a page sits on: left pages are odd in a plain
+ * spread and even after a cover, which itself sits on the right.
+ */
 export function sideOf(pageNumber: number, options: RowOptions): 'left' | 'right' | 'centre' {
   if (options.spread === 'none') return 'centre';
-  return pageNumber % 2 === 1 ? 'left' : 'right';
+  const leftParity = hasCover(options) ? 0 : 1;
+  return pageNumber % 2 === leftParity ? 'left' : 'right';
 }

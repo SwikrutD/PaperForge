@@ -296,3 +296,73 @@ test('paging through a long scan two pages at a time keeps memory flat', async (
   expect(scrolled.peak - scrolled.before).toBeLessThan(MAX_MEMORY_GROWTH_MB);
   await pressToggle('Two-Page View');
 });
+
+test('a cover page stands alone and the pages after it face each other', async () => {
+  await openOnly(longPath);
+  const cover = await pressToggle('Show Cover Page');
+  await expect(cover).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Two-Page View', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(page.getByText(/Two pages, cover/).first()).toBeVisible();
+
+  // The cover sits to the right of the spine; pages two and three share a row below it.
+  const region = await pagesRegion().boundingBox();
+  const first = await rendered(1).boundingBox();
+  await expect(rendered(2)).toBeVisible();
+  const second = await rendered(2).boundingBox();
+  const third = await rendered(3).boundingBox();
+  if (region === null || first === null || second === null || third === null) {
+    throw new Error('The pages are not on screen.');
+  }
+  expect(first.x).toBeGreaterThan(region.x + region.width / 2 - 20);
+  expect(second.y).toBeGreaterThan(first.y + first.height);
+  expect(Math.round(second.y)).toBe(Math.round(third.y));
+  expect(second.x + second.width).toBeLessThanOrEqual(third.x);
+
+  // Next page goes from the cover to the first pair, then on a pair at a time.
+  await page.getByRole('button', { name: 'Next page' }).click();
+  await expect(pageBox()).toHaveValue('2');
+  await page.getByRole('button', { name: 'Next page' }).click();
+  await expect(pageBox()).toHaveValue('4');
+
+  // In single page view the pairs come one at a time, with the cover alone.
+  await pressToggle('Single Page View');
+  await expect(mountedPages()).toHaveCount(2);
+  await pagesRegion().focus();
+  await page.keyboard.press('Home');
+  await expect(rendered(1)).toBeVisible();
+  await expect(mountedPages()).toHaveCount(1);
+  await page.keyboard.press('ArrowRight');
+  await expect(rendered(2)).toBeVisible();
+  await expect(rendered(3)).toBeVisible();
+  await expect(mountedPages()).toHaveCount(2);
+  await page.keyboard.press('End');
+  // A thousand pages after a cover end on a lone even page.
+  await expect(rendered(1000)).toBeVisible();
+  await expect(mountedPages()).toHaveCount(1);
+  await pressToggle('Single Page View');
+  await pressToggle('Show Cover Page');
+  await pressToggle('Two-Page View');
+});
+
+test('paging through a long scan with a cover page keeps memory flat', async () => {
+  await openOnly(scanPath);
+  await pressToggle('Show Cover Page');
+  await pressToggle('Single Page View');
+  await pagesRegion().focus();
+  const targets = Array.from({ length: 60 }, (_, index) => index * 2 + 2);
+  const memory = await pageThroughScan(
+    '120-page scan, cover page single page view',
+    async () => {
+      await page.keyboard.press('ArrowRight');
+    },
+    targets,
+  );
+  expect(await mountedPages().count()).toBeLessThanOrEqual(2);
+  expect(memory.peak - memory.before).toBeLessThan(MAX_MEMORY_GROWTH_MB);
+  await pressToggle('Single Page View');
+  await pressToggle('Show Cover Page');
+  await pressToggle('Two-Page View');
+});

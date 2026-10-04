@@ -1,4 +1,4 @@
-import { Columns2, RectangleVertical } from 'lucide-react';
+import { BookImage, Columns2, RectangleVertical } from 'lucide-react';
 import type { CommandAvailability, CommandContext, CommandDefinition } from './types';
 
 const documentRequired = (context: CommandContext): boolean | CommandAvailability =>
@@ -36,6 +36,24 @@ export function viewModeCommands(): CommandDefinition[] {
       isChecked: (context) => context.activeView?.spread === 'twoPage',
       run: (context) =>
         context.actions.setSpread(context.activeView?.spread === 'twoPage' ? 'none' : 'twoPage'),
+    },
+    {
+      id: 'view.coverPage',
+      title: 'Show Cover Page',
+      description:
+        'In two-page view, show the first page on its own so the pairs after it face ' +
+        'each other as in a printed book. Turns on two-page view.',
+      category: 'view',
+      group: 'pageLayout',
+      icon: BookImage,
+      keywords: ['page layout', 'spread', 'book', 'cover', 'first page alone'],
+      isAvailable: documentRequired,
+      isChecked: (context) =>
+        context.activeView?.spread === 'twoPage' && context.activeView.coverPage,
+      run: (context) => {
+        const showing = context.activeView?.spread === 'twoPage' && context.activeView.coverPage;
+        context.actions.setCoverPage(!showing);
+      },
     },
   ];
 }

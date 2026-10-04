@@ -68,7 +68,7 @@ const ZOOM_LABEL = {
 function describeView(view: DocumentViewState): string {
   const parts = [`Page ${view.pageNumber}`, ZOOM_LABEL[view.zoomMode]];
   if (view.pageMode === 'single') parts.push('Single page');
-  if (view.spread === 'twoPage') parts.push('Two pages');
+  if (view.spread === 'twoPage') parts.push(view.coverPage ? 'Two pages, cover' : 'Two pages');
   if (view.rotation !== 0) parts.push(`${view.rotation}°`);
   return parts.join(' · ');
 }

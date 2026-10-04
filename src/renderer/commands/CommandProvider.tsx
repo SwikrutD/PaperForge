@@ -3,7 +3,7 @@ import { AppError } from '@shared/errors/appError';
 import { invoke } from '../services/ipcClient';
 import type { LeftPanelId, RightPanelId } from '@shared/schemas/settings';
 import { nextZoomStep, type ZoomMode } from '../components/viewer/viewerLayout';
-import { stepPage } from '../components/viewer/pageRows';
+import { rowOptionsFor, stepPage } from '../components/viewer/pageRows';
 import { describeOperation } from '@pdf/mutate/operations';
 import type { RotationDegrees } from '@shared/schemas/edit';
 import { focusNextRegion } from '../keyboard/focusRegions';
@@ -105,6 +105,14 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         const id = activeSessionId();
         if (id !== null) documents().updateView(id, { spread });
       },
+      setCoverPage: (coverPage) => {
+        const id = activeSessionId();
+        // A cover only means something beside other pages, so asking for one
+        // turns on two-page view.
+        if (id !== null) {
+          documents().updateView(id, coverPage ? { coverPage, spread: 'twoPage' } : { coverPage });
+        }
+      },
       zoomBy: (direction) => {
         const id = activeSessionId();
         const current = documents().tabs.find((tab) => tab.session.id === id);
@@ -172,9 +180,12 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         if (id === null || current === undefined) return;
         // In a spread, next page is the next pair.
         documents().updateView(id, {
-          pendingPage: stepPage(current.view.pageNumber, offset, current.pageCount, {
-            spread: current.view.spread,
-          }),
+          pendingPage: stepPage(
+            current.view.pageNumber,
+            offset,
+            current.pageCount,
+            rowOptionsFor(current.view),
+          ),
         });
       },
       openFind: (options) => search().openFind(options),
