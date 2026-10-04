@@ -16,6 +16,7 @@ import {
   RotateCwSquare,
   Save,
   Scan,
+  SquareDashedMousePointer,
   Trash,
   Undo2,
   ZoomIn,
@@ -148,6 +149,11 @@ export function ViewerToolbar({
       <div className={cx(styles.group, styles.trailing)}>
         <CommandIconButton id="view.selectTool" icon={MousePointer2} disabled={disabled} />
         <CommandIconButton id="view.handTool" icon={Hand} disabled={disabled} />
+        <CommandIconButton
+          id="view.marqueeZoom"
+          icon={SquareDashedMousePointer}
+          disabled={disabled}
+        />
         <span className={styles.divider} aria-hidden="true" />
         <IconButton
           icon={ZoomOut}

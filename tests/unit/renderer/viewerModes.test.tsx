@@ -36,6 +36,13 @@ import {
 } from '../../../src/renderer/stores/documentStore';
 import { installBridgeStub, renderWithCommands } from './testUtils';
 import { panScroll } from '../../../src/renderer/components/viewer/usePanning';
+import {
+  anchorAt,
+  isClick,
+  marqueeRect,
+  marqueeScale,
+  scrollForAnchor,
+} from '../../../src/renderer/components/viewer/marqueeZoom';
 import { useUiStore } from '../../../src/renderer/stores/uiStore';
 import { useAnnotationStore } from '../../../src/renderer/stores/annotationStore';
 import { fireEvent } from '@testing-library/react';
@@ -446,5 +453,82 @@ describe('hand tool', () => {
     expect(hand).toBeDisabled();
     expect(hand).toHaveAttribute('aria-pressed', 'false');
     expect(hand).toHaveAttribute('title', 'A comment tool has the pages.');
+  });
+});
+
+describe('marquee zoom', () => {
+  beforeEach(() => {
+    useUiStore.setState({ viewerTool: 'select' });
+    useAnnotationStore.setState({ tool: 'select' });
+  });
+
+  const viewport = { width: 1000 + PAGE_MARGIN * 2, height: 600 + PAGE_MARGIN * 2 };
+
+  it('takes the rectangle between two corners, dragged either way', () => {
+    expect(marqueeRect({ x: 50, y: 80 }, { x: 10, y: 20 })).toEqual({
+      left: 10,
+      top: 20,
+      width: 40,
+      height: 60,
+    });
+    expect(isClick(marqueeRect({ x: 5, y: 5 }, { x: 8, y: 7 }))).toBe(true);
+  });
+
+  it('zooms so the rectangle fills the window', () => {
+    // 200 × 100 in a 1000 × 600 window: width limits it to five times.
+    const rect = { left: 0, top: 0, width: 200, height: 100 };
+    expect(marqueeScale(1, rect, viewport)).toBeCloseTo(5, 5);
+    // A tall rectangle is limited by the height instead.
+    expect(marqueeScale(1, { ...rect, width: 100, height: 300 }, viewport)).toBeCloseTo(2, 5);
+  });
+
+  it('never zooms past the limits', () => {
+    expect(marqueeScale(4, { left: 0, top: 0, width: 10, height: 10 }, viewport)).toBe(10);
+  });
+
+  it('zooms a step on a click, and back a step with Shift', () => {
+    const click = { left: 100, top: 100, width: 1, height: 1 };
+    expect(marqueeScale(1, click, viewport)).toBe(1.25);
+    expect(marqueeScale(1, click, viewport, true)).toBe(0.75);
+  });
+
+  it('keeps the point it zoomed on in the middle of the window', () => {
+    const before = layoutPages(pages(3), 1, 0);
+    const point = { x: 640, y: before.boxes[1]!.top + 200 };
+    const anchor = anchorAt(before, point, 1200, [1, 2, 3]);
+    expect(anchor?.pageNumber).toBe(2);
+
+    const after = layoutPages(pages(3), 3, 0);
+    const scroll = scrollForAnchor(after, anchor!, { width: 1200, height: 700 })!;
+    // The same spot on page two, now three times as far in, sits mid-window.
+    const box = after.boxes[1]!;
+    const centre = Math.max(1200, after.contentWidth) / 2;
+    expect(scroll.left + 600).toBeCloseTo(centre + box.left + anchor!.x * box.width, 5);
+    expect(scroll.top + 350).toBeCloseTo(box.top + 200 * 3, 5);
+  });
+
+  it('anchors a point between pages to the nearest one', () => {
+    const layout = layoutPages(pages(3), 1, 0);
+    const gap = layout.boxes[1]!.top - 4;
+    expect(anchorAt(layout, { x: 600, y: gap }, 1200, [1, 2])?.pageNumber).toBe(2);
+    expect(anchorAt(layout, { x: 600, y: gap }, 1200, [])).toBeNull();
+  });
+
+  it('is a named toggle with its own shortcut, and leaves the hand tool', async () => {
+    useUiStore.setState({ viewerTool: 'hand' });
+    renderWithCommands(<LiveToolbar />);
+    const marquee = screen.getByRole('button', { name: 'Marquee Zoom' });
+    expect(marquee).toHaveAttribute('aria-pressed', 'false');
+    expect(marquee).toHaveAttribute('title', 'Marquee Zoom (Ctrl+Shift+M)');
+
+    marquee.focus();
+    await userEvent.keyboard('{Enter}');
+    expect(useUiStore.getState().viewerTool).toBe('marqueeZoom');
+    expect(screen.getByRole('button', { name: 'Hand Tool' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    await userEvent.keyboard('{Control>}{Shift>}m{/Shift}{/Control}');
+    expect(useUiStore.getState().viewerTool).toBe('select');
   });
 });

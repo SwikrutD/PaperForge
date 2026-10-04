@@ -67,6 +67,14 @@ import { isolatePages } from './singlePage';
 import { rowIndexOf, rowOf, rowOptionsFor, stepPage } from './pageRows';
 import { usePageTurning, type PageTurn } from './usePageTurning';
 import { usePanning } from './usePanning';
+import { useMarqueeZoom } from './useMarqueeZoom';
+import {
+  anchorAt,
+  marqueeScale,
+  scrollForAnchor,
+  type ContentRect,
+  type PageAnchor,
+} from './marqueeZoom';
 import {
   currentPage as currentPageOf,
   layoutPages,
@@ -329,6 +337,55 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   );
   usePageTurning(scrollerRef, single && state.status === 'ready', turnPage);
   usePanning(scrollerRef, activeViewerTool === 'hand' && state.status === 'ready');
+
+  // Marquee zoom: the rectangle being drawn, and the point to centre on once
+  // the new zoom is laid out.
+  const [marquee, setMarquee] = useState<ContentRect | null>(null);
+  const pendingAnchor = useRef<PageAnchor | null>(null);
+  const centreOn = useCallback((anchor: PageAnchor, onLayout: typeof layout) => {
+    const element = scrollerRef.current;
+    if (element === null) return;
+    const target = scrollForAnchor(onLayout, anchor, {
+      width: element.clientWidth,
+      height: element.clientHeight,
+    });
+    if (target === null) return;
+    element.scrollLeft = target.left;
+    element.scrollTop = target.top;
+  }, []);
+  const finishMarquee = useCallback(
+    (rect: ContentRect, zoomOut: boolean) => {
+      const element = scrollerRef.current;
+      if (element === null) return;
+      const centre = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      const anchor = anchorAt(layout, centre, element.clientWidth, mounted);
+      if (anchor === null) return;
+      const viewportSize = { width: element.clientWidth, height: element.clientHeight };
+      const nextScale = marqueeScale(scale, rect, viewportSize, zoomOut);
+      if (Math.abs(nextScale - scale) < 0.0001) {
+        centreOn(anchor, layout);
+        return;
+      }
+      pendingAnchor.current = anchor;
+      updateView(sessionId, { zoomMode: 'custom', scale: nextScale });
+    },
+    [layout, mounted, scale, centreOn, sessionId, updateView],
+  );
+  const marqueeHandlers = useMemo(
+    () => ({ onDraw: setMarquee, onFinish: finishMarquee }),
+    [finishMarquee],
+  );
+  useMarqueeZoom(
+    scrollerRef,
+    activeViewerTool === 'marqueeZoom' && state.status === 'ready',
+    marqueeHandlers,
+  );
+  useLayoutEffect(() => {
+    const anchor = pendingAnchor.current;
+    if (anchor === null) return;
+    pendingAnchor.current = null;
+    centreOn(anchor, layout);
+  }, [layout, centreOn]);
 
   // A turned page is scrolled to the end it was entered from, once it is laid out.
   useLayoutEffect(() => {
@@ -813,6 +870,19 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
               {state.status === 'password' ? 'Waiting for the password…' : 'Opening the document…'}
             </p>
           </div>
+        )}
+        {marquee !== null && (
+          <div
+            className={styles.marquee}
+            style={{
+              left: `${marquee.left}px`,
+              top: `${marquee.top}px`,
+              width: `${marquee.width}px`,
+              height: `${marquee.height}px`,
+            }}
+            data-marquee
+            aria-hidden="true"
+          />
         )}
       </div>
 

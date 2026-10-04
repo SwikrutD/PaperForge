@@ -1,4 +1,11 @@
-import { BookImage, Columns2, Hand, MousePointer2, RectangleVertical } from 'lucide-react';
+import {
+  BookImage,
+  Columns2,
+  Hand,
+  MousePointer2,
+  RectangleVertical,
+  SquareDashedMousePointer,
+} from 'lucide-react';
 import type { CommandAvailability, CommandContext, CommandDefinition } from './types';
 
 const documentRequired = (context: CommandContext): boolean | CommandAvailability =>
@@ -111,6 +118,25 @@ export function viewModeCommands(): CommandDefinition[] {
         context.activeDocument !== null && activeViewerTool(context) === 'hand',
       run: (context) =>
         context.actions.setViewerTool(context.viewerTool === 'hand' ? 'select' : 'hand'),
+    },
+    {
+      id: 'view.marqueeZoom',
+      title: 'Marquee Zoom',
+      description:
+        'Drag a rectangle over the pages to zoom in on it; click to zoom in a step, ' +
+        'Shift+click to zoom out. From the keyboard, use Zoom In and Zoom Out.',
+      category: 'view',
+      group: 'pointer',
+      icon: SquareDashedMousePointer,
+      shortcut: 'Ctrl+Shift+M',
+      keywords: ['zoom', 'rectangle', 'magnify', 'area', 'dynamic zoom'],
+      isAvailable: viewerToolAvailable,
+      isChecked: (context) =>
+        context.activeDocument !== null && activeViewerTool(context) === 'marqueeZoom',
+      run: (context) =>
+        context.actions.setViewerTool(
+          context.viewerTool === 'marqueeZoom' ? 'select' : 'marqueeZoom',
+        ),
     },
   ];
 }

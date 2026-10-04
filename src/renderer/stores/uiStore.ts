@@ -6,9 +6,10 @@ const DEFAULT_TOAST_MS = 4000;
 
 /**
  * How the pointer acts on the pages when no other tool has them: selecting
- * text and following links, or dragging the pages around.
+ * text and following links, dragging the pages around, or zooming to a
+ * rectangle drawn over them.
  */
-export type ViewerTool = 'select' | 'hand';
+export type ViewerTool = 'select' | 'hand' | 'marqueeZoom';
 
 export interface UiStore {
   /** Only one modal at a time; the shell is not a stack of dialogs. */

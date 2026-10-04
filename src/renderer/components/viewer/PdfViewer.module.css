@@ -28,6 +28,31 @@
   user-select: none;
 }
 
+/* Marquee zoom: the pages are a surface to draw a rectangle on. */
+.scroller[data-tool='marqueeZoom'] {
+  cursor: zoom-in;
+}
+
+.scroller[data-tool='marqueeZoom'] * {
+  cursor: inherit;
+  user-select: none;
+}
+
+.marquee {
+  position: absolute;
+  z-index: 10;
+  border: 1px dashed var(--pf-color-accent);
+  background-color: color-mix(in srgb, var(--pf-color-accent) 12%, transparent);
+  pointer-events: none;
+}
+
+@media (forced-colors: active) {
+  .marquee {
+    border-color: Highlight;
+    background-color: transparent;
+  }
+}
+
 /* Links still follow on a click, and say so. */
 .scroller[data-tool='hand'] button {
   cursor: pointer;

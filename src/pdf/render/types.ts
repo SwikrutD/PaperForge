@@ -60,6 +60,13 @@ export interface RenderPageOptions {
    * Layers stay as the reader has switched them.
    */
   print?: { annotations: boolean };
+  /**
+   * Most pixels the canvas may hold. A page zoomed past it is drawn at a lower
+   * resolution and stretched to its size, so one deep zoom cannot claim
+   * hundreds of megabytes. Omitted means no limit, which exports and printing
+   * need for the resolution they ask for.
+   */
+  maxCanvasPixels?: number;
   signal?: AbortSignal;
 }
 

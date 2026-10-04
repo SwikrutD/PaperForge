@@ -20,6 +20,8 @@ const mainBundle = path.resolve('.vite', 'build', 'main.js');
  * started; the allowance is for the browser's caches settling.
  */
 const MAX_MEMORY_GROWTH_MB = 300;
+/** A ceiling for the window's memory, the same as the large-document tests use. */
+const MAX_RENDERER_MEMORY_MB = 1500;
 
 let app: ElectronApplication;
 let page: Page;
@@ -449,5 +451,137 @@ test('dragging through a long scan with the hand tool keeps memory flat', async 
   expect(await mountedPages().count()).toBeLessThanOrEqual(12);
   expect(peak - before).toBeLessThan(MAX_MEMORY_GROWTH_MB);
   await page.keyboard.press('Control+Shift+H');
+  await expect(pagesRegion()).toHaveAttribute('data-tool', 'select');
+});
+
+/** The zoom level the toolbar reports, in percent. */
+async function zoomPercent(): Promise<number> {
+  const text = await page
+    .getByRole('toolbar', { name: 'Document view' })
+    .getByText(/^\d+%$/)
+    .innerText();
+  return Number.parseInt(text, 10);
+}
+
+async function drag(from: { x: number; y: number }, to: { x: number; y: number }): Promise<void> {
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move((from.x + to.x) / 2, (from.y + to.y) / 2, { steps: 4 });
+  await page.mouse.move(to.x, to.y, { steps: 4 });
+  await page.mouse.up();
+}
+
+test('marquee zoom fills the window with the rectangle drawn', async () => {
+  await openOnly(longPath);
+  await page.keyboard.press('Control+Shift+M');
+  await expect(page.getByRole('button', { name: 'Marquee Zoom', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(pagesRegion()).toHaveAttribute('data-tool', 'marqueeZoom');
+
+  const heading = page.getByText('Long document page 1', { exact: true });
+  const box = await heading.boundingBox();
+  if (box === null) throw new Error('The heading is not on screen.');
+  const before = await zoomPercent();
+  await drag(
+    { x: box.x - 10, y: box.y - 10 },
+    { x: box.x + box.width + 10, y: box.y + box.height + 10 },
+  );
+  await expect.poll(zoomPercent).toBeGreaterThan(before * 2);
+
+  // What was drawn round is now in the middle of the window.
+  const area = await pagesRegion().boundingBox();
+  await expect(heading).toBeVisible();
+  const after = await heading.boundingBox();
+  if (area === null || after === null) throw new Error('The heading left the window.');
+  const centre = { x: area.x + area.width / 2, y: area.y + area.height / 2 };
+  expect(Math.abs(after.x + after.width / 2 - centre.x)).toBeLessThan(area.width * 0.15);
+  expect(Math.abs(after.y + after.height / 2 - centre.y)).toBeLessThan(area.height * 0.15);
+  // Nothing was selected along the way.
+  expect(await page.evaluate(() => window.getSelection()?.toString() ?? '')).toBe('');
+});
+
+test('a click zooms in a step, Shift+click zooms out, and Escape abandons a drag', async () => {
+  await page.keyboard.press('Control+2');
+  const area = await pagesRegion().boundingBox();
+  if (area === null) throw new Error('The pages are not on screen.');
+  const middle = { x: area.x + area.width / 2, y: area.y + area.height / 2 };
+
+  const start = await zoomPercent();
+  await page.mouse.click(middle.x, middle.y);
+  await expect.poll(zoomPercent).toBeGreaterThan(start);
+  const zoomed = await zoomPercent();
+  await page.keyboard.down('Shift');
+  await page.mouse.click(middle.x, middle.y);
+  await page.keyboard.up('Shift');
+  await expect.poll(zoomPercent).toBeLessThan(zoomed);
+
+  const level = await zoomPercent();
+  await page.mouse.move(middle.x - 100, middle.y - 100);
+  await page.mouse.down();
+  await page.mouse.move(middle.x + 100, middle.y + 50, { steps: 5 });
+  await expect(page.locator('[data-marquee]')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-marquee]')).toHaveCount(0);
+  await page.mouse.up();
+  expect(await zoomPercent()).toBe(level);
+});
+
+test('zooming into a long scan again and again keeps memory flat', async () => {
+  await openOnly(scanPath);
+  if ((await pagesRegion().getAttribute('data-tool')) !== 'marqueeZoom') {
+    await page.keyboard.press('Control+Shift+M');
+  }
+  await expect(pagesRegion()).toHaveAttribute('data-tool', 'marqueeZoom');
+  await page.keyboard.press('Control+2');
+  const fitWidth = await zoomPercent();
+  const before = await rendererMemoryMb();
+
+  // Each round zooms a quarter of a page to fill the window, which draws the
+  // largest canvases the viewer allows. Twelve pages make a cycle; memory rises
+  // and falls within one as canvases wait to be collected, so whole cycles are
+  // compared. A canvas kept by mistake would add 64 MB a round, nearly 800 MB
+  // a cycle, so the allowance below still catches a leak of a single one.
+  const samples: number[] = [];
+  for (let round = 0; round < 24; round += 1) {
+    const target = 1 + (round % 12) * 10;
+    await page.keyboard.press('Control+2');
+    await expect.poll(zoomPercent).toBe(fitWidth);
+    await goToPage(target);
+    await expect(rendered(target)).toBeVisible();
+    const box = await rendered(target).boundingBox();
+    if (box === null) throw new Error(`Page ${target} is not on screen.`);
+    await drag(
+      { x: box.x + box.width * 0.25, y: box.y + 40 },
+      { x: box.x + box.width * 0.5, y: box.y + 40 + box.width * 0.2 },
+    );
+    await expect.poll(zoomPercent).toBeGreaterThan(fitWidth * 1.5);
+    await expect(page.locator('[data-rendered="true"]').first()).toBeVisible();
+    samples.push(await rendererMemoryMb());
+  }
+  const first = Math.max(...samples.slice(0, 12));
+  const second = Math.max(...samples.slice(12));
+  report(
+    `120-page scan, marquee zoom: renderer ${before} MB at fit width; ` +
+      `${first} MB peak over the first twelve deep zooms, ${second} MB over the next twelve`,
+  );
+
+  // No page canvas is larger than the viewer's limit, however deep the zoom.
+  const largest = await page
+    .locator('[data-page-number] canvas')
+    .evaluateAll((canvases) =>
+      Math.max(
+        ...canvases.map(
+          (canvas) => (canvas as HTMLCanvasElement).width * (canvas as HTMLCanvasElement).height,
+        ),
+      ),
+    );
+  expect(largest).toBeLessThanOrEqual(16_777_216);
+  expect(await mountedPages().count()).toBeLessThanOrEqual(12);
+  expect(second - first).toBeLessThan(MAX_MEMORY_GROWTH_MB);
+  expect(second).toBeLessThan(MAX_RENDERER_MEMORY_MB);
+  await page.keyboard.press('Control+2');
+  await page.keyboard.press('Control+Shift+M');
   await expect(pagesRegion()).toHaveAttribute('data-tool', 'select');
 });

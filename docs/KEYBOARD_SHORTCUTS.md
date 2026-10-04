@@ -33,6 +33,7 @@ refuses to start if two commands claim the same one.
 | `Ctrl+N`       | Create PDF      | Make a document from images, text files, web pages or other PDFs             |
 | `Ctrl+Shift+P` | Organize Pages  | Show or hide the page grid                                                   |
 | `Ctrl+Shift+H` | Hand Tool       | Drag the pages; press again for the select tool                              |
+| `Ctrl+Shift+M` | Marquee Zoom    | Drag a rectangle to zoom to it; click zooms in, `Shift`+click zooms out      |
 | `Ctrl+Shift+R` | Reading Mode    | Only the title bar and the document; `Esc` leaves it                         |
 | `F4`           | Tools Panel     | Show or hide the right panel                                                 |
 | `F6`           | Next Region     | Cycle command bar → rail → left panel → workspace → tools panel → status bar |

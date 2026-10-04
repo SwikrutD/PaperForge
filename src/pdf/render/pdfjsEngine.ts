@@ -9,6 +9,7 @@ import {
   type PDFPageProxy,
 } from 'pdfjs-dist';
 import type { OptionalContentConfig } from 'pdfjs-dist/types/src/display/optional_content_config';
+import { canvasPixelRatio } from './canvasSize';
 import { orderRows } from './layerOrder';
 import { AppError } from '@shared/errors/appError';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
@@ -172,14 +173,21 @@ class PdfjsDocument implements LoadedPdfDocument {
     if (isAborted(signal)) return;
 
     // PDF.js treats `rotation` as the total rotation, not an extra one.
+    const cssViewport = page.getViewport({ scale, rotation: page.rotate + rotation });
+    const ratio = canvasPixelRatio(
+      cssViewport.width,
+      cssViewport.height,
+      devicePixelRatio,
+      options.maxCanvasPixels,
+    );
     const viewport = page.getViewport({
-      scale: scale * devicePixelRatio,
+      scale: scale * ratio,
       rotation: page.rotate + rotation,
     });
     canvas.width = Math.max(1, Math.floor(viewport.width));
     canvas.height = Math.max(1, Math.floor(viewport.height));
-    canvas.style.width = `${Math.floor(viewport.width / devicePixelRatio)}px`;
-    canvas.style.height = `${Math.floor(viewport.height / devicePixelRatio)}px`;
+    canvas.style.width = `${Math.floor(cssViewport.width)}px`;
+    canvas.style.height = `${Math.floor(cssViewport.height)}px`;
 
     const layers = options.contentOnly === true ? null : await this.layersFor(options);
     if (isAborted(signal)) return;

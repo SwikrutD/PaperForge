@@ -4,6 +4,13 @@ import { cssBoxStyle, pdfRectToCss, rectFromCorners, type PdfRect } from './page
 import type { PageBox } from './viewerLayout';
 import styles from './PdfPageView.module.css';
 
+/**
+ * Most pixels one page's canvas may hold on screen: about 64 MB. A page zoomed
+ * further is drawn at this resolution and stretched, so a deep zoom stays
+ * within memory; the text layer above it stays exact for selection and search.
+ */
+export const MAX_PAGE_CANVAS_PIXELS = 16_777_216;
+
 /** A rectangle the viewer draws over the page, such as a search result. */
 export interface PageHighlight {
   id: string;
@@ -66,6 +73,7 @@ export function PdfPageView({
         rotation,
         canvas,
         devicePixelRatio: window.devicePixelRatio || 1,
+        maxCanvasPixels: MAX_PAGE_CANVAS_PIXELS,
         hideFormFields,
         signal: controller.signal,
       });
