@@ -13,6 +13,7 @@ import type {
 } from '@shared/schemas/settings';
 import type { ThemeState } from '@shared/schemas/theme';
 import type { ZoomMode } from '../components/viewer/viewerLayout';
+import type { PageMode } from '../components/viewer/singlePage';
 import type { DocumentViewState } from '../stores/documentStore';
 import type { DialogId, ToastInput } from '../types/ui';
 
@@ -78,6 +79,7 @@ export interface CommandActions {
   closeAllDocuments(): Promise<void>;
   revealActiveDocument(): Promise<void>;
   setZoomMode(mode: ZoomMode): void;
+  setPageMode(mode: PageMode): void;
   zoomBy(direction: 1 | -1): void;
   rotateView(direction: 1 | -1): void;
   goToPage(pageNumber: number): void;

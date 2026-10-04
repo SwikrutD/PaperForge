@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactElement,
+} from 'react';
 import { Loader2 } from 'lucide-react';
 import type { PdfLink, PdfPageGeometry } from '@pdf/render/types';
 import { useDocumentStore, type DocumentTab } from '../../stores/documentStore';
@@ -55,6 +63,8 @@ import { usePdfDocumentContext } from './pdfDocumentContextValue';
 import { PasswordPrompt } from './PasswordPrompt';
 import { PdfPageView } from './PdfPageView';
 import { ViewerToolbar } from './ViewerToolbar';
+import { isolatePages } from './singlePage';
+import { usePageTurning, type PageTurn } from './usePageTurning';
 import {
   currentPage as currentPageOf,
   layoutPages,
@@ -181,14 +191,27 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
     stagedSignature,
   );
   useRedactionMarking(sessionId, pages, scale, view.rotation);
-  const layout = useMemo(
+  // Single-page view shows the page being read and nothing else; continuous
+  // view lays out the whole column and mounts what is near the viewport.
+  const single = view.pageMode === 'single';
+  const shownPages = useMemo(
+    () => (single && view.pageNumber <= pages.length ? [view.pageNumber] : null),
+    [single, view.pageNumber, pages.length],
+  );
+  const columnLayout = useMemo(
     () => layoutPages(pages, scale, view.rotation),
     [pages, scale, view.rotation],
   );
-  const mounted = useMemo(
-    () => visiblePages(layout, view.scrollTop, viewport.height),
-    [layout, view.scrollTop, viewport.height],
+  const layout = useMemo(
+    () => (shownPages === null ? columnLayout : isolatePages(columnLayout, shownPages)),
+    [columnLayout, shownPages],
   );
+  const mounted = useMemo(
+    () => shownPages ?? visiblePages(layout, view.scrollTop, viewport.height),
+    [shownPages, layout, view.scrollTop, viewport.height],
+  );
+  /** Where single-page view should scroll once the next page is laid out. */
+  const pendingEdge = useRef<'top' | 'bottom' | null>(null);
 
   // Track the viewport size so fit modes and virtualization stay correct.
   useEffect(() => {
@@ -215,19 +238,38 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
     const element = scrollerRef.current;
     if (element === null) return;
     const scrollTop = element.scrollTop;
-    const page = currentPageOf(layout, scrollTop, element.clientHeight);
+    // In single-page view the page only changes when it is turned.
+    const page = single ? view.pageNumber : currentPageOf(layout, scrollTop, element.clientHeight);
     updateView(sessionId, {
       scrollTop,
       pageNumber: page,
       viewTop: viewTopOf(layout.boxes[page - 1], pages[page - 1], scrollTop, scale, view.rotation),
     });
-  }, [layout, pages, scale, view.rotation, sessionId, updateView]);
+  }, [single, view.pageNumber, layout, pages, scale, view.rotation, sessionId, updateView]);
+
+  /** Shows a page in single-page view, scrolled to one of its ends. */
+  const showPage = useCallback(
+    (pageNumber: number, edge: 'top' | 'bottom') => {
+      const element = scrollerRef.current;
+      if (pageNumber === view.pageNumber) {
+        if (element !== null) element.scrollTop = edge === 'top' ? 0 : element.scrollHeight;
+        return;
+      }
+      pendingEdge.current = edge;
+      updateView(sessionId, { pageNumber, viewTop: null });
+    },
+    [view.pageNumber, sessionId, updateView],
+  );
 
   const goToPage = useCallback(
     (pageNumber: number) => {
       const element = scrollerRef.current;
       const clamped = Math.min(Math.max(1, pageNumber), Math.max(1, pages.length));
       if (element === null) return;
+      if (single) {
+        showPage(clamped, 'top');
+        return;
+      }
       const top = scrollTopForPage(layout, clamped);
       element.scrollTo({
         top,
@@ -238,8 +280,43 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
         ),
       });
     },
-    [layout, pages.length],
+    [single, showPage, layout, pages.length],
   );
+
+  const turnPage = useCallback(
+    (turn: PageTurn) => {
+      const target =
+        turn === 'first'
+          ? 1
+          : turn === 'last'
+            ? pages.length
+            : view.pageNumber + (turn === 'next' ? 1 : -1);
+      if (target < 1 || target > pages.length || target === view.pageNumber) return;
+      // Turning back lands at the foot of the page, as reading backwards would.
+      showPage(target, turn === 'previous' ? 'bottom' : 'top');
+    },
+    [pages.length, view.pageNumber, showPage],
+  );
+  usePageTurning(scrollerRef, single && state.status === 'ready', turnPage);
+
+  // A turned page is scrolled to the end it was entered from, once it is laid out.
+  useLayoutEffect(() => {
+    const element = scrollerRef.current;
+    const edge = pendingEdge.current;
+    if (edge === null || element === null) return;
+    pendingEdge.current = null;
+    element.scrollTop = edge === 'top' ? 0 : element.scrollHeight;
+  }, [layout]);
+
+  // Changing between continuous and single-page view keeps the page being read.
+  const shownMode = useRef(view.pageMode);
+  useLayoutEffect(() => {
+    const element = scrollerRef.current;
+    if (shownMode.current === view.pageMode || element === null) return;
+    shownMode.current = view.pageMode;
+    element.scrollTop = single ? 0 : scrollTopForPage(layout, view.pageNumber);
+    updateView(sessionId, { scrollTop: element.scrollTop });
+  }, [view.pageMode, single, layout, view.pageNumber, sessionId, updateView]);
 
   // A command asked for a page; scroll there and clear the request.
   useEffect(() => {
@@ -306,6 +383,12 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
     const element = scrollerRef.current;
     if (hitForThisTab === null || state.status !== 'ready' || element === null) return;
     if (shownHit.current === hitForThisTab.id) return;
+    // Single-page view turns to the match's page first; this runs again once
+    // that page is laid out.
+    if (shownPages !== null && !shownPages.includes(hitForThisTab.pageNumber)) {
+      updateView(sessionId, { pageNumber: hitForThisTab.pageNumber });
+      return;
+    }
     shownHit.current = hitForThisTab.id;
 
     const box = layout.boxes[hitForThisTab.pageNumber - 1];
@@ -334,7 +417,17 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
         prefersReducedMotion(),
       ),
     });
-  }, [hitForThisTab, state.status, layout, pages, scale, view.rotation]);
+  }, [
+    hitForThisTab,
+    state.status,
+    shownPages,
+    layout,
+    pages,
+    scale,
+    view.rotation,
+    sessionId,
+    updateView,
+  ]);
 
   // Ctrl+wheel zooms, like every Windows document viewer.
   useEffect(() => {
@@ -434,7 +527,14 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
         !measuring &&
         (commenting || toolActive) && <AnnotationToolbar disabled={state.status !== 'ready'} />}
 
-      <div className={styles.scroller} ref={scrollerRef} onScroll={onScroll} tabIndex={0}>
+      <div
+        className={styles.scroller}
+        ref={scrollerRef}
+        onScroll={onScroll}
+        tabIndex={0}
+        role="region"
+        aria-label="Document pages"
+      >
         {state.status === 'ready' && state.document !== null ? (
           <div
             className={styles.content}

@@ -81,6 +81,15 @@ In a continuously scrolling column, `Page Up`, `Page Down`, `Home` and `End` scr
 which is what those keys do in every Windows reader. Explicit page navigation — next page, previous
 page, first, last, and the page box — is on the viewer toolbar and in the View menu.
 
+In single page view (View > Single Page View, or the toolbar toggle), with the pages focused:
+
+| Keys                    | Behaviour                                                                    |
+| ----------------------- | ---------------------------------------------------------------------------- |
+| `Page Down` / `Page Up` | Scroll a page taller than the window, then turn to the next or previous page |
+| `Right` / `Left`        | Turn the page, unless the page is wider than the window and scrolls sideways |
+| `Home` / `End`          | First or last page                                                           |
+| Wheel                   | Scroll the page; keep scrolling past its foot or top to turn it              |
+
 The left panel deliberately has no chord yet: `Ctrl+B` is reserved until the text editor
 (Segment 9) decides whether it needs it for bold. The rail button and the View menu cover it.
 

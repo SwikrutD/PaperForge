@@ -4,6 +4,7 @@ import {
   ChevronUp,
   Maximize,
   MoveHorizontal,
+  RectangleVertical,
   Redo2,
   RotateCcw,
   RotateCcwSquare,
@@ -159,6 +160,9 @@ export function ViewerToolbar({
             onClick={() => setZoom(mode)}
           />
         ))}
+
+        <span className={styles.divider} aria-hidden="true" />
+        <CommandIconButton id="view.singlePage" icon={RectangleVertical} disabled={disabled} />
 
         <span className={styles.divider} aria-hidden="true" />
         {/*

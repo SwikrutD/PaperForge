@@ -80,6 +80,7 @@ import type { AnnotationKind } from '@shared/schemas/annotation';
 import type { LeftPanelId } from '@shared/schemas/settings';
 import { useAdminStore } from '../stores/adminStore';
 import { CommandRegistry } from './registry';
+import { viewModeCommands } from './viewModeCommands';
 import type { CommandAvailability, CommandContext, CommandDefinition } from './types';
 
 const LEFT_PANELS: Array<{ id: LeftPanelId; title: string; icon: typeof Bookmark }> = [
@@ -607,6 +608,7 @@ export function buildCommands(): CommandDefinition[] {
       isChecked: (context) => context.activeView?.zoomMode === 'fitWidth',
       run: (context) => context.actions.setZoomMode('fitWidth'),
     },
+    ...viewModeCommands(),
     {
       id: 'view.rotateLeft',
       title: 'Rotate View Left',

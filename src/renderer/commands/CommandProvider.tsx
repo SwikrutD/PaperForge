@@ -96,6 +96,10 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         const id = activeSessionId();
         if (id !== null) documents().updateView(id, { zoomMode: mode });
       },
+      setPageMode: (pageMode) => {
+        const id = activeSessionId();
+        if (id !== null) documents().updateView(id, { pageMode });
+      },
       zoomBy: (direction) => {
         const id = activeSessionId();
         const current = documents().tabs.find((tab) => tab.session.id === id);

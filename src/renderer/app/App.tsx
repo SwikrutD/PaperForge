@@ -67,6 +67,7 @@ const ZOOM_LABEL = {
 /** "Page 2 of 3 · Fit width · 90°" for the status bar. */
 function describeView(view: DocumentViewState): string {
   const parts = [`Page ${view.pageNumber}`, ZOOM_LABEL[view.zoomMode]];
+  if (view.pageMode === 'single') parts.push('Single page');
   if (view.rotation !== 0) parts.push(`${view.rotation}°`);
   return parts.join(' · ');
 }

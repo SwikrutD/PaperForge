@@ -37,6 +37,8 @@ export function CommandIconButton({
       tooltip={tooltip}
       disabled={disabled || !command.enabled}
       disabledReason={command.reason}
+      // A toggle shows whether it is on, to the eye and to a screen reader.
+      pressed={command.definition.isChecked === undefined ? undefined : command.checked}
       onClick={() => execute(id)}
     />
   );
