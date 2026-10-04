@@ -1,0 +1,47 @@
+.presentation {
+  position: fixed;
+  inset: 0;
+  /* Above the shell, below dialogs, so a link's confirmation still shows. */
+  z-index: calc(var(--pf-layer-dialog) - 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--pf-color-presentation);
+  user-select: none;
+  outline: none;
+  forced-color-adjust: none;
+}
+
+.stage {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+/* The page fills the stage; the viewer's shadow and badge are not wanted here. */
+.stage > [data-page-number] {
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.hint {
+  position: absolute;
+  bottom: var(--pf-space-300);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--pf-space-050) var(--pf-space-150);
+  border-radius: var(--pf-radius-md);
+  background-color: var(--pf-color-presentation-hint);
+  color: var(--pf-color-presentation-text);
+  font-size: var(--pf-font-size-200);
+  pointer-events: none;
+}
+
+.hint {
+  animation: pf-presentation-hint 2.5s steps(1, end) forwards;
+}
+
+@keyframes pf-presentation-hint {
+  to {
+    visibility: hidden;
+  }
+}

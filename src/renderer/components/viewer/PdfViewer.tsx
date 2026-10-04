@@ -67,6 +67,8 @@ import { isolatePages } from './singlePage';
 import { rowIndexOf, rowOf, rowOptionsFor, stepPage } from './pageRows';
 import { usePageTurning, type PageTurn } from './usePageTurning';
 import { usePanning } from './usePanning';
+import { PresentationView } from './PresentationView';
+import { stopPresentation } from '../../stores/presentation';
 import { useMarqueeZoom } from './useMarqueeZoom';
 import {
   anchorAt,
@@ -148,6 +150,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const accessibilityFocus = useAccessibilityStore((store) => store.focused);
 
   const viewerTool = useUiStore((store) => store.viewerTool);
+  const presentationPage = useUiStore((store) => store.presentation?.pageNumber ?? null);
   // Any tool that works on the pages — editing, marking, measuring, drawing a
   // comment — has the pointer; the hand only has it when none of them does.
   const pagesTaken =
@@ -885,6 +888,19 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
           />
         )}
       </div>
+
+      {presentationPage !== null && state.status === 'ready' && state.document !== null && (
+        <PresentationView
+          pdf={state.document}
+          fileName={tab.session.file.displayName}
+          pageNumber={presentationPage}
+          rotation={view.rotation}
+          layersVersion={state.layersVersion}
+          onFollowLink={followLink}
+          onPageChange={(pageNumber) => useUiStore.getState().setPresentationPage(pageNumber)}
+          onExit={() => void stopPresentation()}
+        />
+      )}
 
       {state.status === 'password' && (
         <PasswordPrompt

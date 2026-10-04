@@ -2,8 +2,8 @@
 import '@testing-library/jest-dom/vitest';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactElement } from 'react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { useState, type ReactElement } from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PdfPageGeometry } from '../../../src/pdf/render/types';
 import { ViewerToolbar } from '../../../src/renderer/components/viewer/ViewerToolbar';
 import {
@@ -45,7 +45,13 @@ import {
 } from '../../../src/renderer/components/viewer/marqueeZoom';
 import { useUiStore } from '../../../src/renderer/stores/uiStore';
 import { useAnnotationStore } from '../../../src/renderer/stores/annotationStore';
-import { fireEvent } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
+import type { LoadedPdfDocument } from '../../../src/pdf/render/types';
+import { PresentationView } from '../../../src/renderer/components/viewer/PresentationView';
+import {
+  presentationKey,
+  presentationTarget,
+} from '../../../src/renderer/components/viewer/presentationControls';
 
 function page(pageNumber: number, width = 600, height = 800): PdfPageGeometry {
   return {
@@ -530,5 +536,111 @@ describe('marquee zoom', () => {
     );
     await userEvent.keyboard('{Control>}{Shift>}m{/Shift}{/Control}');
     expect(useUiStore.getState().viewerTool).toBe('select');
+  });
+});
+
+describe('presentation controls', () => {
+  it('answers to the keys a presenter and a clicker use', () => {
+    expect(presentationKey('PageDown', false)).toBe('next');
+    expect(presentationKey('ArrowRight', false)).toBe('next');
+    expect(presentationKey(' ', false)).toBe('next');
+    expect(presentationKey(' ', true)).toBe('previous');
+    expect(presentationKey('PageUp', false)).toBe('previous');
+    expect(presentationKey('Backspace', false)).toBe('previous');
+    expect(presentationKey('Home', false)).toBe('first');
+    expect(presentationKey('End', false)).toBe('last');
+    expect(presentationKey('Escape', false)).toBe('exit');
+    expect(presentationKey('q', false)).toBeNull();
+  });
+
+  it('stays inside the document', () => {
+    expect(presentationTarget('next', 3, 3)).toBe(3);
+    expect(presentationTarget('previous', 1, 3)).toBe(1);
+    expect(presentationTarget('last', 1, 3)).toBe(3);
+    expect(presentationTarget('first', 3, 3)).toBe(1);
+  });
+});
+
+describe('presentation mode', () => {
+  function fakePdf(pageCount: number): LoadedPdfDocument {
+    return {
+      pages: pages(pageCount),
+      renderPage: vi.fn(() => Promise.resolve()),
+      renderTextLayer: vi.fn(() => Promise.resolve()),
+      getLinks: vi.fn(() => Promise.resolve([])),
+    } as unknown as LoadedPdfDocument;
+  }
+
+  function present(onExit = vi.fn<(pageNumber: number) => void>()): {
+    onExit: typeof onExit;
+    pdf: LoadedPdfDocument;
+  } {
+    const pdf = fakePdf(3);
+    function Presenting(): ReactElement {
+      const [pageNumber, setPageNumber] = useState(1);
+      return (
+        <PresentationView
+          pdf={pdf}
+          fileName="Book.pdf"
+          pageNumber={pageNumber}
+          rotation={0}
+          layersVersion={0}
+          onFollowLink={() => undefined}
+          onPageChange={setPageNumber}
+          onExit={() => {
+            onExit(pageNumber);
+          }}
+        />
+      );
+    }
+    render(<Presenting />);
+    return { onExit, pdf };
+  }
+
+  it('is a named modal that takes the keyboard and announces the page', () => {
+    present();
+    const dialog = screen.getByRole('dialog', { name: 'Presenting Book.pdf' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toHaveFocus();
+    expect(screen.getByText('Page 1 of 3', { selector: 'p' })).toBeInTheDocument();
+  });
+
+  it('shows one page at a time, moving with the keyboard', async () => {
+    present();
+    expect(document.querySelectorAll('[data-page-number]')).toHaveLength(1);
+    await userEvent.keyboard('{PageDown}');
+    expect(screen.getByText('Page 2 of 3', { selector: 'p' })).toBeInTheDocument();
+    expect(document.querySelector('[data-page-number]')).toHaveAttribute('data-page-number', '2');
+    await userEvent.keyboard('{End}');
+    expect(screen.getByText('Page 3 of 3', { selector: 'p' })).toBeInTheDocument();
+    await userEvent.keyboard('{Backspace}');
+    expect(screen.getByText('Page 2 of 3', { selector: 'p' })).toBeInTheDocument();
+    expect(document.querySelectorAll('[data-page-number]')).toHaveLength(1);
+  });
+
+  it('keeps focus on Tab, moves on a click and stops with Escape at the page it reached', async () => {
+    const { onExit } = present();
+    const dialog = screen.getByRole('dialog', { name: 'Presenting Book.pdf' });
+    await userEvent.keyboard('{Tab}');
+    expect(dialog).toHaveFocus();
+    fireEvent.click(dialog);
+    expect(screen.getByText('Page 2 of 3', { selector: 'p' })).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    expect(onExit).toHaveBeenCalledWith(2);
+  });
+
+  it('is started from a named control with its own shortcut', async () => {
+    renderWithCommands(<LiveToolbar />);
+    const button = screen.getByRole('button', { name: 'Presentation Mode' });
+    expect(button).toHaveAttribute('title', 'Presentation Mode (Ctrl+L)');
+    expect(button).toHaveAttribute('aria-pressed', 'false');
+    await userEvent.keyboard('{Control>}l{/Control}');
+    expect(useUiStore.getState().presentation).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Presentation Mode' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await userEvent.keyboard('{Control>}l{/Control}');
+    expect(useUiStore.getState().presentation).toBeNull();
   });
 });

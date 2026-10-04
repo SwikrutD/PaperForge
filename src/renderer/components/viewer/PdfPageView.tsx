@@ -32,6 +32,8 @@ interface PdfPageViewProps {
   highlights?: readonly PageHighlight[] | undefined;
   /** Comment tools and hit areas, which sit over the text layer. */
   overlay?: ReactNode;
+  /** The page number in the corner; presentation mode leaves it off. */
+  showBadge?: boolean;
   onFollowLink: (link: PdfLink) => void;
 }
 
@@ -50,6 +52,7 @@ export function PdfPageView({
   hideFormFields = false,
   highlights,
   overlay,
+  showBadge = true,
   onFollowLink,
 }: PdfPageViewProps): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -164,9 +167,11 @@ export function PdfPageView({
           This page could not be rendered.
         </div>
       )}
-      <span className={styles.badge} aria-hidden="true">
-        {label ?? box.pageNumber}
-      </span>
+      {showBadge && (
+        <span className={styles.badge} aria-hidden="true">
+          {label ?? box.pageNumber}
+        </span>
+      )}
     </div>
   );
 }

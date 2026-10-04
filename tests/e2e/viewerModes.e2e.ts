@@ -94,12 +94,13 @@ async function pageThroughScan(
   label: string,
   turn: (target: number) => Promise<void>,
   targets: readonly number[],
+  shown: (pageNumber: number) => Locator = rendered,
 ): Promise<{ before: number; peak: number; after: number }> {
   const before = await rendererMemoryMb();
   let peak = before;
   for (const [index, target] of targets.entries()) {
     await turn(target);
-    await expect(rendered(target)).toBeVisible();
+    await expect(shown(target)).toBeVisible();
     if (index % 5 === 0) peak = Math.max(peak, await rendererMemoryMb());
   }
   const after = await rendererMemoryMb();
@@ -584,4 +585,95 @@ test('zooming into a long scan again and again keeps memory flat', async () => {
   await page.keyboard.press('Control+2');
   await page.keyboard.press('Control+Shift+M');
   await expect(pagesRegion()).toHaveAttribute('data-tool', 'select');
+});
+
+function presentation(): Locator {
+  return page.locator('[data-presentation]');
+}
+
+function presented(pageNumber: number): Locator {
+  return presentation().locator(`[data-page-number="${pageNumber}"][data-rendered="true"]`);
+}
+
+async function windowIsFullScreen(): Promise<boolean> {
+  return app.evaluate(
+    ({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.isFullScreen() ?? false,
+  );
+}
+
+test('presentation mode shows one page at a time over the whole screen', async () => {
+  await openOnly(longPath);
+  await goToPage(5);
+  await expect(rendered(5)).toBeVisible();
+
+  // Started from its toolbar button, with the keyboard.
+  await pressToggle('Presentation Mode');
+  await expect(page.getByRole('dialog', { name: 'Presenting Long book.pdf' })).toBeFocused();
+  await expect(presented(5)).toBeVisible();
+  await expect.poll(windowIsFullScreen).toBe(true);
+  // The page fills the height of the screen.
+  const screenSize =
+    page.viewportSize() ??
+    (await page.evaluate(() => ({ width: innerWidth, height: innerHeight })));
+  const box = await presented(5).boundingBox();
+  if (box === null) throw new Error('The page is not on screen.');
+  expect(box.height).toBeGreaterThan(screenSize.height * 0.85);
+
+  await page.keyboard.press('PageDown');
+  await expect(presented(6)).toBeVisible();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(presented(7)).toBeVisible();
+  await page.keyboard.press('Backspace');
+  await expect(presented(6)).toBeVisible();
+  await page.keyboard.press('End');
+  await expect(presented(1000)).toBeVisible();
+  await page.keyboard.press('Home');
+  await expect(presented(1)).toBeVisible();
+  await page.mouse.wheel(0, 150);
+  await expect(presented(2)).toBeVisible();
+  await expect(presentation().locator('[data-page-number]')).toHaveCount(1);
+  // Tab cannot wander off into the hidden shell.
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('dialog', { name: 'Presenting Long book.pdf' })).toBeFocused();
+
+  // Escape stops, leaves full screen and comes back to the page reached.
+  await page.keyboard.press('Escape');
+  await expect(presentation()).toHaveCount(0);
+  await expect.poll(windowIsFullScreen).toBe(false);
+  await expect(pageBox()).toHaveValue('2');
+});
+
+test('presenting from full screen stays in full screen afterwards', async () => {
+  await page.keyboard.press('F11');
+  await expect.poll(windowIsFullScreen).toBe(true);
+  await page.keyboard.press('Control+l');
+  await expect(presented(2)).toBeVisible();
+  await page.keyboard.press('ArrowRight');
+  await expect(presented(3)).toBeVisible();
+  // Stopping with the shortcut also comes back at the page reached.
+  await page.keyboard.press('Control+l');
+  await expect(presentation()).toHaveCount(0);
+  await expect(pageBox()).toHaveValue('3');
+  expect(await windowIsFullScreen()).toBe(true);
+  await page.keyboard.press('F11');
+  await expect.poll(windowIsFullScreen).toBe(false);
+});
+
+test('presenting a long scan from end to end keeps memory flat', async () => {
+  await openOnly(scanPath);
+  await page.keyboard.press('Control+l');
+  await expect(presented(1)).toBeVisible();
+  const memory = await pageThroughScan(
+    '120-page scan, presentation mode',
+    async () => {
+      await page.keyboard.press('PageDown');
+    },
+    Array.from({ length: 119 }, (_, index) => index + 2),
+    presented,
+  );
+  await expect(presentation().locator('[data-page-number]')).toHaveCount(1);
+  expect(memory.peak - memory.before).toBeLessThan(MAX_MEMORY_GROWTH_MB);
+  await page.keyboard.press('Escape');
+  await expect(presentation()).toHaveCount(0);
+  await expect.poll(windowIsFullScreen).toBe(false);
 });

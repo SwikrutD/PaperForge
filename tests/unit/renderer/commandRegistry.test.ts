@@ -18,6 +18,7 @@ function makeContext(overrides: Partial<CommandContext> = {}): CommandContext {
     openDocumentCount: 0,
     fullScreen: false,
     readingMode: false,
+    presenting: false,
     commenting: false,
     viewerTool: 'select',
     organizing: false,

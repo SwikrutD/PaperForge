@@ -7,38 +7,39 @@ refuses to start if two commands claim the same one.
 
 ## Implemented
 
-| Keys           | Command         | Notes                                                                        |
-| -------------- | --------------- | ---------------------------------------------------------------------------- |
-| `Ctrl+O`       | Open…           | Native Windows file picker; several files at once                            |
-| `Ctrl+P`       | Print…          | Pages, copies, scaling and printer; or the Windows print dialog              |
-| `Ctrl+W`       | Close Document  | Asks first when the document has unsaved changes                             |
-| `Ctrl+Shift+W` | Close Window    | Closes this window only                                                      |
-| `Ctrl+K`       | Command Palette | Search every command; unavailable ones show their reason                     |
-| `Ctrl+,`       | Settings        | Appearance, privacy and session restore                                      |
-| `Ctrl+=`       | Zoom In         | The `=` key is the one `+` shares; also on the viewer toolbar                |
-| `Ctrl+-`       | Zoom Out        |                                                                              |
-| `Ctrl+0`       | Fit Page        | Fits the page being read                                                     |
-| `Ctrl+1`       | Actual Size     | 100%                                                                         |
-| `Ctrl+2`       | Fit Width       | Fits the widest page, so nothing scrolls sideways                            |
-| `Ctrl+S`       | Save            | Writes the changes back to the file the document came from                   |
-| `Ctrl+Shift+S` | Save As…        | Writes to a new file and carries on there                                    |
-| `Ctrl+Z`       | Undo            | Steps back through the changes made in this session                          |
-| `Ctrl+Y`       | Redo            | Steps forward again                                                          |
-| `Ctrl+F`       | Find            | Opens the find bar over the document and selects what is in it               |
-| `Ctrl+H`       | Find Options    | Find, with the scope and page-range row expanded                             |
-| `F3`           | Find Next       | Wraps around; works while the find field has focus                           |
-| `Shift+F3`     | Find Previous   |                                                                              |
-| `Ctrl+M`       | Comment         | Show or hide the comment tools                                               |
-| `Ctrl+E`       | Edit PDF        | Show or hide the text editor                                                 |
-| `Ctrl+N`       | Create PDF      | Make a document from images, text files, web pages or other PDFs             |
-| `Ctrl+Shift+P` | Organize Pages  | Show or hide the page grid                                                   |
-| `Ctrl+Shift+H` | Hand Tool       | Drag the pages; press again for the select tool                              |
-| `Ctrl+Shift+M` | Marquee Zoom    | Drag a rectangle to zoom to it; click zooms in, `Shift`+click zooms out      |
-| `Ctrl+Shift+R` | Reading Mode    | Only the title bar and the document; `Esc` leaves it                         |
-| `F4`           | Tools Panel     | Show or hide the right panel                                                 |
-| `F6`           | Next Region     | Cycle command bar → rail → left panel → workspace → tools panel → status bar |
-| `F11`          | Full Screen     | Uses the real window, not HTML fullscreen                                    |
-| `Alt+F4`       | Close window    | Native; window position and size are saved                                   |
+| Keys           | Command           | Notes                                                                        |
+| -------------- | ----------------- | ---------------------------------------------------------------------------- |
+| `Ctrl+O`       | Open…             | Native Windows file picker; several files at once                            |
+| `Ctrl+P`       | Print…            | Pages, copies, scaling and printer; or the Windows print dialog              |
+| `Ctrl+W`       | Close Document    | Asks first when the document has unsaved changes                             |
+| `Ctrl+Shift+W` | Close Window      | Closes this window only                                                      |
+| `Ctrl+K`       | Command Palette   | Search every command; unavailable ones show their reason                     |
+| `Ctrl+,`       | Settings          | Appearance, privacy and session restore                                      |
+| `Ctrl+=`       | Zoom In           | The `=` key is the one `+` shares; also on the viewer toolbar                |
+| `Ctrl+-`       | Zoom Out          |                                                                              |
+| `Ctrl+0`       | Fit Page          | Fits the page being read                                                     |
+| `Ctrl+1`       | Actual Size       | 100%                                                                         |
+| `Ctrl+2`       | Fit Width         | Fits the widest page, so nothing scrolls sideways                            |
+| `Ctrl+S`       | Save              | Writes the changes back to the file the document came from                   |
+| `Ctrl+Shift+S` | Save As…          | Writes to a new file and carries on there                                    |
+| `Ctrl+Z`       | Undo              | Steps back through the changes made in this session                          |
+| `Ctrl+Y`       | Redo              | Steps forward again                                                          |
+| `Ctrl+F`       | Find              | Opens the find bar over the document and selects what is in it               |
+| `Ctrl+H`       | Find Options      | Find, with the scope and page-range row expanded                             |
+| `F3`           | Find Next         | Wraps around; works while the find field has focus                           |
+| `Shift+F3`     | Find Previous     |                                                                              |
+| `Ctrl+M`       | Comment           | Show or hide the comment tools                                               |
+| `Ctrl+E`       | Edit PDF          | Show or hide the text editor                                                 |
+| `Ctrl+N`       | Create PDF        | Make a document from images, text files, web pages or other PDFs             |
+| `Ctrl+Shift+P` | Organize Pages    | Show or hide the page grid                                                   |
+| `Ctrl+Shift+H` | Hand Tool         | Drag the pages; press again for the select tool                              |
+| `Ctrl+Shift+M` | Marquee Zoom      | Drag a rectangle to zoom to it; click zooms in, `Shift`+click zooms out      |
+| `Ctrl+L`       | Presentation Mode | One page at a time over the whole screen; `Esc` or `Ctrl+L` stops            |
+| `Ctrl+Shift+R` | Reading Mode      | Only the title bar and the document; `Esc` leaves it                         |
+| `F4`           | Tools Panel       | Show or hide the right panel                                                 |
+| `F6`           | Next Region       | Cycle command bar → rail → left panel → workspace → tools panel → status bar |
+| `F11`          | Full Screen       | Uses the real window, not HTML fullscreen                                    |
+| `Alt+F4`       | Close window      | Native; window position and size are saved                                   |
 
 Shell behaviour that needs no chord:
 
@@ -91,6 +92,17 @@ In single page view (View > Single Page View, or the toolbar toggle), with the p
 | `Right` / `Left`        | Turn the page, unless the page is wider than the window and scrolls sideways |
 | `Home` / `End`          | First or last page                                                           |
 | Wheel                   | Scroll the page; keep scrolling past its foot or top to turn it              |
+
+In presentation mode:
+
+| Keys                                                                              | Behaviour                                    |
+| --------------------------------------------------------------------------------- | -------------------------------------------- |
+| `Right`, `Down`, `Page Down`, `Space`, `Enter`, `N`, a click, wheel down          | Next page                                    |
+| `Left`, `Up`, `Page Up`, `Backspace`, `Shift+Space`, `P`, `Shift`+click, wheel up | Previous page                                |
+| `Home` / `End`                                                                    | First or last page                           |
+| `Esc` or `Ctrl+L`                                                                 | Stop, back in the viewer at the page reached |
+
+`Tab` stays in the presentation, and a link on the page still follows on a click.
 
 The left panel deliberately has no chord yet: `Ctrl+B` is reserved until the text editor
 (Segment 9) decides whether it needs it for bold. The rail button and the View menu cover it.

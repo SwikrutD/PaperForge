@@ -6,6 +6,7 @@ import {
   Columns2,
   Hand,
   MousePointer2,
+  Presentation,
   Maximize,
   MoveHorizontal,
   RectangleVertical,
@@ -202,6 +203,8 @@ export function ViewerToolbar({
           disabled={disabled}
           onClick={() => rotate(1)}
         />
+        <span className={styles.divider} aria-hidden="true" />
+        <CommandIconButton id="view.presentation" icon={Presentation} disabled={disabled} />
       </div>
     </div>
   );

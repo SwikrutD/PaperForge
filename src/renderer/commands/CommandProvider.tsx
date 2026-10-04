@@ -22,6 +22,7 @@ import { useAccessibilityStore } from '../stores/accessibilityStore';
 import { useMeasureStore } from '../stores/measureStore';
 import { useCompareStore } from '../stores/compareStore';
 import { useUiStore } from '../stores/uiStore';
+import { startPresentation, stopPresentation } from '../stores/presentation';
 import { buildDiagnosticsText } from '../utils/diagnostics';
 import { CommandApiContext, type CommandApi } from './commandApiContext';
 import { createCommandRegistry } from './definitions';
@@ -40,6 +41,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
   const readingMode = useUiStore((state) => state.readingMode);
   const commenting = useUiStore((state) => state.commenting);
   const viewerTool = useUiStore((state) => state.viewerTool);
+  const presenting = useUiStore((state) => state.presentation !== null);
   const organizing = useOrganizeStore((state) => state.active);
   const creating = useCreateStore((state) => state.open);
   const editingText = useTextEditStore((state) => state.active);
@@ -202,6 +204,8 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         app().patchSettings({ layout: { activeRightPanel: panel, rightPanel: { visible: true } } }),
       toggleFullScreen: () => app().toggleFullScreen(),
       toggleReadingMode: () => ui().setReadingMode(!ui().readingMode),
+      togglePresentation: () =>
+        ui().presentation === null ? startPresentation() : stopPresentation(),
       toggleCommenting: () => {
         const next = !ui().commenting;
         if (next) redaction().setActive(false);
@@ -434,6 +438,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
       openDocumentCount: tabs.length,
       fullScreen: windowState?.fullScreen ?? false,
       readingMode,
+      presenting,
       commenting,
       viewerTool,
       organizing,
@@ -462,6 +467,7 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     tabs,
     activeTabId,
     readingMode,
+    presenting,
     commenting,
     viewerTool,
     organizing,

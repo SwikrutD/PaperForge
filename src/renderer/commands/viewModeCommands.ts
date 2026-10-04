@@ -3,6 +3,7 @@ import {
   Columns2,
   Hand,
   MousePointer2,
+  Presentation,
   RectangleVertical,
   SquareDashedMousePointer,
 } from 'lucide-react';
@@ -137,6 +138,21 @@ export function viewModeCommands(): CommandDefinition[] {
         context.actions.setViewerTool(
           context.viewerTool === 'marqueeZoom' ? 'select' : 'marqueeZoom',
         ),
+    },
+    {
+      id: 'view.presentation',
+      title: 'Presentation Mode',
+      description:
+        'Show one page at a time over the whole screen. Click, the arrow keys, Page Down or ' +
+        'Space go forward; Page Up or Backspace go back; Esc stops.',
+      category: 'view',
+      group: 'display',
+      icon: Presentation,
+      shortcut: 'Ctrl+L',
+      keywords: ['slides', 'slideshow', 'full screen', 'present', 'projector'],
+      isAvailable: documentRequired,
+      isChecked: (context) => context.presenting,
+      run: (context) => context.actions.togglePresentation(),
     },
   ];
 }

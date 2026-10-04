@@ -84,6 +84,10 @@
   --pf-color-bg-selected: #e9f2fd;
   --pf-color-workspace: #f0eeec;
   --pf-color-page: #ffffff;
+  /* Presentation mode surrounds the page with black in both themes. */
+  --pf-color-presentation: #000000;
+  --pf-color-presentation-text: #f3f2f1;
+  --pf-color-presentation-hint: rgba(50, 49, 48, 0.85);
 
   /*
    * Search highlights sit on the page, which stays white in both themes, so

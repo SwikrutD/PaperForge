@@ -38,6 +38,8 @@ export interface CommandContext {
   readonly fullScreen: boolean;
   /** True while the window shows only the document. */
   readonly readingMode: boolean;
+  /** True while the document is presented a page at a time, full screen. */
+  readonly presenting: boolean;
   /** True while the comment tools are on show. */
   readonly commenting: boolean;
   /** How the pointer acts on the pages when no other tool has them. */
@@ -109,6 +111,7 @@ export interface CommandActions {
   setRightPanel(panel: RightPanelId): Promise<void>;
   toggleFullScreen(): Promise<void>;
   toggleReadingMode(): void;
+  togglePresentation(): Promise<void>;
   toggleCommenting(): void;
   toggleOrganizing(): void;
   toggleTextEditing(): void;

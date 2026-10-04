@@ -11,6 +11,11 @@ const DEFAULT_TOAST_MS = 4000;
  */
 export type ViewerTool = 'select' | 'hand' | 'marqueeZoom';
 
+export interface Presentation {
+  pageNumber: number;
+  leaveFullScreen: boolean;
+}
+
 export interface UiStore {
   /** Only one modal at a time; the shell is not a stack of dialogs. */
   dialog: DialogId | null;
@@ -24,6 +29,12 @@ export interface UiStore {
   /** True while the comment tools are on show. */
   commenting: boolean;
   viewerTool: ViewerTool;
+  /**
+   * Set while a document is presented a page at a time over the whole
+   * screen: the page on show, and whether presenting put the window into
+   * full screen, so stopping takes it out again.
+   */
+  presentation: Presentation | null;
   toasts: Toast[];
   /** Pending confirmation, shown over everything else. */
   confirmation: ConfirmationRequest | null;
@@ -34,6 +45,8 @@ export interface UiStore {
   setReadingMode: (readingMode: boolean) => void;
   setCommenting: (commenting: boolean) => void;
   setViewerTool: (tool: ViewerTool) => void;
+  setPresentation: (presentation: Presentation | null) => void;
+  setPresentationPage: (pageNumber: number) => void;
   showToast: (toast: ToastInput) => string;
   dismissToast: (id: string) => void;
   requestConfirmation: (request: ConfirmationRequest) => void;
@@ -47,6 +60,7 @@ export const useUiStore = create<UiStore>((set) => ({
   readingMode: false,
   commenting: false,
   viewerTool: 'select',
+  presentation: null,
   toasts: [],
   confirmation: null,
 
@@ -57,6 +71,11 @@ export const useUiStore = create<UiStore>((set) => ({
   setReadingMode: (readingMode) => set({ readingMode }),
   setCommenting: (commenting) => set({ commenting }),
   setViewerTool: (viewerTool) => set({ viewerTool }),
+  setPresentation: (presentation) => set({ presentation, commandPaletteOpen: false }),
+  setPresentationPage: (pageNumber) =>
+    set((state) =>
+      state.presentation === null ? {} : { presentation: { ...state.presentation, pageNumber } },
+    ),
 
   showToast: (input) => {
     const intent = input.intent ?? 'info';
