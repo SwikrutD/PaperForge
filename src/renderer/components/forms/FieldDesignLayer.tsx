@@ -17,6 +17,8 @@ interface FieldDesignLayerProps {
   drag: { name: string; rect: FieldRect } | null;
   /** The kind of field the next drag draws, when one has been chosen. */
   tool: FormFieldType | null;
+  /** The box of a field being made, shown until the form is read again with it. */
+  drawn?: FieldRect | null;
   onSelect: (name: string | null) => void;
   onDrag: (name: string, rect: FieldRect) => void;
   onDrop: (name: string, rect: FieldRect) => void;
@@ -59,6 +61,7 @@ export function FieldDesignLayer({
   selected,
   drag,
   tool,
+  drawn = null,
   onSelect,
   onDrag,
   onDrop,
@@ -170,6 +173,8 @@ export function FieldDesignLayer({
     onDraw(cssRectToPdf(drawn, geometry, scale, rotation));
   };
 
+  const drawnBox = drawn === null ? null : pdfRectToCss(drawn, geometry, scale, rotation);
+
   return (
     <div
       className={cx(styles.layer, tool !== null && styles.drawing)}
@@ -229,6 +234,19 @@ export function FieldDesignLayer({
           </div>
         );
       })}
+
+      {drawnBox !== null && (
+        <div
+          className={styles.sketch}
+          style={{
+            left: `${String(drawnBox.left)}px`,
+            top: `${String(drawnBox.top)}px`,
+            width: `${String(drawnBox.width)}px`,
+            height: `${String(drawnBox.height)}px`,
+          }}
+          data-pending-field="true"
+        />
+      )}
 
       {sketch !== null && (
         <div

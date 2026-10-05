@@ -1,10 +1,14 @@
-import { useRef, type PointerEvent, type ReactElement } from 'react';
+import { useEffect, useRef, type PointerEvent, type ReactElement } from 'react';
 import type { PdfPageGeometry } from '@pdf/render/types';
 import type { ImagePlacementInput } from '@shared/schemas/edit';
 import type { PageImageModel } from '@shared/schemas/image';
 import { cx } from '../../utils/classNames';
-import { cssPointToPdf, pdfRectToCss, quarterTurns } from '../viewer/pageGeometry';
+import { cssPointToPdf } from '../viewer/pageGeometry';
+import { awaitingPaint, usePaintedRevision } from '../viewer/paintedRevision';
+import type { MovedImage } from '../../stores/imageEditStore';
 import { HANDLES, movedBy, resizedBy, type Handle } from './imageGeometry';
+import { frameStyle, imageFrame, snapshotImage } from './imageFrame';
+import { MovedImageMark } from './MovedImageMark';
 import styles from './ImageEditLayer.module.css';
 
 interface ImageEditLayerProps {
@@ -18,9 +22,14 @@ interface ImageEditLayerProps {
   drag: { id: string; placement: ImagePlacementInput } | null;
   /** True while the reader is choosing where a new image goes. */
   placing: boolean;
+  /** An image on this page just moved or deleted, until the page is drawn with it. */
+  moved?: MovedImage | null;
+  /** Called once the page's picture shows the moved image itself. */
+  onSettle?: () => void;
   onSelect: (id: string | null) => void;
   onDrag: (id: string, placement: ImagePlacementInput) => void;
-  onDrop: (id: string, placement: ImagePlacementInput) => void;
+  /** `picture` is the image as the page shows it, to stand in until it is redrawn. */
+  onDrop: (id: string, placement: ImagePlacementInput, picture: HTMLCanvasElement | null) => void;
   /** A click on the page, while an image is waiting to be placed. */
   onPlace: (x: number, y: number) => void;
 }
@@ -49,13 +58,22 @@ export function ImageEditLayer({
   selectedId,
   drag,
   placing,
+  moved = null,
+  onSettle,
   onSelect,
   onDrag,
   onDrop,
   onPlace,
 }: ImageEditLayerProps): ReactElement {
   const gesture = useRef<Gesture | null>(null);
-  const turns = quarterTurns(geometry.rotation + rotation);
+  const layerRef = useRef<HTMLDivElement>(null);
+  const painted = usePaintedRevision();
+  const showMoved = moved !== null && awaitingPaint(moved.madeIn, painted);
+
+  // Once the picture has the image where it now is, the picture shows it.
+  useEffect(() => {
+    if (moved !== null && !awaitingPaint(moved.madeIn, painted)) onSettle?.();
+  }, [moved, painted, onSettle]);
 
   /** A point on this layer, in PDF user space. */
   const pointOf = (event: PointerEvent<HTMLElement>): { x: number; y: number } => {
@@ -114,13 +132,14 @@ export function ImageEditLayer({
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
 
-    const same =
-      current.placement.x === current.start.x &&
-      current.placement.y === current.start.y &&
-      current.placement.width === current.start.width &&
-      current.placement.height === current.start.height;
-    if (same) return;
-    onDrop(current.id, current.placement);
+    if (samePlacement(current.placement, current.start)) return;
+
+    // The page still draws the image where it was: copy it from there now, to
+    // show where it goes until the page is drawn again.
+    const frame = imageFrame(current.start, geometry, scale, rotation);
+    const picture =
+      frame === null || layerRef.current === null ? null : snapshotImage(layerRef.current, frame);
+    onDrop(current.id, current.placement, picture);
   };
 
   const onBackground = (event: PointerEvent<HTMLDivElement>): void => {
@@ -135,34 +154,32 @@ export function ImageEditLayer({
 
   return (
     <div
+      ref={layerRef}
       className={cx(styles.layer, placing && styles.placing)}
       data-image-layer={placing ? 'placing' : 'editing'}
       onPointerDown={onBackground}
     >
-      {images.map((image) => {
-        const placement = drag?.id === image.id ? drag.placement : image.placement;
-        const box = pdfRectToCss(placement, geometry, scale, rotation);
-        if (box === null) return null;
+      {showMoved && (
+        <MovedImageMark moved={moved} geometry={geometry} scale={scale} rotation={rotation} />
+      )}
 
+      {images.map((image) => {
+        // A deleted image keeps no box while the page still draws it.
+        if (showMoved && moved.to === null && samePlacement(moved.from, image.placement)) {
+          return null;
+        }
+        const placement = drag?.id === image.id ? drag.placement : image.placement;
         // The box is placed upright and then turned, so the handles keep to
         // the image's own corners however far round it is.
-        const width = turns % 2 === 0 ? box.width : box.height;
-        const height = turns % 2 === 0 ? box.height : box.width;
-        const centre = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+        const frame = imageFrame(placement, geometry, scale, rotation);
+        if (frame === null) return null;
         const selected = image.id === selectedId;
-        const degrees = turns * 90 - placement.rotation;
 
         return (
           <div
             key={image.id}
             className={cx(styles.image, selected && styles.selected)}
-            style={{
-              left: `${String(centre.x - width / 2)}px`,
-              top: `${String(centre.y - height / 2)}px`,
-              width: `${String(width)}px`,
-              height: `${String(height)}px`,
-              transform: `rotate(${String(degrees)}deg)${placement.flipX ? ' scaleX(-1)' : ''}`,
-            }}
+            style={frameStyle(frame)}
             data-image={image.id}
             data-selected={selected ? 'true' : 'false'}
             title={`${String(image.pixelWidth)} × ${String(image.pixelHeight)} pixels`}
@@ -201,5 +218,14 @@ export function ImageEditLayer({
         );
       })}
     </div>
+  );
+}
+
+function samePlacement(left: ImagePlacementInput, right: ImagePlacementInput): boolean {
+  return (
+    left.x === right.x &&
+    left.y === right.y &&
+    left.width === right.width &&
+    left.height === right.height
   );
 }

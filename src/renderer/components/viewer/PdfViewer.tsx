@@ -126,9 +126,12 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const imageSelected = useImageEditStore((store) => store.selected);
   const imageDrag = useImageEditStore((store) => store.drag);
   const imagePending = useImageEditStore((store) => store.pending);
+  const imageMoved = useImageEditStore((store) => store.moved);
+  const settleImageMoved = useImageEditStore((store) => store.settleMoved);
   const linkPages = useLinkEditStore((store) => store.pages);
   const linkSelected = useLinkEditStore((store) => store.selected);
   const linkDrag = useLinkEditStore((store) => store.drag);
+  const linkDrawn = useLinkEditStore((store) => store.drawn);
   const linkDrawing = useLinkEditStore((store) => store.drawing);
   const filling = useFormStore((store) => store.active);
   const forms = useFormStore((store) => store.forms);
@@ -140,6 +143,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const preparing = useFormStore((store) => store.preparing);
   const fieldTool = useFormStore((store) => store.fieldTool);
   const fieldDrag = useFormStore((store) => store.drag);
+  const fieldDrawn = useFormStore((store) => store.drawn);
   const requestConfirmation = useUiStore((store) => store.requestConfirmation);
   const redacting = useRedactionStore((store) => store.active);
   const redactionTool = useRedactionStore((store) => store.tool);
@@ -428,6 +432,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   useEffect(() => {
     useAnnotationStore.getState().dropUndonePending(sessionId, tab.edit.revision);
     useTextEditStore.getState().dropUndonePending(sessionId, tab.edit.revision);
+    useImageEditStore.getState().dropUndoneMoved(sessionId, tab.edit.revision);
   }, [sessionId, tab.edit.revision]);
 
   // The editor needs the text of the pages on screen, from this revision.
@@ -729,6 +734,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                         selected={formSelected}
                         drag={fieldDrag}
                         tool={fieldTool}
+                        drawn={fieldDrawn?.page === pageNumber ? fieldDrawn.rect : null}
                         onSelect={(name) => useFormStore.getState().select(name)}
                         onDrag={(name, rect) => useFormStore.getState().setDrag({ name, rect })}
                         onDrop={(name, rect) => void useFormStore.getState().moveField(name, rect)}
@@ -794,6 +800,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                         selectedId={linkSelected?.page === pageNumber ? linkSelected.id : null}
                         drag={linkDrag?.page === pageNumber ? linkDrag : null}
                         drawing={linkDrawing}
+                        drawn={linkDrawn?.page === pageNumber ? linkDrawn.rect : null}
                         onSelect={(id) => useLinkEditStore.getState().select(pageNumber, id)}
                         onDrag={(id, rect) =>
                           useLinkEditStore.getState().setDrag({ page: pageNumber, id, rect })
@@ -812,12 +819,20 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                         selectedId={imageSelected?.page === pageNumber ? imageSelected.id : null}
                         drag={imageDrag?.page === pageNumber ? imageDrag : null}
                         placing={imagePending !== null}
+                        moved={
+                          imageMoved?.sessionId === sessionId && imageMoved.page === pageNumber
+                            ? imageMoved
+                            : null
+                        }
+                        onSettle={settleImageMoved}
                         onSelect={(id) => useImageEditStore.getState().select(pageNumber, id)}
                         onDrag={(id, placement) =>
                           useImageEditStore.getState().setDrag({ page: pageNumber, id, placement })
                         }
-                        onDrop={(id, placement) =>
-                          void useImageEditStore.getState().place(pageNumber, id, placement)
+                        onDrop={(id, placement, picture) =>
+                          void useImageEditStore
+                            .getState()
+                            .place(pageNumber, id, placement, picture)
                         }
                         onPlace={(x, y) =>
                           void useImageEditStore.getState().addAt(pageNumber, x, y)

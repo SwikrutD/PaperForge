@@ -29,6 +29,8 @@ export interface FormStore {
   fieldTool: FormFieldType | null;
   /** Where the field being dragged is now, before it is written. */
   drag: { name: string; rect: FieldRect } | null;
+  /** The box of a field being made, until the form is read again with it. */
+  drawn: { page: number; rect: FieldRect } | null;
   /** Keyed by session id. */
   forms: Map<string, LoadedForm>;
   /** Draws a tint behind every field, so they can be found at a glance. */
@@ -94,6 +96,7 @@ export const useFormStore = create<FormStore>((set, get) => ({
   preparing: false,
   fieldTool: null,
   drag: null,
+  drawn: null,
   forms: new Map(),
   highlight: true,
   selected: null,
@@ -113,23 +116,30 @@ export const useFormStore = create<FormStore>((set, get) => ({
     if (sessionId === null || kind === null) return;
 
     const name = nextFieldName(fieldsOf(get(), sessionId), kind);
-    await run(sessionId, {
-      label: `Add ${name}`,
-      operations: [
-        {
-          kind: 'addFormField',
-          page,
-          name,
-          fieldType: kind,
-          rect,
-          options:
-            kind === 'radio' || kind === 'dropdown' || kind === 'optionList'
-              ? ['Option 1', 'Option 2']
-              : null,
-          properties: DEFAULT_FIELD_PROPERTIES,
-        },
-      ],
-    });
+    const drawn = { page, rect };
+    set({ drawn });
+    try {
+      await run(sessionId, {
+        label: `Add ${name}`,
+        operations: [
+          {
+            kind: 'addFormField',
+            page,
+            name,
+            fieldType: kind,
+            rect,
+            options:
+              kind === 'radio' || kind === 'dropdown' || kind === 'optionList'
+                ? ['Option 1', 'Option 2']
+                : null,
+            properties: DEFAULT_FIELD_PROPERTIES,
+          },
+        ],
+      });
+    } finally {
+      // The form has been read again by now, so the field itself is there.
+      if (get().drawn === drawn) set({ drawn: null });
+    }
     set({ selected: name, fieldTool: null });
   },
 
@@ -158,8 +168,14 @@ export const useFormStore = create<FormStore>((set, get) => ({
     if (sessionId === null) return;
     const field = fieldOf(get(), sessionId, name);
     if (field === undefined) return;
+    const drag = get().drag;
 
-    await get().updateField(name, { rect, properties: propertiesOf(field) });
+    try {
+      await get().updateField(name, { rect, properties: propertiesOf(field) });
+    } finally {
+      // The box stays where it was dropped until the form is read again.
+      if (get().drag === drag) set({ drag: null });
+    }
   },
 
   deleteField: async (name) => {

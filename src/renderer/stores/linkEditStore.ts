@@ -20,6 +20,8 @@ export interface LinkEditStore {
   drag: { page: number; id: string; rect: LinkRect } | null;
   /** True while the reader is drawing the area a new link covers. */
   drawing: boolean;
+  /** The area of a link being made, until the page's links are read again with it. */
+  drawn: { page: number; rect: LinkRect } | null;
   busy: boolean;
 
   reset: () => void;
@@ -65,6 +67,7 @@ export const useLinkEditStore = create<LinkEditStore>((set, get) => ({
   selected: null,
   drag: null,
   drawing: false,
+  drawn: null,
   busy: false,
 
   reset: () => set({ selected: null, drag: null, drawing: false }),
@@ -94,12 +97,17 @@ export const useLinkEditStore = create<LinkEditStore>((set, get) => ({
     const sessionId = useDocumentStore.getState().activeId;
     if (sessionId === null) return;
 
-    set({ drawing: false });
-    await run(sessionId, {
-      label: 'Add link',
-      operations: [{ kind: 'addLink', page, rect, target: { kind: 'page', page } }],
-    });
-    await reselect(sessionId, page, rect);
+    const drawn = { page, rect };
+    set({ drawing: false, drawn });
+    try {
+      await run(sessionId, {
+        label: 'Add link',
+        operations: [{ kind: 'addLink', page, rect, target: { kind: 'page', page } }],
+      });
+      await reselect(sessionId, page, rect);
+    } finally {
+      if (get().drawn === drawn) set({ drawn: null });
+    }
   },
 
   update: async (page, id, change) => {
@@ -107,20 +115,26 @@ export const useLinkEditStore = create<LinkEditStore>((set, get) => ({
     if (sessionId === null) return;
     const link = linkOf(get(), sessionId, page, id);
     if (link === undefined) return;
+    const drag = get().drag;
 
-    await run(sessionId, {
-      label: change.target === undefined ? 'Move link' : 'Change where a link goes',
-      operations: [
-        {
-          kind: 'updateLink',
-          page,
-          linkId: id,
-          rect: change.rect ?? null,
-          target: change.target ?? null,
-        },
-      ],
-    });
-    await reselect(sessionId, page, change.rect ?? link.rect);
+    try {
+      await run(sessionId, {
+        label: change.target === undefined ? 'Move link' : 'Change where a link goes',
+        operations: [
+          {
+            kind: 'updateLink',
+            page,
+            linkId: id,
+            rect: change.rect ?? null,
+            target: change.target ?? null,
+          },
+        ],
+      });
+      await reselect(sessionId, page, change.rect ?? link.rect);
+    } finally {
+      // The box stays where it was dropped until the links are read again.
+      if (get().drag === drag) set({ drag: null });
+    }
   },
 
   remove: async (page, id) => {
@@ -139,7 +153,7 @@ async function run(
   sessionId: string,
   transaction: Parameters<ReturnType<typeof useDocumentStore.getState>['applyEdit']>[1],
 ): Promise<void> {
-  useLinkEditStore.setState({ busy: true, drag: null });
+  useLinkEditStore.setState({ busy: true });
   try {
     await useDocumentStore.getState().applyEdit(sessionId, transaction);
   } finally {

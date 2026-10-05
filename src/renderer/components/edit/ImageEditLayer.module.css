@@ -45,3 +45,17 @@
 .placing {
   cursor: crosshair;
 }
+
+/*
+ * An image that has just moved, shown where it now is until the page is drawn
+ * again. The cover hides where it was; it is the page's colour, not a mark.
+ */
+.pendingCover,
+.pendingPicture {
+  position: absolute;
+  pointer-events: none;
+}
+
+.pendingCover {
+  background-color: var(--pf-color-page);
+}

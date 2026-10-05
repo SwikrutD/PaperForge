@@ -16,6 +16,8 @@ interface LinkEditLayerProps {
   drag: { id: string; rect: LinkRect } | null;
   /** True while the reader is drawing the area a new link will cover. */
   drawing: boolean;
+  /** The area of a link being made, shown until the links are read again with it. */
+  drawn?: LinkRect | null;
   onSelect: (id: string | null) => void;
   onDrag: (id: string, rect: LinkRect) => void;
   onDrop: (id: string, rect: LinkRect) => void;
@@ -49,6 +51,7 @@ export function LinkEditLayer({
   selectedId,
   drag,
   drawing,
+  drawn = null,
   onSelect,
   onDrag,
   onDrop,
@@ -221,6 +224,10 @@ export function LinkEditLayer({
         );
       })}
 
+      {drawn !== null && (
+        <DrawnLink rect={drawn} geometry={geometry} scale={scale} rotation={rotation} />
+      )}
+
       {sketch !== null && (
         <div
           className={styles.sketch}
@@ -234,6 +241,34 @@ export function LinkEditLayer({
         />
       )}
     </div>
+  );
+}
+
+/** The area just drawn for a new link, as it was drawn, while the link is made. */
+function DrawnLink({
+  rect,
+  geometry,
+  scale,
+  rotation,
+}: {
+  rect: LinkRect;
+  geometry: PdfPageGeometry;
+  scale: number;
+  rotation: number;
+}): ReactElement | null {
+  const box = pdfRectToCss(rect, geometry, scale, rotation);
+  if (box === null) return null;
+  return (
+    <div
+      className={styles.sketch}
+      style={{
+        left: `${String(box.left)}px`,
+        top: `${String(box.top)}px`,
+        width: `${String(box.width)}px`,
+        height: `${String(box.height)}px`,
+      }}
+      data-pending-link="true"
+    />
   );
 }
 

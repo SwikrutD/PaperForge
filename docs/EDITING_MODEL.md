@@ -304,11 +304,16 @@ An edit never takes the page off screen. Three things make that so:
 - **A change stands in for itself until the picture has it.** A new or moved comment is drawn over
   the page in its own colours (`PendingAnnotationMark`), and edited text is drawn over the words it
   replaces, from the moment the gesture ends until the page has painted the revision that holds it.
-  Undo past that revision drops the stand-in.
+  Undo past that revision drops the stand-in. A dragged image is copied off the page canvas as it
+  is let go and drawn at its new place over a cover of the old one (`MovedImageMark`).
+- **A dropped box stays where it was dropped.** The image, link and field editors keep the drag, or
+  the area of a newly drawn link or field, until they have read the page again from the revision
+  with the change, so a box never goes back to where the old model had it.
 
 `tests/e2e/liveEdits.e2e.ts` samples every animation frame while a comment is drawn, undone and
 redone and while text is edited, and fails on any frame where the page is missing, its canvas is
-empty, or the change is neither drawn nor stood in for.
+empty, or the change is neither drawn nor stood in for. `tests/e2e/liveObjectEdits.e2e.ts` does the
+same from the moment an image or link is let go.
 
 ## Revert
 

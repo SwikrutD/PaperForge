@@ -8,7 +8,7 @@
   `docs/RELEASE_CHECKLIST.md`.
 - Build status: `npm run package` and `npm run make` succeed (`PaperForge-Setup.exe` and a zip);
   the end-to-end suite drives the built application
-- Test status: 926 unit tests (82 files) and 214 Playwright end-to-end tests passing;
+- Test status: 934 unit tests (83 files) and 217 Playwright end-to-end tests passing;
   typecheck, lint, format and the licence audit clean. The manual release walkthroughs in
   `docs/RELEASE_CHECKLIST.md` (clean VM, physical printer, screen reader, real documents) are not
   yet done.
@@ -1230,8 +1230,35 @@ its canvas is empty, or the change is neither drawn nor stood in for. Before the
 rectangle produced 11 unmounted, 1 blank and 7 missing frames; after, none. `editText.e2e.ts` now
 scrolls page 2 into view before placing text: it had relied on the old jump back to the top.
 
-Not covered by a stand-in yet: moving or resizing images and links, and form changes. They no
-longer flash blank, but show their old position until the page is redrawn (a fraction of a second).
+## Fix — moved images, links and form fields stay where they were dropped
+
+**Root cause.** After the live-edits fix, a dropped image, link or new field still went back to its
+old position for the moment between letting go and the page being drawn again. The image and link
+stores cleared the drag as soon as the write started, so their boxes fell back to the positions in
+the old model; nothing stood in for the image's pixels, which the canvas still drew where they had
+been; and a newly drawn link or field had no box at all until the page was read back.
+
+**Fix.** The drag is now kept until the page's images, links or fields have been read again from the
+new revision. On drop, the image's pixels are copied off the page canvas, turned upright into the
+image's own axes (`edit/imageFrame.ts`), and drawn at the new placement over a page-coloured cover
+of the old one (`MovedImageMark`) until the page has painted the revision that holds the move; a
+deleted image is covered the same way. A new link or field keeps the area it was drawn in on
+screen until it is read back. Form filling was checked and needed nothing: the canvas leaves fields
+out while filling, and the field layer shows the typed value throughout.
+
+Still without a stand-in: changes made from the properties panel (turning, flipping, cropping,
+transparency, replacing an image). These keep the old picture for the moment before the redraw,
+which for them is a change appearing rather than something jumping back.
+
+| Area  | Files                                                                                                             |
+| ----- | ----------------------------------------------------------------------------------------------------------------- |
+| Edit  | `edit/{ImageEditLayer,MovedImageMark,imageFrame,LinkEditLayer}.ts(x)`, `stores/{imageEditStore,linkEditStore}.ts` |
+| Forms | `forms/FieldDesignLayer.tsx`, `stores/formStore.ts`                                                               |
+| Tests | `unit/renderer/liveObjectEdits.test.ts`, `e2e/liveObjectEdits.e2e.ts`                                             |
+
+`e2e/liveObjectEdits.e2e.ts` samples every frame from pointer up. Before the fix, dragging an image
+showed 3 frames with its box back where it was and 10 with the picture still at the old place and
+missing from the new one; after, none.
 
 ## What is not yet verified
 
@@ -1285,16 +1312,16 @@ Nothing is downloaded at runtime, then or now.
 
 ## Last validation
 
-Run on Windows 11 x64, Node 24.19.0, npm 11.17.0, after the live-edits fix:
+Run on Windows 11 x64, Node 24.19.0, npm 11.17.0, after the moved-objects fix:
 
 | Command                | Result                                                                                   |
 | ---------------------- | ---------------------------------------------------------------------------------------- |
 | `npm run typecheck`    | Pass; four projects, no errors                                                           |
 | `npm run lint`         | Pass; no errors, no warnings                                                             |
 | `npm run format:check` | Pass                                                                                     |
-| `npm test`             | Pass; 926 tests in 82 files                                                              |
+| `npm test`             | Pass; 934 tests in 83 files                                                              |
 | `npm run licenses`     | Pass; one package recorded for review (`buffers` 0.1.1)                                  |
-| `npm run test:e2e`     | Pass; 214 Playwright tests against the built application, in 4.4 minutes                 |
+| `npm run test:e2e`     | Pass; 217 Playwright tests against the built application, in 4.3 minutes                 |
 | `npm run make`         | Not repeated for the follow-up (`npm run package` was, for the e2e run)                  |
 | Packaged launch        | `out/PaperForge-win32-x64/PaperForge.exe` opened its window ("PaperForge") and was ended |
 | Installer smoke        | Not repeated this segment (last passed in Segment 18); a clean-VM run is still to do     |

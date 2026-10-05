@@ -21,6 +21,23 @@ export interface ImageDrag {
   placement: ImagePlacementInput;
 }
 
+/**
+ * An image that has just been moved, resized or deleted, shown as it now is
+ * until its page has been drawn from the revision that holds the change.
+ */
+export interface MovedImage {
+  sessionId: string;
+  page: number;
+  /** Where the page still draws it, which the stand-in covers. */
+  from: ImagePlacementInput;
+  /** Where it now goes, or null when it was deleted. */
+  to: ImagePlacementInput | null;
+  /** Its pixels as the page showed them, upright in its own axes. */
+  picture: HTMLCanvasElement | null;
+  /** The revision holding the change; null while it is being written. */
+  madeIn: number | null;
+}
+
 export interface ImageEditStore {
   /** Keyed by `${sessionId}:${page}`. */
   pages: Map<string, LoadedImagePage>;
@@ -29,6 +46,8 @@ export interface ImageEditStore {
   drag: ImageDrag | null;
   /** An image staged and waiting for the reader to say where it goes. */
   pending: StampImage | null;
+  /** An image just moved or deleted, until its page is drawn with the change. */
+  moved: MovedImage | null;
   busy: boolean;
 
   /** Puts down whatever was being held, when the editor points elsewhere. */
@@ -37,8 +56,17 @@ export interface ImageEditStore {
   select: (page: number, id: string | null) => void;
   setDrag: (drag: ImageDrag | null) => void;
 
-  /** Writes a new placement for an image, keeping whatever crop it has. */
-  place: (page: number, id: string, placement: ImagePlacementInput) => Promise<void>;
+  /**
+   * Writes a new placement for an image, keeping whatever crop it has.
+   * `picture` is the image as the page showed it, drawn at its new place
+   * until the page is drawn again.
+   */
+  place: (
+    page: number,
+    id: string,
+    placement: ImagePlacementInput,
+    picture?: HTMLCanvasElement | null,
+  ) => Promise<void>;
   /** Writes how see-through an image is, keeping everything else. */
   setOpacity: (page: number, id: string, opacity: number) => Promise<void>;
   /** Writes a new crop for an image, keeping where it sits. */
@@ -56,6 +84,10 @@ export interface ImageEditStore {
   /** Picks an image file to add, which the reader then places on a page. */
   choose: () => Promise<void>;
   cancelPending: () => void;
+  /** Forgets the moved image once its page shows it. */
+  settleMoved: () => void;
+  /** Forgets a move that undo has taken back out of the document. */
+  dropUndoneMoved: (sessionId: string, revision: number) => void;
   /** Draws the staged image with its top-left corner at a point on a page. */
   addAt: (page: number, x: number, y: number) => Promise<void>;
 }
@@ -85,6 +117,7 @@ export const useImageEditStore = create<ImageEditStore>((set, get) => ({
   selected: null,
   drag: null,
   pending: null,
+  moved: null,
   busy: false,
 
   reset: () => set({ selected: null, drag: null, pending: null }),
@@ -109,26 +142,40 @@ export const useImageEditStore = create<ImageEditStore>((set, get) => ({
   select: (page, id) => set({ selected: id === null ? null : { page, id }, drag: null }),
   setDrag: (drag) => set({ drag }),
 
-  place: async (page, id, placement) => {
+  place: async (page, id, placement, picture = null) => {
     const sessionId = useDocumentStore.getState().activeId;
     if (sessionId === null) return;
     const image = imageOf(get(), sessionId, page, id);
+    const drag = get().drag;
 
-    await run(sessionId, {
-      label: 'Move image',
-      operations: [
+    try {
+      await run(
+        sessionId,
         {
-          kind: 'placeImage',
-          page,
-          imageId: id,
-          placement,
-          crop: image?.crop ?? null,
-          opacity: image?.opacity ?? 1,
-          token: null,
+          label: 'Move image',
+          operations: [
+            {
+              kind: 'placeImage',
+              page,
+              imageId: id,
+              placement,
+              crop: image?.crop ?? null,
+              opacity: image?.opacity ?? 1,
+              token: null,
+            },
+          ],
         },
-      ],
-    });
-    await reselect(sessionId, page, placement);
+        // Without the picture there is nothing to show where it goes, and
+        // covering where it was would only make it vanish for a moment.
+        image === undefined || picture === null
+          ? null
+          : { page, from: image.placement, to: placement, picture },
+      );
+      await reselect(sessionId, page, placement);
+    } finally {
+      // The box stays where it was dropped until the images are read again.
+      if (get().drag === drag) set({ drag: null });
+    }
   },
 
   setOpacity: async (page, id, opacity) => {
@@ -212,11 +259,16 @@ export const useImageEditStore = create<ImageEditStore>((set, get) => ({
   remove: async (page, id) => {
     const sessionId = useDocumentStore.getState().activeId;
     if (sessionId === null) return;
+    const image = imageOf(get(), sessionId, page, id);
 
-    await run(sessionId, {
-      label: 'Delete image',
-      operations: [{ kind: 'deleteImage', page, imageId: id }],
-    });
+    await run(
+      sessionId,
+      {
+        label: 'Delete image',
+        operations: [{ kind: 'deleteImage', page, imageId: id }],
+      },
+      image === undefined ? null : { page, from: image.placement, to: null, picture: null },
+    );
     set({ selected: null });
   },
 
@@ -254,6 +306,15 @@ export const useImageEditStore = create<ImageEditStore>((set, get) => ({
 
   cancelPending: () => set({ pending: null }),
 
+  settleMoved: () => set({ moved: null }),
+
+  dropUndoneMoved: (sessionId, revision) => {
+    const moved = get().moved;
+    if (moved?.sessionId === sessionId && moved.madeIn !== null && moved.madeIn > revision) {
+      set({ moved: null });
+    }
+  },
+
   addAt: async (page, x, y) => {
     const { pending } = get();
     const sessionId = useDocumentStore.getState().activeId;
@@ -278,17 +339,41 @@ export const useImageEditStore = create<ImageEditStore>((set, get) => ({
   },
 }));
 
-/** Applies a change, keeping the editor from being used while it is in flight. */
+/**
+ * Applies a change, keeping the editor from being used while it is in flight,
+ * and shows a moved image where it now goes until the page is drawn with it.
+ */
 async function run(
   sessionId: string,
   transaction: Parameters<ReturnType<typeof useDocumentStore.getState>['applyEdit']>[1],
+  moved: Omit<MovedImage, 'sessionId' | 'madeIn'> | null = null,
 ): Promise<void> {
-  useImageEditStore.setState({ busy: true, drag: null });
+  const before = revisionOf(sessionId);
+  useImageEditStore.setState({
+    busy: true,
+    moved: moved === null ? null : { ...moved, sessionId, madeIn: null },
+  });
   try {
     await useDocumentStore.getState().applyEdit(sessionId, transaction);
   } finally {
-    useImageEditStore.setState({ busy: false });
+    const after = revisionOf(sessionId);
+    useImageEditStore.setState((state) => ({
+      busy: false,
+      moved:
+        state.moved === null || state.moved.madeIn !== null
+          ? state.moved
+          : // Nothing was written, so there is nothing to wait for.
+            after === undefined || after === before
+            ? null
+            : { ...state.moved, madeIn: after },
+    }));
   }
+}
+
+/** The revision a document is at, as its tab knows it. */
+function revisionOf(sessionId: string): number | undefined {
+  return useDocumentStore.getState().tabs.find((tab) => tab.session.id === sessionId)?.edit
+    .revision;
 }
 
 /**
