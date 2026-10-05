@@ -46,6 +46,13 @@ export class RevisionHistory {
   /** Index of the oldest revision still on disk and reachable by undo. */
   private floorIndex = 0;
   private trimmedHistory = false;
+  /**
+   * The highest revision number ever handed out. Numbers are never reused, not
+   * even for a change made after an undo: everything downstream — the viewer's
+   * URL, the models read from a page — treats a revision number as naming one
+   * set of bytes for good.
+   */
+  private lastRevision = 0;
 
   constructor(
     readonly directory: string,
@@ -111,12 +118,21 @@ export class RevisionHistory {
    */
   async push(label: string, bytes: Uint8Array): Promise<Revision> {
     await this.dropAfterCurrent();
-    const revision = (this.entries[this.entries.length - 1]?.revision ?? 0) + 1;
+    const revision = this.lastRevision + 1;
+    this.lastRevision = revision;
     const entry = await this.write(revision, label, bytes);
     this.entries.push(entry);
     this.currentIndex = this.entries.length - 1;
     await this.enforceLimits();
     return entry;
+  }
+
+  /** A revision that is still on disk, current or not. */
+  find(revision: number): Revision | undefined {
+    const index = this.entries.findIndex((entry) => entry.revision === revision);
+    return index < 0 || (index < this.floorIndex && revision !== 0)
+      ? undefined
+      : this.entries[index];
   }
 
   undo(): Revision | undefined {

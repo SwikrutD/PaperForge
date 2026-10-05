@@ -42,6 +42,12 @@ export function registerDocumentProtocol(
   currentBytesPath: (sessionId: string) => string | undefined = () => undefined,
   /** Bytes of a file staged for a new document, for previewing it. */
   sourceBytes: (sourceId: string) => Uint8Array | undefined = () => undefined,
+  /**
+   * Where one revision's bytes live, or null once it is gone. A viewer keeps
+   * showing a revision while the next loads, and PDF.js fetches ranges of it
+   * lazily, so those reads must not be answered from a newer file.
+   */
+  revisionBytesPath: (sessionId: string, revision: number) => string | null = () => null,
 ): void {
   protocol.handle(DOCUMENT_SCHEME, async (request) => {
     const url = new URL(request.url);
@@ -65,7 +71,12 @@ export function registerDocumentProtocol(
       return deny(404, 'Not found');
     }
 
-    const filePath = currentBytesPath(sessionId) ?? session.file.path;
+    const requested = revisionOf(url);
+    const filePath =
+      requested === null
+        ? (currentBytesPath(sessionId) ?? session.file.path)
+        : revisionBytesPath(sessionId, requested);
+    if (filePath === null) return deny(410, 'That revision is no longer kept');
     let size: number;
     try {
       size = (await fs.stat(filePath)).size;
@@ -98,6 +109,13 @@ export function registerDocumentProtocol(
     headers.set('Content-Range', contentRangeHeader(parsed.range, size));
     return new Response(streamFile(filePath, start, end), { status: 206, headers });
   });
+}
+
+/** The revision a document URL names with `?r=`, or null for the current one. */
+function revisionOf(url: URL): number | null {
+  const value = url.searchParams.get('r');
+  if (value === null || !/^\d{1,9}$/.test(value)) return null;
+  return Number(value);
 }
 
 /** Serves bytes PaperForge is holding, with the range support PDF.js expects. */

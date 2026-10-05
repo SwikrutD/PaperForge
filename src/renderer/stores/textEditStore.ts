@@ -1,8 +1,11 @@
 import { create } from 'zustand';
 import { AppError } from '@shared/errors/appError';
+import type { EditTransaction } from '@shared/schemas/edit';
 import {
   DEFAULT_TEXT_STYLE,
   type PageTextModel,
+  type TextColor,
+  type TextFamily,
   type TextRunModel,
   type TextStyle,
 } from '@shared/schemas/text';
@@ -26,6 +29,27 @@ export interface TextPlacement {
   y: number;
 }
 
+/**
+ * Text that has just been written, drawn over the page until the page's own
+ * picture shows it. Without it the old words would come back for the moment
+ * between Enter and the redrawn page.
+ */
+export interface PendingText {
+  sessionId: string;
+  page: number;
+  /** Where the words start, in PDF user space; `y` is the baseline. */
+  x: number;
+  y: number;
+  /** The text being replaced, which is covered over; null for new text. */
+  covers: { x: number; y: number; width: number; height: number } | null;
+  text: string;
+  fontSize: number;
+  family: TextFamily;
+  color: TextColor;
+  /** The revision the change produced; null while it is still being written. */
+  madeIn: number | null;
+}
+
 export interface TextEditStore {
   /** True while the text editor is on. */
   active: boolean;
@@ -42,10 +66,13 @@ export interface TextEditStore {
   /** What text PaperForge draws itself looks like. */
   style: TextStyle;
   busy: boolean;
+  /** The text last written, until its page has been redrawn. */
+  pendingText: PendingText | null;
 
   setActive: (active: boolean) => void;
   /** Reads a page's text, unless this revision has already been read. */
   load: (sessionId: string, page: number, revision: number) => Promise<void>;
+  /** Selects a run, keeping whatever was being typed into the last one. */
   select: (page: number, id: string | null) => void;
   /** Opens a run for typing, whether it will be rewritten or replaced. */
   beginEdit: (page: number, id: string) => void;
@@ -53,6 +80,10 @@ export interface TextEditStore {
   cancelEdit: () => void;
   /** Writes what was typed, as one undoable change. */
   commitEdit: () => Promise<void>;
+  /** Forgets the pending text once its page shows it. */
+  settlePending: () => void;
+  /** Forgets pending text that undo has taken back out of the document. */
+  dropUndonePending: (sessionId: string, revision: number) => void;
 
   setStyle: (patch: Partial<TextStyle>) => void;
   setPlacing: (placing: boolean) => void;
@@ -90,6 +121,7 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
   placement: null,
   style: DEFAULT_TEXT_STYLE,
   busy: false,
+  pendingText: null,
 
   setActive: (active) =>
     set({ active, selected: null, draft: null, placing: false, placement: null }),
@@ -111,12 +143,17 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
     }
   },
 
-  select: (page, id) =>
+  select: (page, id) => {
+    // Pointing somewhere else is how a reader moves on from what they typed,
+    // so it is written rather than thrown away. The commit reads everything it
+    // needs before the selection below changes.
+    if (get().draft !== null) void get().commitEdit();
     set({
       selected: id === null ? null : { page, id },
       draft: null,
       placement: null,
-    }),
+    });
+  },
 
   beginEdit: (page, id) => {
     const sessionId = useDocumentStore.getState().activeId;
@@ -132,17 +169,31 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
   cancelEdit: () => set({ draft: null, placement: null }),
 
   commitEdit: async () => {
-    const { selected, draft, placement, style } = get();
+    const { selected, draft, placement, style, busy } = get();
     const sessionId = useDocumentStore.getState().activeId;
-    if (draft === null || sessionId === null) return;
+    // One change at a time: Enter followed by the field losing focus, or a
+    // click elsewhere while a change is still being written, must not send it
+    // twice — the second would point at runs the first has just rewritten.
+    if (draft === null || sessionId === null || busy) return;
 
     // New text, put where the reader pointed.
     if (placement !== null) {
       set({ draft: null, placement: null });
       if (draft.trim() === '') return;
 
-      await run(() =>
-        useDocumentStore.getState().applyEdit(sessionId, {
+      await write(
+        sessionId,
+        {
+          page: placement.page,
+          x: placement.x,
+          y: placement.y,
+          covers: null,
+          text: draft,
+          fontSize: style.size,
+          family: style.family,
+          color: style.color,
+        },
+        {
           label: 'Add text',
           operations: [
             {
@@ -154,7 +205,7 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
               style,
             },
           ],
-        }),
+        },
       );
       return;
     }
@@ -166,6 +217,29 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
       set({ draft: null });
       return;
     }
+
+    /**
+     * What the page is about to say, drawn over the old words until it does.
+     * Invisible text — a recognised scan's text layer — has nothing to show.
+     */
+    const preview = (restyled: boolean): Omit<PendingText, 'sessionId' | 'madeIn'> | null =>
+      existing.invisible
+        ? null
+        : {
+            page: selected.page,
+            x: existing.baselineX,
+            y: existing.baselineY,
+            covers: {
+              x: existing.x,
+              y: existing.y,
+              width: existing.width,
+              height: existing.height,
+            },
+            text: draft,
+            fontSize: restyled ? style.size : existing.fontSize,
+            family: restyled ? style.family : familyOf(existing.baseFont),
+            color: restyled ? style.color : existing.color,
+          };
 
     const replaceWith = async (): Promise<void> => {
       // PaperForge draws replacement text with the fonts every reader has, and
@@ -182,23 +256,21 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
         return;
       }
 
-      await run(() =>
-        useDocumentStore.getState().applyEdit(sessionId, {
-          label: draft === '' ? 'Delete text' : 'Replace text',
-          operations: [
-            {
-              kind: 'replaceText',
-              page: selected.page,
-              runId: selected.id,
-              text: draft,
-              // Text PaperForge drew keeps whatever the reader has chosen;
-              // text from the document keeps its own look.
-              style: existing.replaced ? style : null,
-            },
-          ],
-        }),
-      );
       set({ draft: null, selected: null });
+      await write(sessionId, preview(existing.replaced), {
+        label: draft === '' ? 'Delete text' : 'Replace text',
+        operations: [
+          {
+            kind: 'replaceText',
+            page: selected.page,
+            runId: selected.id,
+            text: draft,
+            // Text PaperForge drew keeps whatever the reader has chosen;
+            // text from the document keeps its own look.
+            style: existing.replaced ? style : null,
+          },
+        ],
+      });
     };
 
     // A run PaperForge cannot rewrite in place is replaced outright.
@@ -208,6 +280,7 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
     }
 
     let verdict: { ok: boolean; missing: string | null };
+    set({ busy: true });
     try {
       verdict = await invoke('text:canWrite', {
         sessionId,
@@ -218,17 +291,18 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
     } catch (error) {
       report(error);
       return;
+    } finally {
+      set({ busy: false });
     }
 
     if (verdict.ok) {
-      await run(() =>
-        useDocumentStore.getState().applyEdit(sessionId, {
-          label: draft === '' ? 'Delete text' : 'Edit text',
-          operations: [{ kind: 'editText', page: selected.page, runId: selected.id, text: draft }],
-        }),
-      );
-      // The page has been rewritten, so what was selected no longer exists.
+      // The page is about to be rewritten, so what was selected will no longer
+      // exist; the words typed stand in for it until the page is redrawn.
       set({ draft: null, selected: null });
+      await write(sessionId, preview(false), {
+        label: draft === '' ? 'Delete text' : 'Edit text',
+        operations: [{ kind: 'editText', page: selected.page, runId: selected.id, text: draft }],
+      });
       return;
     }
 
@@ -245,6 +319,15 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
     });
   },
 
+  settlePending: () => set({ pendingText: null }),
+
+  dropUndonePending: (sessionId, revision) => {
+    const pending = get().pendingText;
+    if (pending?.sessionId === sessionId && pending.madeIn !== null && pending.madeIn > revision) {
+      set({ pendingText: null });
+    }
+  },
+
   setStyle: (patch) => set((state) => ({ style: { ...state.style, ...patch } })),
   setPlacing: (placing) => set({ placing, selected: null, draft: null, placement: null }),
   placeText: (placement) => set({ placement, draft: '', placing: false, selected: null }),
@@ -258,14 +341,50 @@ function firstUndrawable(text: string): string {
   return '?';
 }
 
-/** Runs a change, keeping the editor from being used while it is in flight. */
-async function run(work: () => Promise<void>): Promise<void> {
-  useTextEditStore.setState({ busy: true });
+/** The revision a document is at, as its tab knows it. */
+function revisionOf(sessionId: string): number | undefined {
+  return useDocumentStore.getState().tabs.find((tab) => tab.session.id === sessionId)?.edit
+    .revision;
+}
+
+/**
+ * Writes a change, keeping the editor from being used while it is in flight,
+ * and shows what was written over the page until the page is redrawn with it.
+ */
+async function write(
+  sessionId: string,
+  preview: Omit<PendingText, 'sessionId' | 'madeIn'> | null,
+  transaction: EditTransaction,
+): Promise<void> {
+  const before = revisionOf(sessionId);
+  useTextEditStore.setState({
+    busy: true,
+    pendingText: preview === null ? null : { ...preview, sessionId, madeIn: null },
+  });
   try {
-    await work();
+    await useDocumentStore.getState().applyEdit(sessionId, transaction);
   } finally {
-    useTextEditStore.setState({ busy: false });
+    const after = revisionOf(sessionId);
+    useTextEditStore.setState((state) => ({
+      busy: false,
+      pendingText:
+        state.pendingText === null || state.pendingText.madeIn !== null
+          ? state.pendingText
+          : // Nothing was written, so there is nothing to wait for.
+            after === undefined || after === before
+            ? null
+            : { ...state.pendingText, madeIn: after },
+    }));
   }
+}
+
+/** The standard family closest to a font the document names. */
+function familyOf(baseFont: string): TextFamily {
+  const name = baseFont.toLowerCase();
+  if (name.includes('courier') || name.includes('mono')) return 'courier';
+  if (name.includes('sans')) return 'helvetica';
+  if (name.includes('times') || name.includes('serif') || name.includes('roman')) return 'times';
+  return 'helvetica';
 }
 
 function runOf(

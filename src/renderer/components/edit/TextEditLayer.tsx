@@ -3,7 +3,8 @@ import type { PdfPageGeometry } from '@pdf/render/types';
 import type { TextRunModel } from '@shared/schemas/text';
 import { cx } from '../../utils/classNames';
 import { cssPointToPdf, pdfRectToCss } from '../viewer/pageGeometry';
-import type { TextPlacement } from '../../stores/textEditStore';
+import { awaitingPaint, usePaintedRevision } from '../viewer/paintedRevision';
+import type { PendingText, TextPlacement } from '../../stores/textEditStore';
 import styles from './TextEditLayer.module.css';
 
 interface TextEditLayerProps {
@@ -18,6 +19,10 @@ interface TextEditLayerProps {
   placement: TextPlacement | null;
   /** True while the reader is choosing where new text goes. */
   placing: boolean;
+  /** Text just written on this page, until the page is drawn with it. */
+  pending?: PendingText | null;
+  /** Called once the page's picture shows the pending text itself. */
+  onSettle?: () => void;
   onSelect: (id: string | null) => void;
   onBeginEdit: (id: string) => void;
   onPlace: (x: number, y: number) => void;
@@ -46,6 +51,8 @@ export function TextEditLayer({
   draft,
   placement,
   placing,
+  pending = null,
+  onSettle,
   onSelect,
   onBeginEdit,
   onPlace,
@@ -55,6 +62,13 @@ export function TextEditLayer({
 }: TextEditLayerProps): ReactElement {
   const inputRef = useRef<HTMLInputElement>(null);
   const open = draft !== null;
+  const painted = usePaintedRevision();
+  const showPending = pending !== null && awaitingPaint(pending.madeIn, painted);
+
+  // Once the picture has the new words, the picture is what shows them.
+  useEffect(() => {
+    if (pending !== null && !awaitingPaint(pending.madeIn, painted)) onSettle?.();
+  }, [pending, painted, onSettle]);
 
   // Typing starts as soon as a run is opened, with everything selected — once,
   // when it opens, not again on every keystroke.
@@ -183,6 +197,10 @@ export function TextEditLayer({
         );
       })}
 
+      {showPending && (
+        <PendingTextMark pending={pending} geometry={geometry} scale={scale} rotation={rotation} />
+      )}
+
       {placement !== null && placementBox !== null && draft !== null && (
         <div
           className={cx(styles.run, styles.selected, styles.newText)}
@@ -198,5 +216,69 @@ export function TextEditLayer({
         </div>
       )}
     </div>
+  );
+}
+
+const FAMILIES = {
+  helvetica: 'Helvetica, Arial, sans-serif',
+  times: '"Times New Roman", Times, serif',
+  courier: '"Courier New", Courier, monospace',
+} as const;
+
+/** The words just written, over the words they replace, until the page has them. */
+function PendingTextMark({
+  pending,
+  geometry,
+  scale,
+  rotation,
+}: {
+  pending: PendingText;
+  geometry: PdfPageGeometry;
+  scale: number;
+  rotation: number;
+}): ReactElement {
+  const cover =
+    pending.covers === null ? null : pdfRectToCss(pending.covers, geometry, scale, rotation);
+  const size = pending.fontSize * scale;
+  // The baseline sits about four fifths of the way down a line of type.
+  const origin = pdfRectToCss(
+    { x: pending.x, y: pending.y, width: 0.01, height: 0.01 },
+    geometry,
+    scale,
+    rotation,
+  );
+  const channel = (value: number): number => Math.round(value * 255);
+  const { r, g, b } = pending.color;
+
+  return (
+    <>
+      {cover !== null && (
+        <span
+          className={styles.pendingCover}
+          style={{
+            left: `${String(cover.left - 1)}px`,
+            top: `${String(cover.top - 1)}px`,
+            width: `${String(cover.width + 2)}px`,
+            height: `${String(cover.height + 2)}px`,
+          }}
+          aria-hidden="true"
+        />
+      )}
+      {origin !== null && (
+        <span
+          className={styles.pendingText}
+          style={{
+            left: `${String(origin.left)}px`,
+            top: `${String(origin.top - size * 0.8)}px`,
+            fontSize: `${String(size)}px`,
+            fontFamily: FAMILIES[pending.family],
+            color: `rgb(${String(channel(r))}, ${String(channel(g))}, ${String(channel(b))})`,
+          }}
+          data-pending-text
+        >
+          {pending.text}
+        </span>
+      )}
+    </>
   );
 }

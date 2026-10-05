@@ -30,6 +30,21 @@ export interface CommentFilter {
 
 export const DEFAULT_FILTER: CommentFilter = { kinds: [], authors: [], status: 'all' };
 
+/**
+ * A mark the reader has just made, drawn over the page until the page's own
+ * picture includes it. Without it a new highlight would vanish the moment the
+ * pointer lifted and reappear once the document had been rewritten and drawn.
+ */
+export interface PendingAnnotation {
+  id: string;
+  sessionId: string;
+  input: AnnotationInput;
+  /** The revision the change produced; null while it is still being written. */
+  madeIn: number | null;
+}
+
+let pendingCounter = 0;
+
 interface AnnotationStore {
   tool: AnnotationTool;
   /** Style new annotations are created with, and what the properties panel edits. */
@@ -45,6 +60,8 @@ interface AnnotationStore {
   selectedId: string | null;
   /** The free text box being typed into, before it exists in the document. */
   draft: AnnotationInput | null;
+  /** Marks being written, shown over their pages until those are redrawn. */
+  pending: PendingAnnotation[];
   sort: CommentSort;
   filter: CommentFilter;
 
@@ -64,12 +81,24 @@ interface AnnotationStore {
   add: (inputs: readonly AnnotationInput[]) => Promise<void>;
   update: (id: string, patch: AnnotationPatch, label?: string) => Promise<void>;
   remove: (ids: readonly string[]) => Promise<void>;
+  /** Forgets pending marks once their page shows them. */
+  settlePending: (ids: readonly string[]) => void;
+  /**
+   * Forgets pending marks a document no longer has: undo stepped back past the
+   * revision that made them.
+   */
+  dropUndonePending: (sessionId: string, revision: number) => void;
   /** Asks the main process for an image to stamp; null when nothing was chosen. */
   pickStampImage: () => Promise<StampImage | null>;
 }
 
 function activeSessionId(): string | null {
   return useDocumentStore.getState().activeId;
+}
+
+function revisionOf(sessionId: string): number | undefined {
+  return useDocumentStore.getState().tabs.find((tab) => tab.session.id === sessionId)?.edit
+    .revision;
 }
 
 function reportFailure(error: unknown): void {
@@ -100,6 +129,7 @@ export const useAnnotationStore = create<AnnotationStore>((set, get) => ({
   loading: false,
   selectedId: null,
   draft: null,
+  pending: [],
   sort: 'page',
   filter: DEFAULT_FILTER,
 
@@ -149,21 +179,32 @@ export const useAnnotationStore = create<AnnotationStore>((set, get) => ({
         ? `Add ${describeInput(inputs[0])}`
         : `Add ${String(inputs.length)} comments`;
 
-    await useDocumentStore.getState().applyEdit(sessionId, {
-      label,
-      operations: [{ kind: 'addAnnotations', annotations: [...inputs] }],
+    await showWhileWriting(sessionId, inputs, async () => {
+      set({ draft: null });
+      await useDocumentStore.getState().applyEdit(sessionId, {
+        label,
+        operations: [{ kind: 'addAnnotations', annotations: [...inputs] }],
+      });
     });
-    set({ draft: null });
   },
 
   update: async (id, patch, label) => {
     const sessionId = activeSessionId();
     if (sessionId === null) return;
 
-    await useDocumentStore.getState().applyEdit(sessionId, {
-      label: label ?? 'Change comment',
-      operations: [{ kind: 'updateAnnotations', updates: [{ id, patch }] }],
-    });
+    // A moved mark is shown where it was put, not back where it came from.
+    const annotation = get().annotations.find((candidate) => candidate.id === id);
+    const moved =
+      annotation !== undefined && patch.geometry !== undefined
+        ? [{ ...annotation, geometry: patch.geometry }]
+        : [];
+
+    await showWhileWriting(sessionId, moved, () =>
+      useDocumentStore.getState().applyEdit(sessionId, {
+        label: label ?? 'Change comment',
+        operations: [{ kind: 'updateAnnotations', updates: [{ id, patch }] }],
+      }),
+    );
   },
 
   remove: async (ids) => {
@@ -179,6 +220,18 @@ export const useAnnotationStore = create<AnnotationStore>((set, get) => ({
     }));
   },
 
+  settlePending: (ids) => {
+    if (ids.length === 0) return;
+    set((state) => ({ pending: state.pending.filter((entry) => !ids.includes(entry.id)) }));
+  },
+
+  dropUndonePending: (sessionId, revision) => {
+    const undone = get().pending.filter(
+      (entry) => entry.sessionId === sessionId && entry.madeIn !== null && entry.madeIn > revision,
+    );
+    if (undone.length > 0) get().settlePending(undone.map((entry) => entry.id));
+  },
+
   pickStampImage: async () => {
     const sessionId = activeSessionId();
     if (sessionId === null) return null;
@@ -190,6 +243,53 @@ export const useAnnotationStore = create<AnnotationStore>((set, get) => ({
     }
   },
 }));
+
+/**
+ * Shows marks over the page while `write` puts them into the document. They
+ * stay until their page has been redrawn from the revision that holds them, or
+ * go at once if nothing was written.
+ */
+async function showWhileWriting(
+  sessionId: string,
+  marks: readonly AnnotationInput[],
+  write: () => Promise<void>,
+): Promise<void> {
+  const before = revisionOf(sessionId);
+  const entries: PendingAnnotation[] = marks.map((input) => ({
+    id: `pending-${String((pendingCounter += 1))}`,
+    sessionId,
+    input,
+    madeIn: null,
+  }));
+  const ids = new Set(entries.map((entry) => entry.id));
+  if (entries.length > 0) {
+    useAnnotationStore.setState((state) => ({ pending: [...state.pending, ...entries] }));
+  }
+
+  try {
+    await write();
+  } finally {
+    const after = revisionOf(sessionId);
+    useAnnotationStore.setState((state) => ({
+      pending:
+        // The edit failed, or the document closed: there is nothing to wait for.
+        after === undefined || after === before
+          ? state.pending.filter((entry) => !ids.has(entry.id))
+          : state.pending.map((entry) => (ids.has(entry.id) ? { ...entry, madeIn: after } : entry)),
+    }));
+  }
+}
+
+/** Pending marks of one page of one document. */
+export function pendingOnPage(
+  pending: readonly PendingAnnotation[],
+  sessionId: string,
+  pageNumber: number,
+): PendingAnnotation[] {
+  return pending.filter(
+    (entry) => entry.sessionId === sessionId && entry.input.pageNumber === pageNumber,
+  );
+}
 
 /** The annotation the reader has selected, if it is still there. */
 export function selectedAnnotation(state: {

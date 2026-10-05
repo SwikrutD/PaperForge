@@ -55,13 +55,16 @@ pointer / text selection
   → transaction ──────────IPC───────────────▶ validate
                                               engine.apply → new revision
                           ◀── DocumentEditState
-viewer reloads the revision, PDF.js paints the appearances
+pending mark drawn over the page ──▶ viewer loads the revision, PDF.js paints the appearances
 annotations:list ────────IPC───────────────▶ engine.readAnnotations
 ```
 
-The renderer never draws the finished mark: it draws the shape being dragged out, the selection
-outline and the hit areas, and the page itself comes from the engine. Two drawing implementations
-would be two things to keep in step.
+The finished mark is drawn by the engine, from the file: the renderer draws the shape being
+dragged out, the selection outline and the hit areas. For the fraction of a second between the end
+of a gesture and the page being drawn again, the new mark is shown over the page in its own colours
+(`PendingAnnotationMark`), so it never disappears and comes back. That stand-in is close to the
+finished mark rather than a second rendering of it, and it goes as soon as the page shows the real
+one.
 
 Text markup uses the browser's own selection rectangles from the text layer, so a highlight lands
 exactly on the glyphs rather than on a guess at where the words are.

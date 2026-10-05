@@ -63,3 +63,20 @@
 .newText {
   border-style: dashed;
 }
+
+/*
+ * Text that has just been written, shown until the page is drawn again with
+ * it. The cover hides the old words; it is the page's colour, not a highlight.
+ */
+.pendingCover {
+  position: absolute;
+  background-color: var(--pf-color-page);
+  pointer-events: none;
+}
+
+.pendingText {
+  position: absolute;
+  line-height: 1;
+  white-space: pre;
+  pointer-events: none;
+}

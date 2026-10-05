@@ -16,6 +16,7 @@ export interface PdfDocumentContextValue extends PdfDocumentState {
 const EMPTY: PdfDocumentState = {
   status: 'loading',
   document: null,
+  revision: 0,
   error: null,
   passwordRetry: false,
   submitPassword: () => undefined,

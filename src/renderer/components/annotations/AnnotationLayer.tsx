@@ -1,4 +1,10 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactElement } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactElement,
+} from 'react';
 import type { PdfPageGeometry } from '@pdf/render/types';
 import type {
   Annotation,
@@ -16,7 +22,9 @@ import {
   DRAG_THRESHOLD,
 } from './annotationDrawing';
 import { AnnotationPreview } from './AnnotationPreview';
-import type { AnnotationTool } from '../../stores/annotationStore';
+import { PendingAnnotationMark } from './PendingAnnotationMark';
+import type { AnnotationTool, PendingAnnotation } from '../../stores/annotationStore';
+import { awaitingPaint, usePaintedRevision } from '../viewer/paintedRevision';
 import styles from './AnnotationLayer.module.css';
 
 interface AnnotationLayerProps {
@@ -34,7 +42,13 @@ interface AnnotationLayerProps {
   onErase: (annotation: Annotation) => void;
   /** A draft being typed into, drawn while it has no annotation yet. */
   draft: AnnotationInput | null;
+  /** Marks of this page still being written into the document. */
+  pending?: readonly PendingAnnotation[];
+  /** Called with the pending marks the page's picture now shows itself. */
+  onSettle?: (ids: string[]) => void;
 }
+
+const NO_PENDING: readonly PendingAnnotation[] = Object.freeze([]);
 
 interface Drag {
   kind: 'draw' | 'move';
@@ -52,7 +66,9 @@ interface Drag {
  * What is drawn on the page comes from the document itself — PDF.js paints the
  * appearance streams onto the canvas — so this layer draws only what does not
  * exist yet: the shape being dragged out, the selection outline, and the
- * hit areas that make an annotation clickable.
+ * hit areas that make an annotation clickable — and, until the page has been
+ * drawn again, the marks that have just been made, so nothing disappears
+ * between the gesture and the new picture.
  */
 export function AnnotationLayer({
   geometry,
@@ -67,9 +83,20 @@ export function AnnotationLayer({
   onMove,
   onErase,
   draft,
+  pending = NO_PENDING,
+  onSettle,
 }: AnnotationLayerProps): ReactElement | null {
   const layerRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
+  const painted = usePaintedRevision();
+
+  // Once the picture includes a mark, the picture is what shows it.
+  useEffect(() => {
+    const settled = pending
+      .filter((entry) => !awaitingPaint(entry.madeIn, painted))
+      .map((entry) => entry.id);
+    if (settled.length > 0) onSettle?.(settled);
+  }, [pending, painted, onSettle]);
 
   const toPdf = (event: ReactPointerEvent): AnnotationPoint => {
     const bounds = layerRef.current?.getBoundingClientRect();
@@ -160,77 +187,90 @@ export function AnnotationLayer({
       : null;
 
   return (
-    <div
-      className={styles.layer}
-      ref={layerRef}
-      data-annotation-layer={geometry.pageNumber}
-      // Drawing needs the pointer on the layer; erasing and selecting need it
-      // on the annotations themselves.
-      data-mode={drawing ? 'draw' : erasing ? 'erase' : 'select'}
-      onPointerDown={startDraw}
-      onPointerMove={continueDraw}
-      onPointerUp={finishDraw}
-      onPointerCancel={() => setDrag(null)}
-    >
-      {annotations.map((annotation) => {
-        const box = pdfRectToCss(
-          boundsOf(annotation.geometry, annotation.style.borderWidth),
-          geometry,
-          scale,
-          rotation,
-        );
-        if (box === null) return null;
-        const selected = annotation.id === selectedId;
-
-        return (
-          <button
-            key={annotation.id}
-            type="button"
-            className={`${styles.hit} ${selected ? styles.selected : ''}`}
-            style={cssBoxStyle(box)}
-            data-annotation={annotation.id}
-            aria-label={describe(annotation)}
-            aria-pressed={selected}
-            tabIndex={tool === 'select' ? 0 : -1}
-            onPointerDown={(event) => {
-              if (erasing) {
-                event.stopPropagation();
-                onErase(annotation);
-                return;
-              }
-              startMove(event, annotation);
-            }}
+    <>
+      {pending
+        .filter((entry) => awaitingPaint(entry.madeIn, painted))
+        .map((entry) => (
+          <PendingAnnotationMark
+            key={entry.id}
+            input={entry.input}
+            pageGeometry={geometry}
+            scale={scale}
+            rotation={rotation}
           />
-        );
-      })}
+        ))}
+      <div
+        className={styles.layer}
+        ref={layerRef}
+        data-annotation-layer={geometry.pageNumber}
+        // Drawing needs the pointer on the layer; erasing and selecting need it
+        // on the annotations themselves.
+        data-mode={drawing ? 'draw' : erasing ? 'erase' : 'select'}
+        onPointerDown={startDraw}
+        onPointerMove={continueDraw}
+        onPointerUp={finishDraw}
+        onPointerCancel={() => setDrag(null)}
+      >
+        {annotations.map((annotation) => {
+          const box = pdfRectToCss(
+            boundsOf(annotation.geometry, annotation.style.borderWidth),
+            geometry,
+            scale,
+            rotation,
+          );
+          if (box === null) return null;
+          const selected = annotation.id === selectedId;
 
-      {previewGeometry !== null && (
-        <AnnotationPreview
-          geometry={previewGeometry}
-          pageGeometry={geometry}
-          scale={scale}
-          rotation={rotation}
-        />
-      )}
+          return (
+            <button
+              key={annotation.id}
+              type="button"
+              className={`${styles.hit} ${selected ? styles.selected : ''}`}
+              style={cssBoxStyle(box)}
+              data-annotation={annotation.id}
+              aria-label={describe(annotation)}
+              aria-pressed={selected}
+              tabIndex={tool === 'select' ? 0 : -1}
+              onPointerDown={(event) => {
+                if (erasing) {
+                  event.stopPropagation();
+                  onErase(annotation);
+                  return;
+                }
+                startMove(event, annotation);
+              }}
+            />
+          );
+        })}
 
-      {movingGeometry !== null && (
-        <AnnotationPreview
-          geometry={movingGeometry}
-          pageGeometry={geometry}
-          scale={scale}
-          rotation={rotation}
-        />
-      )}
+        {previewGeometry !== null && (
+          <AnnotationPreview
+            geometry={previewGeometry}
+            pageGeometry={geometry}
+            scale={scale}
+            rotation={rotation}
+          />
+        )}
 
-      {draft !== null && draft.pageNumber === geometry.pageNumber && (
-        <AnnotationPreview
-          geometry={draft.geometry}
-          pageGeometry={geometry}
-          scale={scale}
-          rotation={rotation}
-        />
-      )}
-    </div>
+        {movingGeometry !== null && (
+          <AnnotationPreview
+            geometry={movingGeometry}
+            pageGeometry={geometry}
+            scale={scale}
+            rotation={rotation}
+          />
+        )}
+
+        {draft !== null && draft.pageNumber === geometry.pageNumber && (
+          <AnnotationPreview
+            geometry={draft.geometry}
+            pageGeometry={geometry}
+            scale={scale}
+            rotation={rotation}
+          />
+        )}
+      </div>
+    </>
   );
 }
 

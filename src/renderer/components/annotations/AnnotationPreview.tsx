@@ -49,6 +49,7 @@ export function AnnotationPreview({
         height: `${Math.max(1, box.height)}px`,
       }}
       viewBox={`0 0 ${Math.max(1, box.width)} ${Math.max(1, box.height)}`}
+      data-annotation-preview
       aria-hidden="true"
     >
       {shapeOf(geometry, toLocal, box)}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import type { LoadedPdfDocument, PdfLink } from '@pdf/render/types';
 import { cssBoxStyle, pdfRectToCss, rectFromCorners, type PdfRect } from './pageGeometry';
+import { PaintedRevisionContext } from './paintedRevision';
 import type { PageBox } from './viewerLayout';
 import styles from './PdfPageView.module.css';
 
@@ -25,6 +26,8 @@ interface PdfPageViewProps {
   scale: number;
   rotation: number;
   label: string | null;
+  /** The document revision `document` was loaded from. */
+  revision?: number;
   /** Bumped when layer visibility changes, which requires a repaint. */
   layersVersion: number;
   /** Leaves the form fields out of the canvas while they are being filled in. */
@@ -41,6 +44,13 @@ interface PdfPageViewProps {
  * One page: the rendered canvas, a selectable text layer on top of it, and
  * link hotspots. Rendering is cancelled when the page scrolls out of view or
  * the zoom changes, so a fast scroll never queues work nobody will see.
+ *
+ * The page is drawn off screen and copied onto the visible canvas in one step,
+ * so the picture already showing stays until its replacement is complete: a
+ * zoom, a new revision or a layer change never shows an empty page. Overlays
+ * learn which revision is actually on screen through `PaintedRevisionContext`,
+ * so a mark that is still being written can stay visible until the picture
+ * includes it.
  */
 export function PdfPageView({
   document: pdf,
@@ -48,6 +58,7 @@ export function PdfPageView({
   scale,
   rotation,
   label,
+  revision = 0,
   layersVersion,
   hideFormFields = false,
   highlights,
@@ -60,6 +71,8 @@ export function PdfPageView({
   const [links, setLinks] = useState<PdfLink[]>([]);
   const [failed, setFailed] = useState(false);
   const [rendered, setRendered] = useState(false);
+  /** The revision whose picture the canvas holds, once one has been drawn. */
+  const [painted, setPainted] = useState<number | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -70,18 +83,27 @@ export function PdfPageView({
     setFailed(false);
     setRendered(false);
     const render = async (): Promise<void> => {
-      await pdf.renderPage({
-        pageNumber: box.pageNumber,
-        scale,
-        rotation,
-        canvas,
-        devicePixelRatio: window.devicePixelRatio || 1,
-        maxCanvasPixels: MAX_PAGE_CANVAS_PIXELS,
-        hideFormFields,
-        signal: controller.signal,
-      });
-      if (controller.signal.aborted) return;
+      const staging = window.document.createElement('canvas');
+      try {
+        await pdf.renderPage({
+          pageNumber: box.pageNumber,
+          scale,
+          rotation,
+          canvas: staging,
+          devicePixelRatio: window.devicePixelRatio || 1,
+          maxCanvasPixels: MAX_PAGE_CANVAS_PIXELS,
+          hideFormFields,
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
+        presentCanvas(canvas, staging);
+      } finally {
+        // Give the staging pixels back now rather than whenever it is collected.
+        staging.width = 0;
+        staging.height = 0;
+      }
       setRendered(true);
+      setPainted(revision);
       await pdf.renderTextLayer({
         pageNumber: box.pageNumber,
         scale,
@@ -96,7 +118,7 @@ export function PdfPageView({
     });
 
     return () => controller.abort();
-  }, [pdf, box.pageNumber, scale, rotation, layersVersion, hideFormFields]);
+  }, [pdf, revision, box.pageNumber, scale, rotation, layersVersion, hideFormFields]);
 
   useEffect(() => {
     let cancelled = false;
@@ -124,6 +146,8 @@ export function PdfPageView({
       }}
       data-page-number={box.pageNumber}
       data-rendered={rendered ? 'true' : undefined}
+      data-revision={revision}
+      data-painted-revision={painted ?? undefined}
       aria-label={`Page ${label ?? String(box.pageNumber)}`}
     >
       <canvas className={styles.canvas} ref={canvasRef} />
@@ -160,7 +184,7 @@ export function PdfPageView({
         );
       })}
 
-      {overlay}
+      <PaintedRevisionContext.Provider value={painted}>{overlay}</PaintedRevisionContext.Provider>
 
       {failed && (
         <div className={styles.failed} role="status">
@@ -174,6 +198,20 @@ export function PdfPageView({
       )}
     </div>
   );
+}
+
+/**
+ * Puts a finished picture on the visible canvas. Resizing a canvas clears it,
+ * but the resize and the copy happen in the same task, and the browser only
+ * paints between tasks — so no frame ever shows the cleared canvas.
+ */
+function presentCanvas(target: HTMLCanvasElement, source: HTMLCanvasElement): void {
+  if (target.width !== source.width) target.width = source.width;
+  if (target.height !== source.height) target.height = source.height;
+  const context = target.getContext('2d');
+  if (context === null) return;
+  context.clearRect(0, 0, target.width, target.height);
+  context.drawImage(source, 0, 0);
 }
 
 function linkTitle(link: PdfLink): string {

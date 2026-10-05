@@ -224,6 +224,8 @@ test('new text is added where the reader points', async () => {
   await expect(page.locator('[data-text-layer="placing"]').first()).toBeVisible();
 
   const pageView = page.locator('[data-page-number="2"]');
+  // An edit keeps the reader where they were, so bring the page fully into view.
+  await pageView.evaluate((element) => element.scrollIntoView({ block: 'start' }));
   const box = await pageView.boundingBox();
   if (box === null) throw new Error('the page is not on screen');
   await page.mouse.click(box.x + 120, box.y + 320);

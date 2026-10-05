@@ -22,6 +22,7 @@ import { useAnnotationTools } from '../annotations/useAnnotationTools';
 import {
   annotationsForSession,
   annotationsOnPage,
+  pendingOnPage,
   useAnnotationStore,
 } from '../../stores/annotationStore';
 import { TextEditLayer } from '../edit/TextEditLayer';
@@ -107,6 +108,8 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const selectedAnnotationId = useAnnotationStore((store) => store.selectedId);
   const selectAnnotation = useAnnotationStore((store) => store.select);
   const draft = useAnnotationStore((store) => store.draft);
+  const pendingMarks = useAnnotationStore((store) => store.pending);
+  const settlePending = useAnnotationStore((store) => store.settlePending);
   const commenting = useUiStore((store) => store.commenting);
   const toolActive = useAnnotationStore((store) => store.tool !== 'select');
   const showToast = useUiStore((store) => store.showToast);
@@ -116,6 +119,8 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const textDraft = useTextEditStore((store) => store.draft);
   const textPlacement = useTextEditStore((store) => store.placement);
   const textPlacing = useTextEditStore((store) => store.placing);
+  const textPending = useTextEditStore((store) => store.pendingText);
+  const settleTextPending = useTextEditStore((store) => store.settlePending);
   const editTarget = useEditTargetStore((store) => store.target);
   const imagePages = useImageEditStore((store) => store.pages);
   const imageSelected = useImageEditStore((store) => store.selected);
@@ -419,6 +424,12 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
     updateView(sessionId, { pendingPage: null });
   }, [view.pendingPage, state.status, goToPage, sessionId, updateView]);
 
+  // A mark made in a revision that undo has stepped back past is gone.
+  useEffect(() => {
+    useAnnotationStore.getState().dropUndonePending(sessionId, tab.edit.revision);
+    useTextEditStore.getState().dropUndonePending(sessionId, tab.edit.revision);
+  }, [sessionId, tab.edit.revision]);
+
   // The editor needs the text of the pages on screen, from this revision.
   useEffect(() => {
     if (!editing || state.status !== 'ready') return;
@@ -645,6 +656,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                   scale={scale}
                   rotation={view.rotation}
                   label={pages[pageNumber - 1]?.label ?? null}
+                  revision={state.revision}
                   layersVersion={state.layersVersion}
                   hideFormFields={filling}
                   highlights={highlights.get(pageNumber)}
@@ -736,6 +748,8 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                           selectedId={selectedAnnotationId}
                           stampSize={tools.stampImage ?? undefined}
                           draft={draft}
+                          pending={pendingOnPage(pendingMarks, sessionId, pageNumber)}
+                          onSettle={settlePending}
                           onSelect={selectAnnotation}
                           onCreate={(geometry, placedOn) => {
                             tools.create(geometry, placedOn);
@@ -823,6 +837,12 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                         }
                         placement={textPlacement?.page === pageNumber ? textPlacement : null}
                         placing={textPlacing}
+                        pending={
+                          textPending?.sessionId === sessionId && textPending.page === pageNumber
+                            ? textPending
+                            : null
+                        }
+                        onSettle={settleTextPending}
                         onPlace={(x, y) =>
                           useTextEditStore.getState().placeText({ page: pageNumber, x, y })
                         }
@@ -843,6 +863,8 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                           selectedId={selectedAnnotationId}
                           stampSize={tools.stampImage ?? undefined}
                           draft={draft}
+                          pending={pendingOnPage(pendingMarks, sessionId, pageNumber)}
+                          onSettle={settlePending}
                           onSelect={selectAnnotation}
                           onCreate={tools.create}
                           onMove={tools.move}

@@ -8,7 +8,7 @@
   `docs/RELEASE_CHECKLIST.md`.
 - Build status: `npm run package` and `npm run make` succeed (`PaperForge-Setup.exe` and a zip);
   the end-to-end suite drives the built application
-- Test status: 915 unit tests (81 files) and 208 Playwright end-to-end tests passing;
+- Test status: 926 unit tests (82 files) and 214 Playwright end-to-end tests passing;
   typecheck, lint, format and the licence audit clean. The manual release walkthroughs in
   `docs/RELEASE_CHECKLIST.md` (clean VM, physical printer, screen reader, real documents) are not
   yet done.
@@ -1186,6 +1186,53 @@ test compares the peak of the second twelve zooms with the first (893 vs 891 MB 
 | Engine   | `pdf/render/{canvasSize,pdfjsEngine,types}.ts` (`maxCanvasPixels`)                                                         |
 | Tests    | `unit/renderer/{viewerModes.test.tsx,canvasSize.test.ts}`, `e2e/viewerModes.e2e.ts`                                        |
 
+## Fix — edits appear in place; typed text is never lost
+
+Two reported bugs: the page flashed (blank, or the old picture) after every edit, highlight or
+comment; and edited text sometimes did not apply.
+
+**Flash — root cause.** Every change makes a new revision, and `usePdfDocument` reset to its
+initial state on a revision change, exactly as for a different document. The viewer swapped the
+whole page column for "Opening the document…", unmounting every page (and clamping the scroll back
+to the top), reloaded the document, and drew each page from a cleared canvas. A new mark also
+vanished on pointer up and only came back once the rewritten page was drawn.
+
+**Flash — fix.** The shown revision stays ready while the next loads, and is destroyed once its
+replacement is on screen. Pages draw into an off-screen canvas and copy it onto the visible one in
+one task (double buffering), and record the revision they show (`data-painted-revision`,
+`PaintedRevisionContext`). New and moved comments, and edited or added text, are drawn over the page
+as stand-ins (`PendingAnnotationMark`, the pending text in `TextEditLayer`) until the page has
+painted the revision holding them. The `pfdoc` protocol now serves the bytes of the revision a URL
+names, because the old document keeps reading ranges lazily while the new one loads.
+
+**Text edits — root cause.** Not a stale render: the edit was never applied. Clicking another line,
+or the empty page, while a run was open cleared the draft through `select()` before the field could
+commit it. There was also no guard against a second commit while one was in flight (Enter followed
+by the field losing focus sent the change twice, the second against rewritten run ids). Separately,
+revision numbers were reused after undo + a new change, so anything keyed by revision (the viewer's
+URL, page text models, comment lists) could take the new revision for the undone one.
+
+**Text edits — fix.** `select()` commits an open draft first; `commitEdit` refuses to run while
+another change is in flight; `RevisionHistory` never hands out a number twice. Not specific to
+fonts; scanned pages have no runs unless recognised, and a recognised page's runs are invisible, so
+an edit there is applied but has nothing visible to show (no stand-in is drawn for it).
+
+| Area   | Files                                                                                                    |
+| ------ | -------------------------------------------------------------------------------------------------------- |
+| Main   | `documents/{revisionHistory,documentEditor}.ts`, `windows/documentProtocol.ts`, `index.ts`               |
+| Viewer | `viewer/{usePdfDocument,PdfPageView,PdfViewer,paintedRevision}.ts(x)`                                    |
+| Marks  | `annotations/{AnnotationLayer,PendingAnnotationMark,AnnotationPreview}.tsx`, `stores/annotationStore.ts` |
+| Text   | `edit/TextEditLayer.tsx`, `stores/textEditStore.ts`                                                      |
+| Tests  | `unit/renderer/liveEdits.test.ts`, `unit/main/revisionHistory.test.ts`, `e2e/liveEdits.e2e.ts`           |
+
+`e2e/liveEdits.e2e.ts` samples every animation frame and fails on a frame where page 1 is missing,
+its canvas is empty, or the change is neither drawn nor stood in for. Before the fix, drawing one
+rectangle produced 11 unmounted, 1 blank and 7 missing frames; after, none. `editText.e2e.ts` now
+scrolls page 2 into view before placing text: it had relied on the old jump back to the top.
+
+Not covered by a stand-in yet: moving or resizing images and links, and form changes. They no
+longer flash blank, but show their old position until the page is redrawn (a fraction of a second).
+
 ## What is not yet verified
 
 **The new viewer layouts and tools by hand.** Touchpads, a presentation clicker, a touch screen
@@ -1238,16 +1285,16 @@ Nothing is downloaded at runtime, then or now.
 
 ## Last validation
 
-Run on Windows 11 x64, Node 24.19.0, npm 11.17.0, after the section 10 viewer follow-up:
+Run on Windows 11 x64, Node 24.19.0, npm 11.17.0, after the live-edits fix:
 
 | Command                | Result                                                                                   |
 | ---------------------- | ---------------------------------------------------------------------------------------- |
 | `npm run typecheck`    | Pass; four projects, no errors                                                           |
 | `npm run lint`         | Pass; no errors, no warnings                                                             |
 | `npm run format:check` | Pass                                                                                     |
-| `npm test`             | Pass; 915 tests in 81 files                                                              |
+| `npm test`             | Pass; 926 tests in 82 files                                                              |
 | `npm run licenses`     | Pass; one package recorded for review (`buffers` 0.1.1)                                  |
-| `npm run test:e2e`     | Pass; 208 Playwright tests against the built application, in 4.3 minutes                 |
+| `npm run test:e2e`     | Pass; 214 Playwright tests against the built application, in 4.4 minutes                 |
 | `npm run make`         | Not repeated for the follow-up (`npm run package` was, for the e2e run)                  |
 | Packaged launch        | `out/PaperForge-win32-x64/PaperForge.exe` opened its window ("PaperForge") and was ended |
 | Installer smoke        | Not repeated this segment (last passed in Segment 18); a clean-VM run is still to do     |

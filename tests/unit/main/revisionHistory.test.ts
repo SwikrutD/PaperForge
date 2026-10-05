@@ -70,10 +70,40 @@ describe('RevisionHistory', () => {
     history.undo();
     await history.push('Instead', bytes('v3'));
 
-    expect(history.currentRevision).toBe(1);
     expect(history.canRedo).toBe(false);
     expect(await contentsOf(history.current!.filePath)).toBe('v3');
     await expect(fs.stat(discarded)).rejects.toThrow();
+  });
+
+  // The viewer, the text editor and the comment list all treat a revision
+  // number as naming one set of bytes. Handing out 1 again after undoing the
+  // first 1 made them show — and edit — the undone document.
+  it('never reuses a revision number, not even after an undo', async () => {
+    const history = new RevisionHistory(directory);
+    await history.begin(bytes('v0'));
+    await history.push('First', bytes('v1'));
+    await history.push('Second', bytes('v2'));
+
+    history.undo();
+    history.undo();
+    const instead = await history.push('Instead', bytes('v3'));
+
+    expect(instead.revision).toBe(3);
+    expect(history.currentRevision).toBe(3);
+    expect(history.undo()?.revision).toBe(0);
+    expect(history.redo()?.revision).toBe(3);
+  });
+
+  it('finds a revision still on disk, and nothing for one discarded', async () => {
+    const history = new RevisionHistory(directory);
+    await history.begin(bytes('v0'));
+    await history.push('First', bytes('v1'));
+    history.undo();
+    await history.push('Instead', bytes('v2'));
+
+    expect(await contentsOf(history.find(0)!.filePath)).toBe('v0');
+    expect(await contentsOf(history.find(2)!.filePath)).toBe('v2');
+    expect(history.find(1)).toBeUndefined();
   });
 
   it('goes to a revision for revert, keeping what came after', async () => {

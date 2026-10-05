@@ -68,7 +68,9 @@ Revision 0 is written at the first change, not at open, so reading a document co
 the reason undo and revert still work after a save has replaced the original file.
 
 A new change after an undo discards what was ahead, which is what makes redo mean "the change I
-just took back" rather than a branch.
+just took back" rather than a branch. Its revision number is still a new one: numbers are never
+handed out twice, because the viewer's URL, the text editor's page models and the comment list all
+treat a revision number as naming one set of bytes for good.
 
 **Budget.** At most 30 revisions or 512 MB per document, whichever comes first. When the history
 outgrows that, the oldest revisions are dropped and `historyTrimmed` says so; the window that
@@ -284,7 +286,29 @@ revision · dirty · canUndo · canRedo · undoLabel · redoLabel · savedAt · 
 The tab's unsaved marker, the enabled state of Save, Undo, Redo and Revert, and the URL the viewer
 loads all come from this one record, so they cannot disagree. The revision is part of the document
 URL, so a change makes the viewer load a document it has not seen rather than depend on a cache
-being invalidated.
+being invalidated. The main process serves the bytes of the revision a URL names, not whatever is
+current: the viewer keeps the previous revision on screen while the next one loads, and PDF.js
+reads ranges of it lazily.
+
+## Changes appear in place
+
+An edit never takes the page off screen. Three things make that so:
+
+- **The shown revision stays ready while the next one loads** (`usePdfDocument`). The workspace only
+  starts again from "Opening the document" for a different document or a retry, and a replaced
+  document is destroyed once its replacement is on screen.
+- **Pages are double-buffered** (`PdfPageView`). A page is drawn into an off-screen canvas and copied
+  onto the visible one in a single task, so a new revision, a zoom or a layer change replaces the old
+  picture without ever showing a cleared canvas. Each page records the revision its picture shows
+  (`data-painted-revision`, and `PaintedRevisionContext` for its overlays).
+- **A change stands in for itself until the picture has it.** A new or moved comment is drawn over
+  the page in its own colours (`PendingAnnotationMark`), and edited text is drawn over the words it
+  replaces, from the moment the gesture ends until the page has painted the revision that holds it.
+  Undo past that revision drops the stand-in.
+
+`tests/e2e/liveEdits.e2e.ts` samples every animation frame while a comment is drawn, undone and
+redone and while text is edited, and fails on any frame where the page is missing, its canvas is
+empty, or the change is neither drawn nor stood in for.
 
 ## Revert
 

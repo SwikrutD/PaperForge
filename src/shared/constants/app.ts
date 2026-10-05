@@ -24,11 +24,14 @@ export const DOCUMENT_HOST = 'document';
  *
  * The revision is part of the URL so that a change produces a different one:
  * the viewer reloads because it is asked for a document it has not seen,
- * rather than because a cache was invalidated.
+ * rather than because a cache was invalidated. The main process serves the
+ * bytes of the revision named, so a document still on screen while the next
+ * one loads reads its own bytes, not the newer file's.
  */
-export function documentUrlForSession(sessionId: string, revision = 0): string {
+export function documentUrlForSession(sessionId: string, revision?: number): string {
   const base = `${DOCUMENT_SCHEME}://${DOCUMENT_HOST}/${encodeURIComponent(sessionId)}`;
-  return revision === 0 ? base : `${base}?r=${String(revision)}`;
+  // Without a revision the URL means whatever is current when it is read.
+  return revision === undefined ? base : `${base}?r=${String(revision)}`;
 }
 
 /** Host component of a staged source URL: pfdoc://source/<source id> */

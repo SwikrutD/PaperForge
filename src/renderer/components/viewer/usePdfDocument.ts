@@ -9,6 +9,8 @@ export type PdfLoadStatus = 'loading' | 'password' | 'ready' | 'error';
 interface LoadState {
   status: PdfLoadStatus;
   document: LoadedPdfDocument | null;
+  /** The revision `document` was loaded from. */
+  revision: number;
   error: SerializedAppError | null;
   /** True when the last password attempt was rejected. */
   passwordRetry: boolean;
@@ -23,6 +25,7 @@ export interface PdfDocumentState extends LoadState {
 const INITIAL: LoadState = {
   status: 'loading',
   document: null,
+  revision: 0,
   error: null,
   passwordRetry: false,
 };
@@ -33,22 +36,28 @@ const INITIAL: LoadState = {
  * session id and never sees a filesystem path.
  *
  * A change to the document arrives as a new revision, which is a different URL
- * and therefore a fresh load of what the main process has written.
+ * and therefore a fresh load of what the main process has written. The
+ * revision on screen stays ready while the next one loads — the pages keep
+ * their pictures until new ones are drawn — so an edit never flashes the
+ * workspace back to a loading state. Only a different document, or a retry,
+ * starts again from nothing.
  */
 export function usePdfDocument(sessionId: string | null, revision = 0): PdfDocumentState {
   const [state, setState] = useState<LoadState>(INITIAL);
   const [attempt, setAttempt] = useState(0);
-  const [loadedFor, setLoadedFor] = useState({ sessionId, attempt, revision });
+  const [loadedFor, setLoadedFor] = useState({ sessionId, attempt });
   const passwordResolver = useRef<((password: string | null) => void) | null>(null);
+  /** The document in `state`, which this hook owns until it is replaced. */
+  const held = useRef<{ document: LoadedPdfDocument; sessionId: string; attempt: number } | null>(
+    null,
+  );
+  /** Documents replaced on screen, destroyed once the replacement is committed. */
+  const retired = useRef<LoadedPdfDocument[]>([]);
 
   // Reset while rendering rather than in an effect, so a tab switch never
   // shows the previous document for a frame.
-  if (
-    loadedFor.sessionId !== sessionId ||
-    loadedFor.attempt !== attempt ||
-    loadedFor.revision !== revision
-  ) {
-    setLoadedFor({ sessionId, attempt, revision });
+  if (loadedFor.sessionId !== sessionId || loadedFor.attempt !== attempt) {
+    setLoadedFor({ sessionId, attempt });
     setState(INITIAL);
   }
 
@@ -69,11 +78,23 @@ export function usePdfDocument(sessionId: string | null, revision = 0): PdfDocum
     setAttempt((value) => value + 1);
   }, []);
 
+  /** Hands the document on screen over to be destroyed, if there is one. */
+  const retireHeld = useCallback(() => {
+    if (held.current !== null) retired.current.push(held.current.document);
+    held.current = null;
+  }, []);
+
   useEffect(() => {
+    // A different document, or a retry, does not keep the old one on screen.
+    if (
+      held.current !== null &&
+      (held.current.sessionId !== sessionId || held.current.attempt !== attempt)
+    ) {
+      retireHeld();
+    }
     if (sessionId === null) return;
 
     const controller = new AbortController();
-    let loaded: LoadedPdfDocument | null = null;
     let disposed = false;
 
     void renderEngine
@@ -87,18 +108,27 @@ export function usePdfDocument(sessionId: string | null, revision = 0): PdfDocum
           }),
       })
       .then((result) => {
-        loaded = result;
         if (disposed) {
           void result.destroy();
           return;
         }
-        setState({ status: 'ready', document: result, error: null, passwordRetry: false });
+        retireHeld();
+        held.current = { document: result, sessionId, attempt };
+        setState({
+          status: 'ready',
+          document: result,
+          revision,
+          error: null,
+          passwordRetry: false,
+        });
       })
       .catch((cause: unknown) => {
         if (disposed) return;
+        retireHeld();
         setState({
           status: 'error',
           document: null,
+          revision,
           error: AppError.serialize(cause),
           passwordRetry: false,
         });
@@ -109,9 +139,27 @@ export function usePdfDocument(sessionId: string | null, revision = 0): PdfDocum
       passwordResolver.current?.(null);
       passwordResolver.current = null;
       controller.abort();
-      void loaded?.destroy();
     };
-  }, [sessionId, attempt, revision]);
+  }, [sessionId, attempt, revision, retireHeld]);
+
+  // A replaced document is destroyed only once its replacement is on screen:
+  // destroying it sooner would fail the renders still drawing from it, and
+  // the pages would flash an error before switching over.
+  useEffect(() => {
+    const stale = retired.current.filter((document) => document !== state.document);
+    retired.current = retired.current.filter((document) => document === state.document);
+    for (const document of stale) void document.destroy();
+  }, [state.document]);
+
+  // And everything goes when the workspace does.
+  useEffect(
+    () => () => {
+      retireHeld();
+      for (const document of retired.current) void document.destroy();
+      retired.current = [];
+    },
+    [retireHeld],
+  );
 
   return { ...state, submitPassword, cancelPassword, reload };
 }

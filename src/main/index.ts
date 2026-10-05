@@ -239,6 +239,7 @@ async function bootstrap(): Promise<void> {
     logger,
     (sessionId) => editor.currentBytesPath(sessionId),
     (sourceId) => library.bytesOf(sourceId),
+    (sessionId, revision) => editor.revisionBytesPath(sessionId, revision),
   );
 
   const openWindow = (): BrowserWindow => {

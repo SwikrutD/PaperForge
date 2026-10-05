@@ -99,6 +99,17 @@ export class DocumentEditor {
     return this.edited.get(sessionId)?.history.current?.filePath;
   }
 
+  /**
+   * The file holding one revision's bytes, for a viewer still showing it while
+   * the next one loads. Null when that revision is no longer kept.
+   */
+  revisionBytesPath(sessionId: string, revision: number): string | null {
+    const session = this.requireSession(sessionId);
+    const history = this.edited.get(sessionId)?.history;
+    if (history === undefined) return revision === 0 ? session.file.path : null;
+    return history.find(revision)?.filePath ?? null;
+  }
+
   state(sessionId: string): DocumentEditState {
     const session = this.requireSession(sessionId);
     const entry = this.edited.get(sessionId);

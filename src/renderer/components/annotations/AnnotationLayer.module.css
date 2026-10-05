@@ -73,3 +73,16 @@
   stroke-dasharray: 4 3;
   vector-effect: non-scaling-stroke;
 }
+
+/*
+ * Marks still being written. They sit outside `.layer`, whose z-index makes it
+ * a stacking context: a highlight has to multiply with the page picture itself.
+ */
+.pending {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
