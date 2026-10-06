@@ -169,6 +169,13 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
     const run = runOf(get(), sessionId, page, id);
     if (run === undefined) return;
 
+    // Opening the run that is already open changes nothing: what was typed
+    // and the style chosen for it stay as they are.
+    const { selected, draft, placement } = get();
+    if (selected?.page === page && selected.id === id && draft !== null && placement === null) {
+      return;
+    }
+
     // The style controls start from how the run looks, so what the reader
     // changes there is a change to this text rather than to a default.
     set({

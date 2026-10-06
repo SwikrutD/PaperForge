@@ -195,17 +195,22 @@ export function TextEditLayer({
               // page: the press belongs to the layer underneath.
               if (placing) return;
               event.stopPropagation();
+              // A press in the open field is the field's own: it puts the
+              // caret where it lands, or starts a selection.
+              if (inField(event.target)) return;
               // Opening the field on the press would lose it again: the page
               // column takes focus on pointer down, and the field would blur
               // the moment it appeared.
               if (selected) event.preventDefault();
               else onSelect(run.id);
             }}
-            onClick={() => {
-              if (!placing && selected) onBeginEdit(run.id);
+            onClick={(event) => {
+              // Clicks in the open field move the caret; they do not reopen it.
+              if (!placing && selected && !inField(event.target)) onBeginEdit(run.id);
             }}
-            onDoubleClick={() => {
-              if (!placing) onBeginEdit(run.id);
+            onDoubleClick={(event) => {
+              // A double click in the open field selects a word, as in any field.
+              if (!placing && !inField(event.target)) onBeginEdit(run.id);
             }}
           >
             {editing && field(draft, `Text: ${run.text}`, run.fontSize)}
@@ -233,6 +238,11 @@ export function TextEditLayer({
       )}
     </div>
   );
+}
+
+/** True when an event started inside the open text field. */
+function inField(target: EventTarget): boolean {
+  return target instanceof Element && target.closest('input') !== null;
 }
 
 const FAMILIES = {
