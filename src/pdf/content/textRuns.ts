@@ -42,8 +42,17 @@ export interface TextRun {
   fontName: string | null;
   font: FontMetrics | null;
   fontSize: number;
-  /** What the run says, as far as the font allows it to be read. */
+  /**
+   * What the run says, as far as the font allows it to be read — with a
+   * space wherever a `TJ` gap separates two words, as a reader sees it.
+   */
   text: string;
+  /**
+   * The `TJ` adjustment the run separates its words with, as written (a
+   * negative number), or null when it draws no such gap. Writing the run back
+   * uses it, so a run that spaced its words with gaps keeps doing so.
+   */
+  wordGap: number | null;
   glyphs: Glyph[];
   /** Text space to user space at the start of the run. */
   matrix: Matrix;
@@ -105,20 +114,35 @@ function showParts(operation: ContentOperation): ShowParts {
   return { pieces: [], textRange: null };
 }
 
-/** The glyphs of a show operation, and how far it moves the pen. */
+/**
+ * A `TJ` gap at least this much of the font size wide separates words. It is
+ * the threshold PDF.js reads a space at, so the editor and the page agree on
+ * where the spaces are; kerning between letters is far smaller.
+ */
+const WORD_GAP_EM = 0.102;
+
+/** The glyphs of a show operation, what they say, and how far it moves the pen. */
 function measure(
   parts: ShowParts,
   font: FontMetrics | null,
   text: TextState,
-): { glyphs: Glyph[]; advance: number } {
+): { glyphs: Glyph[]; advance: number; said: string; wordGap: number | null } {
   const glyphs: Glyph[] = [];
   const scale = text.horizontalScale / 100;
   let advance = 0;
+  let said = '';
+  let wordGap: number | null = null;
+  // A gap only becomes a space once another glyph follows it.
+  let gapPending = false;
 
   for (const piece of parts.pieces) {
     if (piece.kind === 'offset') {
       // A positive number in a TJ array moves the text back.
       advance += (-piece.amount / 1000) * text.fontSize * scale;
+      if (-piece.amount / 1000 >= WORD_GAP_EM && glyphs.length > 0 && !said.endsWith(' ')) {
+        gapPending = true;
+        wordGap ??= piece.amount;
+      }
       continue;
     }
 
@@ -129,17 +153,17 @@ function measure(
       const step =
         (width * text.fontSize + text.charSpacing + (isSpace ? text.wordSpacing : 0)) * scale;
 
-      glyphs.push({
-        code,
-        text: font?.unicode(code) ?? null,
-        advance: step,
-        offset: advance,
-      });
+      const glyphText = font?.unicode(code) ?? null;
+      if (gapPending && glyphText !== ' ') said += ' ';
+      gapPending = false;
+      said += glyphText ?? '';
+
+      glyphs.push({ code, text: glyphText, advance: step, offset: advance });
       advance += step;
     }
   }
 
-  return { glyphs, advance };
+  return { glyphs, advance, said, wordGap };
 }
 
 export interface TextRunOptions {
@@ -162,7 +186,7 @@ export function extractTextRuns(
       const state = context.state;
       const font =
         state.text.fontName === null ? null : (options.fonts(state.text.fontName) ?? null);
-      const { glyphs, advance } = measure(parts, font, state.text);
+      const { glyphs, advance, said, wordGap } = measure(parts, font, state.text);
 
       if (parts.textRange !== null && glyphs.length > 0) {
         runs.push(
@@ -170,7 +194,7 @@ export function extractTextRuns(
             context.operation,
             context.index,
             glyphs,
-            advance,
+            { advance, said, wordGap },
             context.textMatrix,
             state.ctm,
             state.text,
@@ -191,7 +215,7 @@ function buildRun(
   operation: ContentOperation,
   operationIndex: number,
   glyphs: Glyph[],
-  advance: number,
+  { advance, said, wordGap }: { advance: number; said: string; wordGap: number | null },
   textMatrix: Matrix,
   ctm: Matrix,
   text: TextState,
@@ -215,7 +239,8 @@ function buildRun(
     fontName: text.fontName,
     font,
     fontSize: text.fontSize,
-    text: glyphs.map((glyph) => glyph.text ?? '').join(''),
+    text: said,
+    wordGap,
     glyphs,
     matrix,
     origin,

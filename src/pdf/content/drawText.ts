@@ -1,6 +1,8 @@
 import type { TextRun } from './textRuns';
 import { formatNumber, formatValue } from './values';
-import { spliceBytes } from './editText';
+import { lineMoveFor, spliceBytes } from './editText';
+
+export { lineMoveFor };
 import { appendIsolated } from './appendContent';
 import type { Matrix } from './state';
 
@@ -50,15 +52,6 @@ export function neutralizeRun(content: Uint8Array, run: TextRun): Uint8Array {
   // their own: their line move is written out first.
   const prefix = lineMoveFor(run);
   return spliceBytes(content, run.operationRange, `${prefix}${replacement}`);
-}
-
-/** What `'` and `"` do before they show, written as operators of their own. */
-export function lineMoveFor(run: TextRun): string {
-  if (run.operator === "'") return 'T* ';
-  if (run.operator === '"') {
-    return `${formatNumber(run.wordSpacing)} Tw ${formatNumber(run.charSpacing)} Tc T* `;
-  }
-  return '';
 }
 
 /** How far a run moves the pen, in unscaled text units. */

@@ -97,8 +97,9 @@ describe('rewriting a run', () => {
   });
 
   it('writes a TJ array back as a single string', async () => {
+    // Kerning only: no gap here is wide enough to be a space between words.
     const original = documentOf({
-      pages: [{ content: 'BT /F1 12 Tf 1 0 0 1 60 700 Tm [(A) -200 (W) 120 (E)] TJ ET' }],
+      pages: [{ content: 'BT /F1 12 Tf 1 0 0 1 60 700 Tm [(A) -60 (W) 120 (E)] TJ ET' }],
     });
     const { run, id } = await firstRun(original);
     expect(run.text).toBe('AWE');
