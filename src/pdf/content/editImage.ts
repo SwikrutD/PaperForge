@@ -1,4 +1,5 @@
 import { spliceBytes } from './editText';
+import { appendIsolated } from './appendContent';
 import type { ImagePlacement } from './images';
 import { invert, multiply, type Matrix } from './state';
 import { formatNumber } from './values';
@@ -85,7 +86,11 @@ export function removeImage(content: Uint8Array, placement: ImagePlacement): Uin
   return spliceBytes(content, placement.operationRange, '');
 }
 
-/** Draws an image on a page, over whatever is already there. */
+/**
+ * Draws an image on a page, over whatever is already there, from the page's
+ * initial state — so it lands where it was asked for whatever transform, clip
+ * or transparency the page's own drawing leaves in force.
+ */
 export function appendImage(
   content: Uint8Array,
   matrix: Matrix,
@@ -93,8 +98,7 @@ export function appendImage(
   alphaName?: string,
 ): Uint8Array {
   const alpha = alphaName === undefined ? '' : `/${alphaName} gs `;
-  const block = `\nq ${alpha}${formatMatrix(matrix)} cm /${resourceName} Do Q\n`;
-  return spliceBytes(content, { start: content.length, end: content.length }, block);
+  return appendIsolated(content, `\nq ${alpha}${formatMatrix(matrix)} cm /${resourceName} Do Q\n`);
 }
 
 /** Six decimal places is more than a page needs, and keeps the file small. */

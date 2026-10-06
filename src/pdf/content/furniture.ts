@@ -1,4 +1,5 @@
 import { spliceBytes } from './editText';
+import { appendIsolated } from './appendContent';
 import { parseContent } from './parser';
 import { nameOf } from './values';
 
@@ -36,9 +37,12 @@ export function furnitureBlock(kind: FurnitureKind, body: string): string {
   return `/${TAGS[kind]} BMC\nq\n${body.trim()}\nQ\nEMC\n`;
 }
 
-/** Puts a block after everything the page draws, so it goes on top. */
+/**
+ * Puts a block after everything the page draws, so it goes on top — drawn from
+ * the page's initial state, whatever the page's own drawing leaves in force.
+ */
 export function appendFurniture(content: Uint8Array, block: string): Uint8Array {
-  return spliceBytes(content, { start: content.length, end: content.length }, `\n${block}`);
+  return appendIsolated(content, `\n${block}`);
 }
 
 /**
