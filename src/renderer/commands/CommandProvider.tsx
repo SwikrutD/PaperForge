@@ -391,6 +391,9 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
         redaction().setActive(false);
         crop().setActive(false);
         accessibility().setActive(false);
+        // Marking text up and editing it are different jobs, one at a time:
+        // while the editor is on, the page takes no comment tool at all.
+        textEditor().setActive(false);
         ui().setCommenting(true);
         annotations().setTool(tool);
       },
