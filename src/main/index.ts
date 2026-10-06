@@ -40,6 +40,7 @@ import { SessionRecovery } from './services/recovery/sessionRecovery';
 import { SettingsStore } from './services/settings/settingsStore';
 import { ThemeController } from './theme/themeController';
 import { registerDocumentProtocol, registerDocumentScheme } from './windows/documentProtocol';
+import { removeApplicationMenu } from './windows/applicationMenu';
 import { createMainWindow } from './windows/mainWindow';
 import { LaunchRouter } from './windows/launchRouting';
 import { DesktopIntegration } from './services/windows/desktopIntegration';
@@ -92,6 +93,8 @@ async function bootstrap(): Promise<void> {
   });
   installProcessGuards(logger);
   logger.info(`${APP_NAME} starting.`, `packaged=${String(app.isPackaged)}`);
+  // Before any window exists, so none ever shows Electron's default menu.
+  removeApplicationMenu();
 
   const settings = new SettingsStore(app.getPath('userData'), logger);
   await settings.load();
