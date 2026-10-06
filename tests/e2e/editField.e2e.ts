@@ -148,3 +148,37 @@ test('a double click selects the word', async () => {
   expect(value.slice(start, end).trim()).toBe('first');
   await page.keyboard.press('Escape');
 });
+
+/** How the open field draws its text. */
+function fieldLook(): Promise<{ size: number; family: string; color: string }> {
+  return field().evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { size: parseFloat(style.fontSize), family: style.fontFamily, color: style.color };
+  });
+}
+
+test('a font, size or colour chosen while typing shows in the field at once, without writing it', async () => {
+  // The panel first: a click on its tab is a click elsewhere, which writes.
+  const panel = page.getByRole('region', { name: 'Properties and tools' });
+  await panel.getByRole('tab', { name: 'Properties' }).click();
+  await openField();
+  await page.keyboard.type('Retyped');
+  const before = await fieldLook();
+
+  await panel.getByRole('spinbutton', { name: 'Size' }).fill('48');
+  // The run is drawn at 24 pt, so the field's text doubles in size.
+  await expect.poll(async () => (await fieldLook()).size / before.size).toBeCloseTo(2, 1);
+
+  await panel.getByRole('combobox', { name: 'Font' }).selectOption('courier');
+  await expect.poll(async () => (await fieldLook()).family).toMatch(/Courier/);
+
+  await panel.getByLabel('Colour').fill('#ff0000');
+  await expect.poll(async () => (await fieldLook()).color).toBe('rgb(255, 0, 0)');
+
+  // None of it wrote the text: the field is still open with what was typed.
+  await expect(field()).toHaveValue('Retyped');
+  await expect(
+    page.getByRole('toolbar', { name: 'Editing' }).getByRole('button', { name: 'Undo' }),
+  ).toBeDisabled();
+  await page.keyboard.press('Escape');
+});

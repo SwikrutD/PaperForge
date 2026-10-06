@@ -1,9 +1,14 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { PdfPageGeometry } from '../../../src/pdf/render/types';
-import type { TextRunModel } from '../../../src/shared/schemas/text';
+import {
+  DEFAULT_TEXT_STYLE,
+  type TextRunModel,
+  type TextStyle,
+} from '../../../src/shared/schemas/text';
 import { TextEditLayer } from '../../../src/renderer/components/edit/TextEditLayer';
 
 /**
@@ -17,6 +22,7 @@ const geometry: PdfPageGeometry = {
   height: 792,
   rotation: 0,
   viewBox: [0, 0, 612, 792],
+  userUnit: 1,
   label: null,
 } as unknown as PdfPageGeometry;
 
@@ -40,6 +46,11 @@ const run: TextRunModel = {
   replaced: false,
 };
 
+/** The default style at a size. */
+function sized(size: number): TextStyle {
+  return { ...DEFAULT_TEXT_STYLE, size };
+}
+
 const noop = vi.fn();
 const handlers = {
   onSelect: noop,
@@ -62,7 +73,7 @@ describe('the field for new text', () => {
         draft=""
         placement={{ page: 1, x: 100, y: 200 }}
         placing={false}
-        newTextSize={30}
+        textStyle={sized(30)}
         {...handlers}
       />,
     );
@@ -71,7 +82,9 @@ describe('the field for new text', () => {
 });
 
 describe('the field for existing text', () => {
-  it('is drawn at the size the run is seen at', () => {
+  // Opening a run sets the style to its own look, so this is the size it is
+  // seen at until the reader chooses another.
+  it('is drawn at the size chosen for it', () => {
     render(
       <TextEditLayer
         geometry={geometry}
@@ -82,7 +95,7 @@ describe('the field for existing text', () => {
         draft="Scaled words"
         placement={null}
         placing={false}
-        newTextSize={12}
+        textStyle={sized(16)}
         {...handlers}
       />,
     );
@@ -103,7 +116,7 @@ describe('leaving the field', () => {
           draft="Scaled words"
           placement={null}
           placing={false}
-          newTextSize={12}
+          textStyle={sized(12)}
           {...handlers}
           onCommit={onCommit}
         />
@@ -149,7 +162,7 @@ describe('pointing inside the open field', () => {
         draft="Scaled words, being typed"
         placement={null}
         placing={false}
-        newTextSize={12}
+        textStyle={sized(12)}
         {...handlers}
         onBeginEdit={onBeginEdit}
       />,
@@ -170,5 +183,61 @@ describe('pointing inside the open field', () => {
     fireEvent.click(input);
     fireEvent.doubleClick(input);
     expect(onBeginEdit).not.toHaveBeenCalled();
+  });
+});
+
+describe('the style chosen while typing', () => {
+  const chosen: TextStyle = {
+    family: 'times',
+    bold: true,
+    italic: true,
+    size: 30,
+    color: { r: 1, g: 0, b: 0 },
+  };
+
+  function layer(textStyle: TextStyle, placement: boolean): ReactElement {
+    return (
+      <TextEditLayer
+        geometry={geometry}
+        scale={2}
+        rotation={0}
+        runs={[run]}
+        selectedId={placement ? null : 'op3'}
+        draft="Scaled words"
+        placement={placement ? { page: 1, x: 100, y: 200 } : null}
+        placing={false}
+        textStyle={textStyle}
+        {...handlers}
+      />
+    );
+  }
+
+  for (const [what, placement] of [
+    ['existing text', false],
+    ['new text', true],
+  ] as const) {
+    it(`shows in the field for ${what} straight away`, () => {
+      const { rerender } = render(layer(sized(16), placement));
+      rerender(layer(chosen, placement));
+
+      const field = screen.getByRole('textbox');
+      expect(field.style).toMatchObject({
+        fontSize: '60px',
+        fontWeight: 'bold',
+        fontStyle: 'italic',
+        color: 'rgb(255, 0, 0)',
+      });
+      expect(field.style.fontFamily).toMatch(/Times/);
+
+      rerender(layer({ ...chosen, size: 40, family: 'courier' }, placement));
+      expect(field.style.fontSize).toBe('80px');
+      expect(field.style.fontFamily).toMatch(/Courier/);
+    });
+  }
+
+  it('makes the field tall enough for a size larger than the text was', () => {
+    render(layer({ ...chosen, size: 48 }, false));
+    // The run is 16 pt high; at 48 pt and a scale of 2 a line is 96 px.
+    expect(parseFloat(screen.getByRole('textbox').style.height)).toBeGreaterThanOrEqual(96);
   });
 });
