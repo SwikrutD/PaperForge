@@ -188,6 +188,26 @@ test('in Edit PDF mode the Tools pane offers the comment tools', async () => {
   }
 });
 
+test('in Edit PDF mode they sit at the top of the pane, above the cards, and the pane scrolls', async () => {
+  await startEditing();
+  const panel = page.getByRole('region', { name: 'Properties and tools' });
+  await panel.getByRole('tab', { name: 'Tools' }).click();
+
+  const body = panel.getByRole('tabpanel');
+  const view = await body.boundingBox();
+  const tool = await panel.getByRole('button', { name: 'Highlight', exact: true }).boundingBox();
+  const first = await panel.getByRole('button', { name: /^Edit PDF/ }).boundingBox();
+  if (view === null || tool === null || first === null) throw new Error('not on screen');
+  const layout = {
+    toolShown: tool.y >= view.y && tool.y + tool.height <= view.y + view.height,
+    toolAboveCards: tool.y + tool.height <= first.y,
+    // In this short window the first card is still in view below them.
+    cardShown: first.y < view.y + view.height,
+    scrolls: await body.evaluate((element) => element.scrollHeight > element.clientHeight),
+  };
+  expect(layout).toEqual({ toolShown: true, toolAboveCards: true, cardShown: true, scrolls: true });
+});
+
 test('choosing one there leaves editing and starts commenting with it', async () => {
   await startEditing();
   const panel = page.getByRole('region', { name: 'Properties and tools' });

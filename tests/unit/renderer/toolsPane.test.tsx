@@ -72,3 +72,18 @@ describe('the Tools pane while editing', () => {
     expect(useAnnotationStore.getState().tool).toBe('highlight');
   });
 });
+
+describe('where the comment tools sit', () => {
+  it('comes first in the pane, above the tool cards', () => {
+    const highlight = pane().getByRole('button', { name: 'Highlight' });
+    const card = pane().getByText('Edit PDF').closest('button');
+    if (card === null) throw new Error('no Edit PDF card');
+    expect(highlight.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('is a compact row of named icon buttons, each with a tooltip', () => {
+    const highlight = pane().getByRole('button', { name: 'Highlight' });
+    expect(highlight).toHaveTextContent('');
+    expect(highlight).toHaveAttribute('title', expect.stringContaining('Highlight'));
+  });
+});
