@@ -18,10 +18,10 @@ interface AppShellProps {
   settings: Settings;
   version: string | null;
   status: AppStatus;
+  /** Shown in the status bar only while PaperForge is not ready. */
   statusText: string;
-  themeText: string;
   /** What the status bar says about the active document. */
-  documentText: string;
+  documentText: readonly string[];
   /** Page, zoom and rotation of the active document, when there is one. */
   viewText?: string | null;
   /** Overlays (palette, dialogs, toasts) render above the whole frame. */
@@ -39,7 +39,6 @@ export function AppShell({
   version,
   status,
   statusText,
-  themeText,
   documentText,
   viewText = null,
   overlays,
@@ -126,7 +125,6 @@ export function AppShell({
           statusText={statusText}
           documentText={documentText}
           viewText={viewText}
-          themeText={themeText}
         />
       )}
       {overlays}

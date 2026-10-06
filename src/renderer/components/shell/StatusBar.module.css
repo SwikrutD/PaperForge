@@ -25,6 +25,10 @@
   text-overflow: ellipsis;
 }
 
+.primary {
+  color: var(--pf-color-text-primary);
+}
+
 .dot {
   width: 6px;
   height: 6px;

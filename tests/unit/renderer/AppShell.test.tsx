@@ -13,15 +13,17 @@ function settingsWith(layout: Partial<Settings['layout']>): Settings {
   return { ...DEFAULT_SETTINGS, layout: { ...DEFAULT_SETTINGS.layout, ...layout } };
 }
 
-function renderShell(settings: Settings = DEFAULT_SETTINGS): void {
+function renderShell(
+  settings: Settings = DEFAULT_SETTINGS,
+  status: 'ready' | 'loading' = 'ready',
+): void {
   renderWithCommands(
     <AppShell
       settings={settings}
       version="0.1.0"
-      status="ready"
-      statusText="Ready"
-      themeText="Theme: light (system)"
-      documentText="No document open"
+      status={status}
+      statusText={status === 'ready' ? 'Ready' : 'Loading settings…'}
+      documentText={['No document open', 'Ctrl+O opens a PDF']}
       viewText={null}
     >
       <p>workspace content</p>
@@ -139,11 +141,19 @@ describe('AppShell layout', () => {
     await Promise.resolve();
   });
 
-  it('reports status and theme in the status bar', () => {
+  it('says what to do in the status bar, not the theme or "Ready"', () => {
     renderShell();
     const statusBar = within(screen.getByRole('contentinfo'));
-    expect(statusBar.getByText('Ready')).toBeInTheDocument();
     expect(statusBar.getByText('No document open')).toBeInTheDocument();
-    expect(statusBar.getByText('Theme: light (system)')).toBeInTheDocument();
+    expect(statusBar.getByText('Ctrl+O opens a PDF')).toBeInTheDocument();
+    expect(statusBar.queryByText('Ready')).not.toBeInTheDocument();
+    expect(statusBar.queryByText(/Theme/)).not.toBeInTheDocument();
+  });
+
+  it('shows startup status only while PaperForge is not ready', () => {
+    renderShell(DEFAULT_SETTINGS, 'loading');
+    expect(
+      within(screen.getByRole('contentinfo')).getByText('Loading settings…'),
+    ).toBeInTheDocument();
   });
 });
