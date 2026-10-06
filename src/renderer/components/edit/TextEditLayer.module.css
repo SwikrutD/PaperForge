@@ -38,9 +38,10 @@
   padding: 0 1px;
   border: 1px solid var(--pf-color-accent);
   border-radius: 2px;
-  background-color: var(--pf-color-bg-surface);
-  color: var(--pf-color-text-primary);
-  font-family: inherit;
+  /* The page's colour, not the workspace's: the field shows the text as it
+     will be drawn, in its own colour, in either theme. Font, size and colour
+     are set inline from the style being written. */
+  background-color: var(--pf-color-page);
   line-height: 1;
 }
 
