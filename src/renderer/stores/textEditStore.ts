@@ -9,7 +9,7 @@ import {
   type TextRunModel,
   type TextStyle,
 } from '@shared/schemas/text';
-import { isDrawable, toWinAnsi } from '@pdf/text/layout';
+import { encodeWinAnsi } from '@pdf/text/layout';
 import { invoke } from '../services/ipcClient';
 import { useDocumentStore } from './documentStore';
 import { useUiStore } from './uiStore';
@@ -178,8 +178,13 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
 
     // New text, put where the reader pointed.
     if (placement !== null) {
+      if (draft.trim() === '') {
+        set({ draft: null, placement: null });
+        return;
+      }
+      // Kept open, so the reader can correct what cannot be drawn.
+      if (refuseUndrawable(draft)) return;
       set({ draft: null, placement: null });
-      if (draft.trim() === '') return;
 
       await write(
         sessionId,
@@ -242,19 +247,10 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
           };
 
     const replaceWith = async (): Promise<void> => {
-      // PaperForge draws replacement text with the fonts every reader has, and
-      // those are Latin-1. Anything else would come out as question marks, so
-      // it is refused instead.
-      if (!isDrawable(draft)) {
-        set({ draft: null });
-        useUiStore.getState().showToast({
-          title: `PaperForge cannot write “${firstUndrawable(draft)}” into a PDF yet.`,
-          description:
-            'Replacement text is drawn with the standard fonts, which cover Latin-1 only. Embedding a font for other writing systems is not built yet.',
-          intent: 'error',
-        });
-        return;
-      }
+      // PaperForge draws replacement text with the fonts every reader has.
+      // Anything they cannot draw would come out as question marks, so it is
+      // refused instead, and the draft stays open to be corrected.
+      if (refuseUndrawable(draft)) return;
 
       set({ draft: null, selected: null });
       await write(sessionId, preview(existing.replaced), {
@@ -307,7 +303,9 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
     }
 
     // The font cannot write it. Replacing it is a different thing, so the
-    // reader is asked rather than told afterwards.
+    // reader is asked rather than told afterwards — unless the standard fonts
+    // cannot write it either, which is said before anything is offered.
+    if (refuseUndrawable(draft)) return;
     useUiStore.getState().requestConfirmation({
       title: 'Replace this text instead?',
       message:
@@ -333,12 +331,27 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
   placeText: (placement) => set({ placement, draft: '', placing: false, selected: null }),
 }));
 
-/** The first character the standard fonts cannot draw. */
-function firstUndrawable(text: string): string {
-  for (const character of text) {
-    if (toWinAnsi(character) !== character) return character;
-  }
-  return '?';
+/**
+ * Refuses text the standard fonts cannot draw, naming the characters that
+ * stopped it. Returns true when it refused.
+ *
+ * The standard fonts are WinAnsi: Western European letters and the usual
+ * punctuation (curly quotes, dashes, ellipsis, euro, bullets). Writing
+ * anything else would silently become question marks.
+ */
+function refuseUndrawable(text: string): boolean {
+  const { undrawable } = encodeWinAnsi(text);
+  if (undrawable.length === 0) return false;
+
+  const shown = undrawable.slice(0, 5).map((character) => `“${character}”`);
+  const more = undrawable.length > shown.length ? ' and others' : '';
+  useUiStore.getState().showToast({
+    title: `PaperForge cannot write ${shown.join(', ')}${more} with a standard font.`,
+    description:
+      'Text PaperForge draws itself uses the standard PDF fonts, which cover Western European letters and common punctuation. Change those characters, or press Escape to leave the text as it was. Embedding a font for other writing systems is not built yet.',
+    intent: 'warning',
+  });
+  return true;
 }
 
 /** The revision a document is at, as its tab knows it. */

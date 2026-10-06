@@ -7,7 +7,7 @@ import { rewriteRunText } from '@pdf/content/editText';
 import { appendTextBlock, neutralizeRun } from '@pdf/content/drawText';
 import { multiply, type Matrix } from '@pdf/content/state';
 import type { TextRun } from '@pdf/content/textRuns';
-import { toWinAnsi } from '@pdf/text/layout';
+import { encodeWinAnsi } from '@pdf/text/layout';
 import { ensureFontResource } from './textResources';
 
 /**
@@ -178,16 +178,13 @@ function colorOf(run: TextRun): { r: number; g: number; b: number } {
 /**
  * What a standard font can draw.
  *
- * The fourteen standard fonts are Latin-1; a character outside that cannot be
- * drawn with one at all, so it is shown as a question mark rather than
- * silently dropped. Text that needs more than Latin-1 needs an embedded font,
- * which is its own piece of work.
+ * The standard fonts are written in WinAnsi: Latin-1 plus the punctuation in
+ * 0x80–0x9F (curly quotes, dashes, ellipsis, euro, bullets), all of which are
+ * drawn as themselves. A character outside that cannot be drawn with one at
+ * all and comes out as a question mark; the editor refuses such text before
+ * it gets here, saying which character stopped it. Text that needs more than
+ * WinAnsi needs an embedded font, which is its own piece of work.
  */
 function drawable(text: string): Uint8Array {
-  const usable = toWinAnsi(text);
-  const bytes = new Uint8Array(usable.length);
-  for (let index = 0; index < usable.length; index += 1) {
-    bytes[index] = usable.charCodeAt(index) & 0xff;
-  }
-  return bytes;
+  return encodeWinAnsi(text).bytes;
 }
