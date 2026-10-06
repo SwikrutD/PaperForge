@@ -161,13 +161,14 @@ export function RightPanel({ panel }: { panel: RightPanelId }): ReactElement {
           />
         ) : (
           <>
+            {/* Comment tools work on the document in front of the reader, in
+                any mode: first, so they are always in the same place. */}
+            {activeTab !== null && <CommentToolsSection />}
             <div className={styles.tools}>
               {availableTools.map((tool) => (
                 <ToolCard key={tool.id} tool={tool} compact />
               ))}
             </div>
-            {/* Comment tools work on the document in front of the reader. */}
-            {activeTab !== null && <CommentToolsSection />}
           </>
         )}
       </div>
