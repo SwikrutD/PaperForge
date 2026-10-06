@@ -27,25 +27,17 @@
   max-width: 68ch;
 }
 
-.note {
+.actions {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  flex-wrap: wrap;
   gap: var(--pf-space-100);
-  padding: var(--pf-space-150);
-  border: 1px solid var(--pf-color-border);
-  border-radius: var(--pf-radius-lg);
-  background-color: var(--pf-color-bg-subtle);
-  color: var(--pf-color-text-secondary);
-  font-size: var(--pf-font-size-300);
-  line-height: var(--pf-line-height-400);
+  margin-top: var(--pf-space-100);
 }
 
-.noteIcon {
-  width: 16px;
-  height: 16px;
-  margin-top: 2px;
-  flex: 0 0 auto;
-  color: var(--pf-color-accent-text);
+.hint {
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
 }
 
 .tools {

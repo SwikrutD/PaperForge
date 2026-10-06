@@ -130,42 +130,30 @@ describe('home screen', () => {
     expect(screen.getByLabelText('Pinned')).toBeInTheDocument();
   });
 
-  it('says plainly that a tool needs a document', () => {
+  it('offers to open a document for a tool that needs one, rather than greying it out', () => {
     renderWithCommands(<HomeScreen recentFiles={[]} />);
 
-    // Commenting exists; on the home screen there is simply nothing to mark up.
-    const comment = screen.getByRole('button', { name: /Comment/ });
-    expect(comment).toBeDisabled();
-    expect(comment).toHaveAttribute('title', 'No document is open.');
-    // Organizing pages is built too, and needs a document for the same reason.
-    const organize = screen.getByRole('button', { name: /Organize Pages/ });
-    expect(organize).toBeDisabled();
-    expect(organize).toHaveAttribute('title', 'No document is open.');
-    // Editing text is built as well, and needs one too.
-    const editTool = screen.getByRole('button', { name: /Edit PDF/ });
-    expect(editTool).toBeDisabled();
-    expect(editTool).toHaveAttribute('title', 'No document is open.');
-    // As do filling a form in and making one.
-    const fillTool = screen.getByRole('button', { name: /Fill & Sign/ });
-    expect(fillTool).toBeDisabled();
-    expect(fillTool).toHaveAttribute('title', 'No document is open.');
-    const prepareTool = screen.getByRole('button', { name: /Prepare Form/ });
-    expect(prepareTool).toBeDisabled();
-    // As do Recognize Text, Protect, Document Properties and removing hidden
-    // information, all of which act on the document in front of the reader.
-    const protectTool = screen.getByRole('button', { name: /Protect PDF/ });
-    expect(protectTool).toBeDisabled();
-    expect(protectTool).toHaveAttribute('title', 'No document is open.');
-    // Redacting marks the document in front of the reader as well.
-    const redactTool = screen.getByRole('button', { name: /Redact/ });
-    expect(redactTool).toBeDisabled();
-    expect(redactTool).toHaveAttribute('title', 'No document is open.');
-    // And optimising makes the document in front of the reader smaller.
-    expect(screen.getByRole('button', { name: /Optimize PDF/ })).toBeDisabled();
-    // And the Accessibility Check reads the document in front of the reader.
-    const accessibilityTool = screen.getByRole('button', { name: /Accessibility Check/ });
-    expect(accessibilityTool).toBeDisabled();
-    expect(accessibilityTool).toHaveAttribute('title', 'No document is open.');
-    expect(screen.getAllByText('Needs a document')).toHaveLength(13);
+    // Each of these works on the document in front of the reader. With none
+    // open, picking one asks for a document first.
+    for (const name of [
+      /Comment/,
+      /Organize Pages/,
+      /Edit PDF/,
+      /Fill & Sign/,
+      /Prepare Form/,
+      /Protect PDF/,
+      /Redact/,
+      /Optimize PDF/,
+      /Accessibility Check/,
+    ]) {
+      const tool = screen.getByRole('button', { name });
+      expect(tool).toBeEnabled();
+      expect(tool.getAttribute('title')).toMatch(/^Choose a PDF to open, then /);
+    }
+    expect(screen.getAllByText('Opens a PDF')).toHaveLength(13);
+    // Making or combining documents needs none, so those carry no such note.
+    expect(screen.getByRole('button', { name: /Combine Files/ })).not.toHaveTextContent(
+      'Opens a PDF',
+    );
   });
 });

@@ -15,6 +15,7 @@ import { ProgressCenter } from '../components/progress/ProgressCenter';
 import { HomeScreen } from '../components/home/HomeScreen';
 import { AppShell } from '../components/shell/AppShell';
 import { SearchRunner } from '../components/search/SearchRunner';
+import { PendingToolRunner } from '../components/home/PendingToolRunner';
 import { PdfDocumentProvider } from '../components/viewer/PdfDocumentContext';
 import { PdfViewer } from '../components/viewer/PdfViewer';
 import { OrganizeWorkspace } from '../components/organize/OrganizeWorkspace';
@@ -162,6 +163,7 @@ export function App(): ReactElement {
   return (
     <PdfDocumentProvider tab={activeTab}>
       <SearchRunner />
+      <PendingToolRunner />
       <AppShell
         settings={effectiveSettings}
         version={appInfo?.version ?? null}
