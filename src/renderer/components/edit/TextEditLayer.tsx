@@ -19,6 +19,8 @@ interface TextEditLayerProps {
   placement: TextPlacement | null;
   /** True while the reader is choosing where new text goes. */
   placing: boolean;
+  /** The size new text will be written at, in points. */
+  newTextSize: number;
   /** Text just written on this page, until the page is drawn with it. */
   pending?: PendingText | null;
   /** Called once the page's picture shows the pending text itself. */
@@ -51,6 +53,7 @@ export function TextEditLayer({
   draft,
   placement,
   placing,
+  newTextSize,
   pending = null,
   onSettle,
   onSelect,
@@ -128,11 +131,18 @@ export function TextEditLayer({
     />
   );
 
+  // The box for new text sits on its baseline, a line of type high: a
+  // quarter of the size below the baseline and the rest above it.
   const placementBox =
     placement === null
       ? null
       : pdfRectToCss(
-          { x: placement.x, y: placement.y - 4, width: 240, height: 24 },
+          {
+            x: placement.x,
+            y: placement.y - newTextSize * 0.25,
+            width: Math.max(240, newTextSize * 12),
+            height: newTextSize * 1.5,
+          },
           geometry,
           scale,
           rotation,
@@ -212,7 +222,7 @@ export function TextEditLayer({
           }}
           data-new-text="true"
         >
-          {field(draft, 'New text', 12)}
+          {field(draft, 'New text', newTextSize)}
         </div>
       )}
     </div>

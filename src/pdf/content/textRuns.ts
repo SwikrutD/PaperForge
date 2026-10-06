@@ -255,6 +255,16 @@ export function runBounds(run: TextRun): { x: number; y: number; width: number; 
   return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
 }
 
+/**
+ * The size a run appears at on the page: its font size scaled by the text
+ * matrix and the page's transform. Many generators draw at `1 Tf` and scale
+ * the matrix instead, so `fontSize` alone can say one point for text that is
+ * plainly twelve.
+ */
+export function seenFontSize(run: TextRun): number {
+  return run.fontSize * matrixScale(run.matrix).y;
+}
+
 /** The run's advance before the matrix scales it. */
 function advanceInTextSpace(run: TextRun): number {
   const last = run.glyphs[run.glyphs.length - 1];

@@ -3,7 +3,7 @@ import { AppError } from '@shared/errors/appError';
 import type { PageTextModel, TextColor, TextRunModel } from '@shared/schemas/text';
 import { readPageContent } from '@pdf/content/pageContent';
 import { encodeForFont, rewritability } from '@pdf/content/editText';
-import { runBounds, type TextRun } from '@pdf/content/textRuns';
+import { runBounds, seenFontSize, type TextRun } from '@pdf/content/textRuns';
 import { findRun, runIdOf } from '@pdf/mutate/text';
 import { isReplacementFont } from '@pdf/mutate/textResources';
 import type { Color } from '@pdf/content/state';
@@ -89,7 +89,7 @@ function describeRun(run: TextRun): TextRunModel {
     rotation: run.rotation,
     fontName: run.fontName ?? '',
     baseFont: run.font?.baseFont ?? 'Unknown',
-    fontSize: run.fontSize,
+    fontSize: seenFontSize(run),
     color: toRgb(run.color),
     invisible: run.invisible,
     editable: verdict.editable,

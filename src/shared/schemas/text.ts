@@ -34,6 +34,10 @@ export const textRunModelSchema = z.strictObject({
   fontName: z.string().max(100),
   /** `/BaseFont`, as the file names it. */
   baseFont: z.string().max(200),
+  /**
+   * The size the run appears at, in points: the font size scaled by the text
+   * matrix and the page's transform, not the `Tf` operand alone.
+   */
   fontSize: z.number().finite().min(0).max(10_000),
   color: textColorSchema,
   /** Drawn in a mode that shows nothing: an OCR layer, or hidden text. */

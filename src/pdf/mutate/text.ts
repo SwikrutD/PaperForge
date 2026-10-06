@@ -5,8 +5,8 @@ import type { TextStyle } from '@shared/schemas/text';
 import { readPageContent, type PageContent } from '@pdf/content/pageContent';
 import { rewriteRunText } from '@pdf/content/editText';
 import { appendTextBlock, neutralizeRun } from '@pdf/content/drawText';
-import { multiply, type Matrix } from '@pdf/content/state';
-import type { TextRun } from '@pdf/content/textRuns';
+import { matrixScale, multiply, type Matrix } from '@pdf/content/state';
+import { seenFontSize, type TextRun } from '@pdf/content/textRuns';
 import { encodeWinAnsi } from '@pdf/text/layout';
 import { ensureFontResource } from './textResources';
 
@@ -114,7 +114,7 @@ export async function applyTextOperation(
   setPageContent(
     document,
     pageIndex,
-    appendTextBlock(emptied, replacementMatrix(run, style), drawable(operation.text), {
+    appendTextBlock(emptied, replacementMatrix(run), drawable(operation.text), {
       fontResource: resource,
       size: style.size,
       color: style.color,
@@ -130,14 +130,15 @@ export async function applyTextOperation(
  * Where replacement text goes: exactly where the original sat.
  *
  * The run's matrix already carries the page's own transform, so the text
- * lands in the same place at the same angle. The size is taken out of the
- * matrix and put in `Tf`, so a page that scales its text still gets text of
- * the size the reader chose.
+ * lands in the same place at the same angle. Its scale is divided back out,
+ * so `Tf` alone sets the size: a page that draws at `1 Tf` and scales the
+ * matrix still gets text of the size the reader chose (or saw, by default).
  */
-function replacementMatrix(run: TextRun, style: TextStyle): Matrix {
+function replacementMatrix(run: TextRun): Matrix {
   const rise: Matrix = { a: 1, b: 0, c: 0, d: 1, e: 0, f: run.rise };
-  const scale = run.fontSize === 0 ? 1 : style.size / run.fontSize;
-  const normalize: Matrix = { a: 1 / scale, b: 0, c: 0, d: 1 / scale, e: 0, f: 0 };
+  const scale = matrixScale(run.matrix).y;
+  const unscale = scale === 0 ? 1 : 1 / scale;
+  const normalize: Matrix = { a: unscale, b: 0, c: 0, d: unscale, e: 0, f: 0 };
   return multiply(normalize, multiply(rise, run.matrix));
 }
 
@@ -155,8 +156,9 @@ function styleOf(run: TextRun): TextStyle {
     family,
     bold: /bold|black|heavy/.test(base),
     italic: /italic|oblique/.test(base),
-    // The run's size already includes whatever its matrix scales by.
-    size: run.fontSize === 0 ? 12 : run.fontSize,
+    // The size the run is seen at, which is what Tf sets once the
+    // replacement matrix has divided its own scale out.
+    size: run.fontSize === 0 ? 12 : seenFontSize(run),
     color: colorOf(run),
   };
 }
