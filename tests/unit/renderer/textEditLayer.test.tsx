@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { PdfPageGeometry } from '../../../src/pdf/render/types';
 import type { TextRunModel } from '../../../src/shared/schemas/text';
@@ -134,5 +134,41 @@ describe('leaving the field', () => {
     screen.getByRole('button', { name: 'Somewhere else' }).focus();
 
     expect(onCommit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('pointing inside the open field', () => {
+  function renderOpen(onBeginEdit: () => void): HTMLElement {
+    render(
+      <TextEditLayer
+        geometry={geometry}
+        scale={1}
+        rotation={0}
+        runs={[run]}
+        selectedId="op3"
+        draft="Scaled words, being typed"
+        placement={null}
+        placing={false}
+        newTextSize={12}
+        {...handlers}
+        onBeginEdit={onBeginEdit}
+      />,
+    );
+    return screen.getByRole('textbox');
+  }
+
+  it('leaves the press to the field, so the caret can go where it lands', () => {
+    const input = renderOpen(vi.fn());
+    // fireEvent returns false when a handler called preventDefault.
+    expect(fireEvent.pointerDown(input)).toBe(true);
+    expect(fireEvent.mouseDown(input)).toBe(true);
+  });
+
+  it('does not reopen the run on a click or a double click', () => {
+    const onBeginEdit = vi.fn();
+    const input = renderOpen(onBeginEdit);
+    fireEvent.click(input);
+    fireEvent.doubleClick(input);
+    expect(onBeginEdit).not.toHaveBeenCalled();
   });
 });

@@ -213,3 +213,18 @@ describe('the style chosen for a run', () => {
     expect(applied[0]?.operations[0]).toMatchObject({ kind: 'replaceText', style: null });
   });
 });
+
+describe('opening the run that is already open', () => {
+  it('keeps what was typed and the style chosen for it', () => {
+    load([run('a', 'Original words', { editable: true })]);
+    useTextEditStore.getState().beginEdit(1, 'a');
+    useTextEditStore.getState().setDraft('Changed words');
+    useTextEditStore.getState().setStyle({ size: 30 });
+
+    useTextEditStore.getState().beginEdit(1, 'a');
+
+    expect(useTextEditStore.getState().draft).toBe('Changed words');
+    expect(useTextEditStore.getState().style.size).toBe(30);
+    expect(useTextEditStore.getState().styleTouched).toBe(true);
+  });
+});
