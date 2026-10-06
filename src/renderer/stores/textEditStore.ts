@@ -65,6 +65,12 @@ export interface TextEditStore {
   placement: TextPlacement | null;
   /** What text PaperForge draws itself looks like. */
   style: TextStyle;
+  /**
+   * True once the reader has changed the style since opening the run being
+   * edited. A changed style is applied on the edit — as a replacement drawn in
+   * that style — even when the words are left as they were.
+   */
+  styleTouched: boolean;
   busy: boolean;
   /** The text last written, until its page has been redrawn. */
   pendingText: PendingText | null;
@@ -120,6 +126,7 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
   placing: false,
   placement: null,
   style: DEFAULT_TEXT_STYLE,
+  styleTouched: false,
   busy: false,
   pendingText: null,
 
@@ -162,14 +169,23 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
     const run = runOf(get(), sessionId, page, id);
     if (run === undefined) return;
 
-    set({ selected: { page, id }, draft: run.text, placement: null, placing: false });
+    // The style controls start from how the run looks, so what the reader
+    // changes there is a change to this text rather than to a default.
+    set({
+      selected: { page, id },
+      draft: run.text,
+      placement: null,
+      placing: false,
+      style: lookOf(run),
+      styleTouched: false,
+    });
   },
 
   setDraft: (draft) => set({ draft }),
   cancelEdit: () => set({ draft: null, placement: null }),
 
   commitEdit: async () => {
-    const { selected, draft, placement, style, busy } = get();
+    const { selected, draft, placement, style, styleTouched, busy } = get();
     const sessionId = useDocumentStore.getState().activeId;
     // One change at a time: Enter followed by the field losing focus, or a
     // click elsewhere while a change is still being written, must not send it
@@ -217,8 +233,8 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
 
     if (selected === null) return;
     const existing = runOf(get(), sessionId, selected.page, selected.id);
-    // Typing nothing new is not a change.
-    if (existing === undefined || existing.text === draft) {
+    // Typing nothing new, and choosing no new style, is not a change.
+    if (existing === undefined || (existing.text === draft && !styleTouched)) {
       set({ draft: null });
       return;
     }
@@ -252,8 +268,8 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
       // refused instead, and the draft stays open to be corrected.
       if (refuseUndrawable(draft)) return;
 
-      set({ draft: null, selected: null });
-      await write(sessionId, preview(existing.replaced), {
+      set({ draft: null, selected: null, styleTouched: false });
+      await write(sessionId, preview(styleTouched), {
         label: draft === '' ? 'Delete text' : 'Replace text',
         operations: [
           {
@@ -261,16 +277,17 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
             page: selected.page,
             runId: selected.id,
             text: draft,
-            // Text PaperForge drew keeps whatever the reader has chosen;
-            // text from the document keeps its own look.
-            style: existing.replaced ? style : null,
+            // A style the reader chose for this text is applied; otherwise
+            // the text keeps its own look, whoever drew it.
+            style: styleTouched ? style : null,
           },
         ],
       });
     };
 
-    // A run PaperForge cannot rewrite in place is replaced outright.
-    if (!existing.editable) {
+    // A run PaperForge cannot rewrite in place is replaced outright, and so
+    // is one the reader has restyled: its own font cannot take a new style.
+    if (!existing.editable || styleTouched) {
       await replaceWith();
       return;
     }
@@ -326,7 +343,8 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
     }
   },
 
-  setStyle: (patch) => set((state) => ({ style: { ...state.style, ...patch } })),
+  setStyle: (patch) =>
+    set((state) => ({ style: { ...state.style, ...patch }, styleTouched: true })),
   setPlacing: (placing) => set({ placing, selected: null, draft: null, placement: null }),
   placeText: (placement) => set({ placement, draft: '', placing: false, selected: null }),
 }));
@@ -398,6 +416,19 @@ function familyOf(baseFont: string): TextFamily {
   if (name.includes('sans')) return 'helvetica';
   if (name.includes('times') || name.includes('serif') || name.includes('roman')) return 'times';
   return 'helvetica';
+}
+
+/** How a run looks, as the nearest style PaperForge can draw it in. */
+function lookOf(run: TextRunModel): TextStyle {
+  const name = run.baseFont.toLowerCase();
+  return {
+    family: familyOf(run.baseFont),
+    bold: /bold|black|heavy/.test(name),
+    italic: /italic|oblique/.test(name),
+    // The schema's bounds; a run seen at 0.5 pt is still edited sensibly.
+    size: Math.min(400, Math.max(1, Math.round(run.fontSize * 100) / 100)),
+    color: run.color,
+  };
 }
 
 function runOf(

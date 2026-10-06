@@ -121,6 +121,9 @@ export async function applyTextOperation(
       ...(run.charSpacing === 0 ? {} : { charSpacing: run.charSpacing }),
       ...(run.wordSpacing === 0 ? {} : { wordSpacing: run.wordSpacing }),
       ...(run.horizontalScale === 100 ? {} : { horizontalScale: run.horizontalScale }),
+      // The words of a recognised scan sit invisibly over its picture; a
+      // corrected word must stay invisible, or it is printed over the scan.
+      renderMode: run.invisible ? 3 : 0,
     }),
   );
   return true;

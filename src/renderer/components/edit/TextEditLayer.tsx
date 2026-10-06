@@ -127,7 +127,13 @@ export function TextEditLayer({
       aria-label={label}
       onChange={(event) => onDraft(event.target.value)}
       onKeyDown={onKeyDown}
-      onBlur={onCommit}
+      onBlur={(event) => {
+        // Choosing a size or a colour for this text is part of editing it:
+        // focus moving into the style controls does not write it yet.
+        const next = event.relatedTarget;
+        if (next instanceof Element && next.closest('[data-keeps-text-draft]') !== null) return;
+        onCommit();
+      }}
     />
   );
 
