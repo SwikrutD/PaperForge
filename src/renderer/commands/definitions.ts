@@ -91,8 +91,14 @@ const LEFT_PANELS: Array<{ id: LeftPanelId; title: string; icon: typeof Bookmark
 ];
 
 /** Commands that need a document in front of the reader. */
+/**
+ * Why a command that works on a document cannot run. The home screen's tool
+ * cards recognise it: a tool waiting only for a document offers to open one.
+ */
+export const NO_DOCUMENT_REASON = 'No document is open.';
+
 const documentRequired = (context: CommandContext): boolean | CommandAvailability =>
-  context.activeDocument !== null ? true : { enabled: false, reason: 'No document is open.' };
+  context.activeDocument !== null ? true : { enabled: false, reason: NO_DOCUMENT_REASON };
 
 function leftPanelCommands(): CommandDefinition[] {
   return LEFT_PANELS.map(({ id, title, icon }) => ({

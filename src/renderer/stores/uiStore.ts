@@ -36,6 +36,11 @@ export interface UiStore {
    */
   presentation: Presentation | null;
   toasts: Toast[];
+  /**
+   * A tool the reader picked before any document was open. It starts once
+   * the document they then chose has opened (`PendingToolRunner`).
+   */
+  toolAfterOpen: string | null;
   /** Pending confirmation, shown over everything else. */
   confirmation: ConfirmationRequest | null;
   openDialog: (dialog: DialogId) => void;
@@ -47,6 +52,7 @@ export interface UiStore {
   setViewerTool: (tool: ViewerTool) => void;
   setPresentation: (presentation: Presentation | null) => void;
   setPresentationPage: (pageNumber: number) => void;
+  setToolAfterOpen: (commandId: string | null) => void;
   showToast: (toast: ToastInput) => string;
   dismissToast: (id: string) => void;
   requestConfirmation: (request: ConfirmationRequest) => void;
@@ -62,6 +68,7 @@ export const useUiStore = create<UiStore>((set) => ({
   viewerTool: 'select',
   presentation: null,
   toasts: [],
+  toolAfterOpen: null,
   confirmation: null,
 
   openDialog: (dialog) => set({ dialog, commandPaletteOpen: false }),
@@ -69,6 +76,7 @@ export const useUiStore = create<UiStore>((set) => ({
   setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
   setProgressCenterOpen: (open) => set({ progressCenterOpen: open }),
   setReadingMode: (readingMode) => set({ readingMode }),
+  setToolAfterOpen: (toolAfterOpen) => set({ toolAfterOpen }),
   setCommenting: (commenting) => set({ commenting }),
   setViewerTool: (viewerTool) => set({ viewerTool }),
   setPresentation: (presentation) => set({ presentation, commandPaletteOpen: false }),

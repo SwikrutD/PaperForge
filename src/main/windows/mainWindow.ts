@@ -6,6 +6,7 @@ import type { WindowState } from '@shared/schemas/settings';
 import type { Logger } from '../services/logging/logger';
 import type { SettingsStore } from '../services/settings/settingsStore';
 import type { ThemeController } from '../theme/themeController';
+import { attachDevToolsShortcut } from './applicationMenu';
 
 /** Painted before the renderer's first frame so startup has no white flash. */
 const BACKGROUND_COLOR = { light: '#faf9f8', dark: '#1b1a19' } as const;
@@ -48,7 +49,6 @@ export function createMainWindow(options: CreateMainWindowOptions): BrowserWindo
     title: APP_NAME,
     show: false,
     backgroundColor: BACKGROUND_COLOR[theme.getState().resolved],
-    autoHideMenuBar: true,
     webPreferences: {
       preload: preloadPath,
       contextIsolation: true,
@@ -72,6 +72,7 @@ export function createMainWindow(options: CreateMainWindowOptions): BrowserWindo
   });
 
   attachDiagnostics(window, logger);
+  if (devServerUrl !== null) attachDevToolsShortcut(window);
   attachWindowStateEvents(window);
   attachBoundsPersistence(window, settings, logger);
 

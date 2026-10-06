@@ -1,9 +1,5 @@
 import { useEffect, useState, type ReactElement } from 'react';
-import {
-  DEFAULT_SETTINGS,
-  type ResolvedTheme,
-  type ThemePreference,
-} from '@shared/schemas/settings';
+import { DEFAULT_SETTINGS } from '@shared/schemas/settings';
 import type { RecoveryEntry } from '@shared/schemas/document';
 import { CommandPalette } from '../components/overlays/CommandPalette';
 import { AboutDialog } from '../components/overlays/AboutDialog';
@@ -15,6 +11,8 @@ import { ProgressCenter } from '../components/progress/ProgressCenter';
 import { HomeScreen } from '../components/home/HomeScreen';
 import { AppShell } from '../components/shell/AppShell';
 import { SearchRunner } from '../components/search/SearchRunner';
+import { PendingToolRunner } from '../components/home/PendingToolRunner';
+import { describeDocument, describeView } from '../components/shell/statusText';
 import { PdfDocumentProvider } from '../components/viewer/PdfDocumentContext';
 import { PdfViewer } from '../components/viewer/PdfViewer';
 import { OrganizeWorkspace } from '../components/organize/OrganizeWorkspace';
@@ -24,7 +22,7 @@ import { useCompareStore } from '../stores/compareStore';
 import { ErrorMessageBar } from '../components/surfaces/MessageBar';
 import { invoke } from '../services/ipcClient';
 import { useAppStore } from '../stores/appStore';
-import { useDocumentStore, type DocumentViewState } from '../stores/documentStore';
+import { useDocumentStore } from '../stores/documentStore';
 import { useCreateStore } from '../stores/createStore';
 import { useOrganizeStore } from '../stores/organizeStore';
 import { useTextEditStore } from '../stores/textEditStore';
@@ -56,27 +54,6 @@ const STATUS_TEXT = {
   ready: 'Ready',
   error: 'Startup problem',
 } as const;
-
-const ZOOM_LABEL = {
-  fitPage: 'Fit page',
-  fitWidth: 'Fit width',
-  actual: 'Actual size',
-  custom: 'Custom zoom',
-} as const;
-
-/** "Page 2 of 3 · Fit width · 90°" for the status bar. */
-function describeView(view: DocumentViewState): string {
-  const parts = [`Page ${view.pageNumber}`, ZOOM_LABEL[view.zoomMode]];
-  if (view.pageMode === 'single') parts.push('Single page');
-  if (view.spread === 'twoPage') parts.push(view.coverPage ? 'Two pages, cover' : 'Two pages');
-  if (view.rotation !== 0) parts.push(`${view.rotation}°`);
-  return parts.join(' · ');
-}
-
-function describeTheme(preference: ThemePreference, resolved: ResolvedTheme | null): string {
-  const resolvedLabel = resolved ?? 'unknown';
-  return preference === 'system' ? `Theme: ${resolvedLabel} (system)` : `Theme: ${preference}`;
-}
 
 export function App(): ReactElement {
   const status = useAppStore((state) => state.status);
@@ -155,25 +132,20 @@ export function App(): ReactElement {
   // Before settings arrive the shell renders with defaults; every command stays
   // disabled until the real values are in, so nothing can be changed blindly.
   const effectiveSettings = settings ?? DEFAULT_SETTINGS;
-  const preference = effectiveSettings.appearance.theme;
   const activeTab = tabs.find((tab) => tab.session.id === activeId) ?? null;
-  const viewText = activeTab === null ? null : describeView(activeTab.view);
+  const viewText = activeTab === null ? null : describeView(activeTab.view, activeTab.pageCount);
 
   return (
     <PdfDocumentProvider tab={activeTab}>
       <SearchRunner />
+      <PendingToolRunner />
       <AppShell
         settings={effectiveSettings}
         version={appInfo?.version ?? null}
         status={status}
         statusText={STATUS_TEXT[status]}
-        themeText={describeTheme(preference, resolvedTheme)}
         viewText={viewText}
-        documentText={
-          activeTab === null
-            ? 'No document open'
-            : `${activeTab.session.file.displayName}${tabs.length > 1 ? ` · ${tabs.length} open` : ''}`
-        }
+        documentText={describeDocument(activeTab, tabs.length)}
         overlays={
           <>
             {progressOpen && <ProgressCenter />}

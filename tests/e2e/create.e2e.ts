@@ -200,7 +200,7 @@ test('combining writes the document, opens it, and leaves the sources alone', as
   await expect(page.getByText(/A document of 4 pages was made/)).toBeVisible();
   // The workspace gives way to the document it just made.
   await expect(documentTabs().filter({ hasText: 'Combined.pdf' })).toHaveCount(1);
-  await expect(page.getByText('of 4')).toBeVisible();
+  await expect(page.getByText('of 4', { exact: true })).toBeVisible();
 
   // The picture first, then two pages of the PDF, then the notes.
   expect(await pagesOnDisk(target)).toEqual([

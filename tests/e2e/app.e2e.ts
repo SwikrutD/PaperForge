@@ -87,7 +87,7 @@ test('opening from the recent list shows the document as a tab', async () => {
 
   await expect(page.getByRole('tab', { name: 'Rapport final é.pdf' })).toBeVisible();
   await expect(page.getByText('Opened by the end-to-end test')).toBeVisible();
-  await expect(page.getByText('of 1')).toBeVisible();
+  await expect(page.getByText('of 1', { exact: true })).toBeVisible();
 });
 
 test('the properties panel reports the file it came from', async () => {

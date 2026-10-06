@@ -146,5 +146,3 @@ user; Settings → Windows opens the right page. Uninstall from Settings → App
 ## License
 
 MIT — see [`LICENSE`](./LICENSE).
-#   P a p e r F o r g e  
- 

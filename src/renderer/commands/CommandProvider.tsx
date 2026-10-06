@@ -488,19 +488,28 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
     actions,
   ]);
 
-  const execute = useCallback(
-    (id: string) => {
+  const run = useCallback(
+    async (id: string): Promise<void> => {
       if (context === null) return;
-      void registry.execute(id, context).catch((error: unknown) => {
+      try {
+        await registry.execute(id, context);
+      } catch (error) {
         const serialized = AppError.serialize(error);
         showToast({
           title: serialized.message,
           description: serialized.details,
           intent: 'error',
         });
-      });
+      }
     },
     [context, registry, showToast],
+  );
+
+  const execute = useCallback(
+    (id: string) => {
+      void run(id);
+    },
+    [run],
   );
 
   const resolve = useCallback(
@@ -544,8 +553,8 @@ export function CommandProvider({ children }: { children: ReactNode }): ReactEle
   }, [shortcuts, execute]);
 
   const api = useMemo<CommandApi>(
-    () => ({ registry, context, execute, resolve, resolveAll }),
-    [registry, context, execute, resolve, resolveAll],
+    () => ({ registry, context, execute, run, resolve, resolveAll }),
+    [registry, context, execute, run, resolve, resolveAll],
   );
 
   return <CommandApiContext.Provider value={api}>{children}</CommandApiContext.Provider>;
