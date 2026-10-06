@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EditTransaction } from '../../../src/shared/schemas/edit';
-import type { TextRunModel } from '../../../src/shared/schemas/text';
+import { DEFAULT_TEXT_STYLE, type TextRunModel } from '../../../src/shared/schemas/text';
 import {
   initialEditState,
   useDocumentStore,
@@ -149,5 +149,67 @@ describe('WinAnsi punctuation', () => {
       kind: 'replaceText',
       text: 'It’s “done” — really…',
     });
+  });
+});
+
+describe('the style chosen for a run', () => {
+  const bold = run('a', 'Styled words', {
+    baseFont: 'ABCDEF+Times-Bold',
+    fontSize: 16,
+    color: { r: 1, g: 0, b: 0 },
+    editable: true,
+  });
+
+  beforeEach(() => {
+    load([bold]);
+    invoke.mockImplementation((channel: string) =>
+      Promise.resolve(channel === 'text:canWrite' ? { ok: true, missing: null } : undefined),
+    );
+  });
+
+  it('starts as the run’s own look when the run is opened', () => {
+    useTextEditStore.getState().beginEdit(1, 'a');
+    expect(useTextEditStore.getState().style).toEqual({
+      family: 'times',
+      bold: true,
+      italic: false,
+      size: 16,
+      color: { r: 1, g: 0, b: 0 },
+    });
+  });
+
+  it('is applied on the first edit', async () => {
+    useTextEditStore.getState().beginEdit(1, 'a');
+    useTextEditStore.getState().setStyle({ size: 30 });
+    useTextEditStore.getState().setDraft('Bigger words');
+    await useTextEditStore.getState().commitEdit();
+
+    expect(applied[0]?.operations[0]).toMatchObject({
+      kind: 'replaceText',
+      text: 'Bigger words',
+      style: { family: 'times', bold: true, size: 30 },
+    });
+  });
+
+  it('is applied even when the words are left as they were', async () => {
+    useTextEditStore.getState().beginEdit(1, 'a');
+    useTextEditStore.getState().setStyle({ italic: true });
+    await useTextEditStore.getState().commitEdit();
+
+    expect(applied[0]?.operations[0]).toMatchObject({
+      kind: 'replaceText',
+      text: 'Styled words',
+      style: { italic: true },
+    });
+  });
+
+  it('is left alone when the reader changed nothing, so text keeps its own look', async () => {
+    load([{ ...bold, editable: false, replaced: true }]);
+    useTextEditStore.setState({ style: { ...DEFAULT_TEXT_STYLE, size: 12 } });
+    useTextEditStore.getState().beginEdit(1, 'a');
+    useTextEditStore.getState().setDraft('Other words');
+    await useTextEditStore.getState().commitEdit();
+
+    expect(applied[0]?.operations[0]).toMatchObject({ kind: 'replaceText', style: null });
   });
 });

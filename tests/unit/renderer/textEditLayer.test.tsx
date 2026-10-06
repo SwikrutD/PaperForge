@@ -89,3 +89,50 @@ describe('the field for existing text', () => {
     expect(screen.getByRole('textbox')).toHaveStyle({ fontSize: '32px' });
   });
 });
+
+describe('leaving the field', () => {
+  function renderOpen(onCommit: () => void): void {
+    render(
+      <>
+        <TextEditLayer
+          geometry={geometry}
+          scale={1}
+          rotation={0}
+          runs={[run]}
+          selectedId="op3"
+          draft="Scaled words"
+          placement={null}
+          placing={false}
+          newTextSize={12}
+          {...handlers}
+          onCommit={onCommit}
+        />
+        <section data-keeps-text-draft>
+          <label>
+            Size
+            <input type="number" defaultValue={12} />
+          </label>
+        </section>
+        <button type="button">Somewhere else</button>
+      </>,
+    );
+  }
+
+  it('does not write the text when focus moves to the style controls', () => {
+    const onCommit = vi.fn();
+    renderOpen(onCommit);
+    screen.getByRole('textbox').focus();
+    screen.getByRole('spinbutton', { name: 'Size' }).focus();
+
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
+  it('writes the text when focus moves anywhere else', () => {
+    const onCommit = vi.fn();
+    renderOpen(onCommit);
+    screen.getByRole('textbox').focus();
+    screen.getByRole('button', { name: 'Somewhere else' }).focus();
+
+    expect(onCommit).toHaveBeenCalledTimes(1);
+  });
+});

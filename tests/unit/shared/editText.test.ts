@@ -293,6 +293,22 @@ describe('replacing text PaperForge cannot write natively', () => {
     expect(drawn?.color.components).toEqual([1, 0, 0]);
   });
 
+  it('keeps the invisible text of a recognised scan invisible', async () => {
+    // An OCR layer: words drawn in render mode 3, over a picture of the page.
+    const original = documentOf({
+      pages: [{ content: 'BT 3 Tr /F1 12 Tf 60 700 Td (recognised) Tj ET' }],
+    });
+    const result = await engine.apply(original, [
+      { kind: 'replaceText', page: 1, runId: 'op4', text: 'corrected', style: null },
+    ]);
+
+    const drawn = (await firstRun(result.bytes)).content.runs.find(
+      (run) => run.text === 'corrected',
+    );
+    expect(drawn?.invisible).toBe(true);
+    expect(await textOnPage(result.bytes)).toContain('corrected');
+  });
+
   it('draws a question mark for what no standard font can write', async () => {
     const original = documentOf({ pages: [{ text: 'plain' }] });
     const result = await engine.apply(original, [
