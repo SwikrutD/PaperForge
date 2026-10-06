@@ -70,7 +70,7 @@ test('renders a document, its text and its page count', async () => {
   await open(filePath, 'Three pages.pdf');
 
   await expect(page.getByRole('tab', { name: 'Three pages.pdf' })).toBeVisible();
-  await expect(page.getByText('of 3')).toBeVisible();
+  await expect(page.getByText('of 3', { exact: true })).toBeVisible();
 
   // The canvas carries the pixels; the text layer carries selectable text.
   await expect(page.locator('canvas').first()).toBeVisible();
@@ -94,13 +94,13 @@ test('navigates to another page', async () => {
 
 test('zooms and reports the level', async () => {
   await page.getByRole('button', { name: 'Actual size' }).click();
-  await expect(page.getByText('100%')).toBeVisible();
+  await expect(page.getByText('100%', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Zoom in' }).click();
-  await expect(page.getByText('125%')).toBeVisible();
+  await expect(page.getByText('125%', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Zoom out' }).click();
-  await expect(page.getByText('100%')).toBeVisible();
+  await expect(page.getByText('100%', { exact: true })).toBeVisible();
 });
 
 test('rotates the view without touching the document', async () => {

@@ -108,7 +108,7 @@ test('a 1,000-page document opens quickly and mounts only what is on screen', as
   const firstPageMs = Date.now() - started;
   report(`1,000 pages: first page drawn after ${firstPageMs} ms`);
 
-  await expect(page.getByText('of 1000')).toBeVisible();
+  await expect(page.getByText('of 1000', { exact: true })).toBeVisible();
   expect(await page.locator('[data-page-number]').count()).toBeLessThanOrEqual(MAX_MOUNTED_PAGES);
   // The target in CLAUDE.md is about a second; the test allows for a slow machine.
   expect(firstPageMs).toBeLessThan(5000);

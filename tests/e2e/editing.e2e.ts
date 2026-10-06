@@ -102,13 +102,13 @@ test('undo takes the change back and redo puts it again', async () => {
 });
 
 test('deleting a page removes it, and undo brings it back', async () => {
-  await expect(page.getByText('of 3')).toBeVisible();
+  await expect(page.getByText('of 3', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Delete Page' }).click();
-  await expect(page.getByText('of 2')).toBeVisible();
+  await expect(page.getByText('of 2', { exact: true })).toBeVisible();
 
   await page.keyboard.press('Control+z');
-  await expect(page.getByText('of 3')).toBeVisible();
+  await expect(page.getByText('of 3', { exact: true })).toBeVisible();
 });
 
 test('saving writes the change, and the saved file reopens', async () => {
@@ -132,16 +132,16 @@ test('the saved document is what the viewer shows after reopening it', async () 
 
 test('revert goes back to the saved document and can be undone', async () => {
   await page.getByRole('button', { name: 'Delete Page' }).click();
-  await expect(page.getByText('of 2')).toBeVisible();
+  await expect(page.getByText('of 2', { exact: true })).toBeVisible();
 
   await page.getByRole('menuitem', { name: 'File' }).click();
   await page.getByRole('menuitem', { name: 'Revert to Saved' }).click();
 
-  await expect(page.getByText('of 3')).toBeVisible();
+  await expect(page.getByText('of 3', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Unsaved changes')).toBeHidden();
 
   await page.getByRole('button', { name: 'Redo' }).click();
-  await expect(page.getByText('of 2')).toBeVisible();
+  await expect(page.getByText('of 2', { exact: true })).toBeVisible();
   await page.keyboard.press('Control+z');
 });
 
