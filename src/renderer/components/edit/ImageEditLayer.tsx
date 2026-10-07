@@ -6,9 +6,17 @@ import { cx } from '../../utils/classNames';
 import { cssPointToPdf } from '../viewer/pageGeometry';
 import { awaitingPaint, usePaintedRevision } from '../viewer/paintedRevision';
 import type { MovedImage } from '../../stores/imageEditStore';
-import { HANDLES, movedBy, resizedBy, type Handle } from './imageGeometry';
+import {
+  HANDLES,
+  movedBy,
+  resizeGesture,
+  rotatedTo,
+  type Handle,
+  type ImageCrop,
+} from './imageGeometry';
 import { frameStyle, imageFrame, snapshotImage } from './imageFrame';
 import { MovedImageMark } from './MovedImageMark';
+import { ImageCropFrame } from './ImageCropFrame';
 import styles from './ImageEditLayer.module.css';
 
 interface ImageEditLayerProps {
@@ -22,6 +30,8 @@ interface ImageEditLayerProps {
   drag: { id: string; placement: ImagePlacementInput } | null;
   /** True while the reader is choosing where a new image goes. */
   placing: boolean;
+  /** The crop being dragged on an image of this page, before it is written. */
+  cropping: { id: string; crop: ImageCrop } | null;
   /** An image on this page just moved or deleted, until the page is drawn with it. */
   moved?: MovedImage | null;
   /** Called once the page's picture shows the moved image itself. */
@@ -32,13 +42,18 @@ interface ImageEditLayerProps {
   onDrop: (id: string, placement: ImagePlacementInput, picture: HTMLCanvasElement | null) => void;
   /** A click on the page, while an image is waiting to be placed. */
   onPlace: (x: number, y: number) => void;
+  /** The crop as it is dragged; nothing is written until it is applied. */
+  onCropDraft: (crop: ImageCrop) => void;
 }
+
+/** What a drag on the box does: move it, pull a handle, or turn it. */
+type GestureKind = { kind: 'move' } | { kind: 'resize'; handle: Handle } | { kind: 'rotate' };
 
 interface Gesture {
   id: string;
   from: { x: number; y: number };
   start: ImagePlacementInput;
-  handle: Handle | null;
+  action: GestureKind;
   placement: ImagePlacementInput;
 }
 
@@ -48,7 +63,10 @@ interface Gesture {
  * Each image gets a box where it is drawn; the selected one grows handles.
  * Dragging the box moves the image and dragging a handle resizes it, both in
  * the image's own axes, so a picture that sits at an angle behaves the way it
- * looks. Nothing is written until the drag ends: one drag is one undo.
+ * looks. A corner keeps the picture's shape unless Shift is held; the handle
+ * above the box turns it, in steps of 15° with Shift. While the image is being
+ * cropped, the crop has the handles instead. Nothing is written until the drag
+ * ends: one drag is one undo.
  */
 export function ImageEditLayer({
   geometry,
@@ -58,12 +76,14 @@ export function ImageEditLayer({
   selectedId,
   drag,
   placing,
+  cropping,
   moved = null,
   onSettle,
   onSelect,
   onDrag,
   onDrop,
   onPlace,
+  onCropDraft,
 }: ImageEditLayerProps): ReactElement {
   const gesture = useRef<Gesture | null>(null);
   const layerRef = useRef<HTMLDivElement>(null);
@@ -90,7 +110,7 @@ export function ImageEditLayer({
   const begin = (
     event: PointerEvent<HTMLElement>,
     image: PageImageModel,
-    handle: Handle | null,
+    action: GestureKind,
   ): void => {
     event.stopPropagation();
     // The page column takes focus on pointer down, which would end the gesture
@@ -103,7 +123,7 @@ export function ImageEditLayer({
       id: image.id,
       from: pointOf(event),
       start: image.placement,
-      handle,
+      action,
       placement: image.placement,
     };
   };
@@ -115,10 +135,13 @@ export function ImageEditLayer({
     const point = pointOf(event);
     const dx = point.x - current.from.x;
     const dy = point.y - current.from.y;
+    const { action } = current;
     const placement =
-      current.handle === null
+      action.kind === 'move'
         ? movedBy(current.start, dx, dy)
-        : resizedBy(current.start, current.handle, dx, dy, event.shiftKey);
+        : action.kind === 'resize'
+          ? resizeGesture(current.start, action.handle, dx, dy, event.shiftKey)
+          : rotatedTo(current.start, current.from, point, event.shiftKey);
 
     current.placement = placement;
     onDrag(current.id, placement);
@@ -174,6 +197,7 @@ export function ImageEditLayer({
         const frame = imageFrame(placement, geometry, scale, rotation);
         if (frame === null) return null;
         const selected = image.id === selectedId;
+        const crop = cropping?.id === image.id ? cropping.crop : null;
 
         return (
           <div
@@ -184,36 +208,69 @@ export function ImageEditLayer({
             data-selected={selected ? 'true' : 'false'}
             title={`${String(image.pixelWidth)} × ${String(image.pixelHeight)} pixels`}
             onPointerDown={(event) => {
-              if (placing) return;
-              begin(event, image, null);
+              if (placing || crop !== null) return;
+              begin(event, image, { kind: 'move' });
             }}
             onPointerMove={move}
             onPointerUp={end}
             onPointerCancel={end}
           >
             <span className={styles.frame} aria-hidden="true" />
-            {selected &&
-              HANDLES.map(({ handle, label, cursor }) => (
-                <span
-                  key={label}
-                  className={styles.handle}
-                  role="presentation"
-                  aria-label={`${label} handle`}
-                  style={{
-                    left: `${String(handle.x * 100)}%`,
-                    top: `${String((1 - handle.y) * 100)}%`,
-                    cursor,
-                  }}
-                  data-handle={label}
-                  onPointerDown={(event) => {
-                    if (placing) return;
-                    begin(event, image, handle);
-                  }}
-                  onPointerMove={move}
-                  onPointerUp={end}
-                  onPointerCancel={end}
-                />
-              ))}
+            {/* The box is mirrored with a mirrored picture; what sits on it is
+                mirrored back, so each handle is where it acts. */}
+            {selected && (
+              <span
+                className={styles.handles}
+                style={frame.flipX ? { transform: 'scaleX(-1)' } : undefined}
+              >
+                {crop !== null ? (
+                  <ImageCropFrame
+                    placement={placement}
+                    crop={crop}
+                    pointOf={pointOf}
+                    onChange={onCropDraft}
+                  />
+                ) : (
+                  <>
+                    <span className={styles.rotateStem} aria-hidden="true" />
+                    <span
+                      className={cx(styles.handle, styles.rotate)}
+                      role="presentation"
+                      aria-label="Rotate handle"
+                      data-handle="Rotate"
+                      onPointerDown={(event) => {
+                        if (placing) return;
+                        begin(event, image, { kind: 'rotate' });
+                      }}
+                      onPointerMove={move}
+                      onPointerUp={end}
+                      onPointerCancel={end}
+                    />
+                    {HANDLES.map(({ handle, label, cursor }) => (
+                      <span
+                        key={label}
+                        className={styles.handle}
+                        role="presentation"
+                        aria-label={`${label} handle`}
+                        style={{
+                          left: `${String(handle.x * 100)}%`,
+                          top: `${String((1 - handle.y) * 100)}%`,
+                          cursor,
+                        }}
+                        data-handle={label}
+                        onPointerDown={(event) => {
+                          if (placing) return;
+                          begin(event, image, { kind: 'resize', handle });
+                        }}
+                        onPointerMove={move}
+                        onPointerUp={end}
+                        onPointerCancel={end}
+                      />
+                    ))}
+                  </>
+                )}
+              </span>
+            )}
           </div>
         );
       })}
@@ -226,6 +283,7 @@ function samePlacement(left: ImagePlacementInput, right: ImagePlacementInput): b
     left.x === right.x &&
     left.y === right.y &&
     left.width === right.width &&
-    left.height === right.height
+    left.height === right.height &&
+    left.rotation === right.rotation
   );
 }

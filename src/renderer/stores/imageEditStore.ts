@@ -6,6 +6,7 @@ import type { PageImageModel, PageImagesModel } from '@shared/schemas/image';
 import { invoke } from '../services/ipcClient';
 import { useDocumentStore } from './documentStore';
 import { useUiStore } from './uiStore';
+import { createImageTools, type ImageCropping, type ImageTools } from './imageEditTools';
 
 /** The images of one page, once they have been read. */
 export interface LoadedImagePage {
@@ -38,7 +39,7 @@ export interface MovedImage {
   madeIn: number | null;
 }
 
-export interface ImageEditStore {
+export interface ImageEditStore extends ImageTools {
   /** Keyed by `${sessionId}:${page}`. */
   pages: Map<string, LoadedImagePage>;
   selected: { page: number; id: string } | null;
@@ -48,6 +49,9 @@ export interface ImageEditStore {
   pending: StampImage | null;
   /** An image just moved or deleted, until its page is drawn with the change. */
   moved: MovedImage | null;
+  /** The crop being dragged on the page, before it is written. */
+  cropping: ImageCropping | null;
+  /** True while a change is being made; no other is started until it is done. */
   busy: boolean;
 
   /** Puts down whatever was being held, when the editor points elsewhere. */
@@ -118,9 +122,10 @@ export const useImageEditStore = create<ImageEditStore>((set, get) => ({
   drag: null,
   pending: null,
   moved: null,
+  cropping: null,
   busy: false,
 
-  reset: () => set({ selected: null, drag: null, pending: null }),
+  reset: () => set({ selected: null, drag: null, pending: null, cropping: null }),
 
   load: async (sessionId, page, revision) => {
     const key = keyOf(sessionId, page);
@@ -139,7 +144,8 @@ export const useImageEditStore = create<ImageEditStore>((set, get) => ({
     }
   },
 
-  select: (page, id) => set({ selected: id === null ? null : { page, id }, drag: null }),
+  select: (page, id) =>
+    set({ selected: id === null ? null : { page, id }, drag: null, cropping: null }),
   setDrag: (drag) => set({ drag }),
 
   place: async (page, id, placement, picture = null) => {
@@ -149,29 +155,30 @@ export const useImageEditStore = create<ImageEditStore>((set, get) => ({
     const drag = get().drag;
 
     try {
-      await run(
-        sessionId,
-        {
-          label: 'Move image',
-          operations: [
-            {
-              kind: 'placeImage',
-              page,
-              imageId: id,
-              placement,
-              crop: image?.crop ?? null,
-              opacity: image?.opacity ?? 1,
-              token: null,
-            },
-          ],
-        },
-        // Without the picture there is nothing to show where it goes, and
-        // covering where it was would only make it vanish for a moment.
-        image === undefined || picture === null
-          ? null
-          : { page, from: image.placement, to: placement, picture },
+      await exclusive(() =>
+        run(
+          sessionId,
+          {
+            label: 'Move image',
+            operations: [
+              {
+                kind: 'placeImage',
+                page,
+                imageId: id,
+                placement,
+                crop: image?.crop ?? null,
+                opacity: image?.opacity ?? 1,
+                token: null,
+              },
+            ],
+          },
+          // Without the picture there is nothing to show where it goes, and
+          // covering where it was would only make it vanish for a moment.
+          image === undefined || picture === null
+            ? null
+            : { page, from: image.placement, to: placement, picture },
+        ).then(() => reselect(sessionId, page, placement, id)),
       );
-      await reselect(sessionId, page, placement);
     } finally {
       // The box stays where it was dropped until the images are read again.
       if (get().drag === drag) set({ drag: null });
@@ -184,21 +191,23 @@ export const useImageEditStore = create<ImageEditStore>((set, get) => ({
     const image = imageOf(get(), sessionId, page, id);
     if (image === undefined) return;
 
-    await run(sessionId, {
-      label: 'Image transparency',
-      operations: [
-        {
-          kind: 'placeImage',
-          page,
-          imageId: id,
-          placement: image.placement,
-          crop: image.crop,
-          opacity,
-          token: null,
-        },
-      ],
+    await exclusive(async () => {
+      await run(sessionId, {
+        label: 'Image transparency',
+        operations: [
+          {
+            kind: 'placeImage',
+            page,
+            imageId: id,
+            placement: image.placement,
+            crop: image.crop,
+            opacity,
+            token: null,
+          },
+        ],
+      });
+      await reselect(sessionId, page, image.placement, id);
     });
-    await reselect(sessionId, page, image.placement);
   },
 
   crop: async (page, id, crop) => {
@@ -207,21 +216,23 @@ export const useImageEditStore = create<ImageEditStore>((set, get) => ({
     const image = imageOf(get(), sessionId, page, id);
     if (image === undefined) return;
 
-    await run(sessionId, {
-      label: crop === null ? 'Reset crop' : 'Crop image',
-      operations: [
-        {
-          kind: 'placeImage',
-          page,
-          imageId: id,
-          placement: image.placement,
-          crop,
-          opacity: image.opacity,
-          token: null,
-        },
-      ],
+    await exclusive(async () => {
+      await run(sessionId, {
+        label: crop === null ? 'Reset crop' : 'Crop image',
+        operations: [
+          {
+            kind: 'placeImage',
+            page,
+            imageId: id,
+            placement: image.placement,
+            crop,
+            opacity: image.opacity,
+            token: null,
+          },
+        ],
+      });
+      await reselect(sessionId, page, image.placement, id);
     });
-    await reselect(sessionId, page, image.placement);
   },
 
   replace: async (page, id) => {
@@ -230,30 +241,32 @@ export const useImageEditStore = create<ImageEditStore>((set, get) => ({
     const image = imageOf(get(), sessionId, page, id);
     if (image === undefined) return;
 
-    let staged: StampImage | null;
-    try {
-      staged = await invoke('images:choose', { sessionId });
-    } catch (error) {
-      report(error);
-      return;
-    }
-    if (staged === null) return;
+    await exclusive(async () => {
+      let staged: StampImage | null;
+      try {
+        staged = await invoke('images:choose', { sessionId });
+      } catch (error) {
+        report(error);
+        return;
+      }
+      if (staged === null) return;
 
-    await run(sessionId, {
-      label: 'Replace image',
-      operations: [
-        {
-          kind: 'placeImage',
-          page,
-          imageId: id,
-          placement: image.placement,
-          crop: image.crop,
-          opacity: image.opacity,
-          token: staged.token,
-        },
-      ],
+      await run(sessionId, {
+        label: 'Replace image',
+        operations: [
+          {
+            kind: 'placeImage',
+            page,
+            imageId: id,
+            placement: image.placement,
+            crop: image.crop,
+            opacity: image.opacity,
+            token: staged.token,
+          },
+        ],
+      });
+      await reselect(sessionId, page, image.placement, id);
     });
-    await reselect(sessionId, page, image.placement);
   },
 
   remove: async (page, id) => {
@@ -261,36 +274,37 @@ export const useImageEditStore = create<ImageEditStore>((set, get) => ({
     if (sessionId === null) return;
     const image = imageOf(get(), sessionId, page, id);
 
-    await run(
-      sessionId,
-      {
-        label: 'Delete image',
-        operations: [{ kind: 'deleteImage', page, imageId: id }],
-      },
-      image === undefined ? null : { page, from: image.placement, to: null, picture: null },
-    );
-    set({ selected: null });
+    await exclusive(async () => {
+      await run(
+        sessionId,
+        {
+          label: 'Delete image',
+          operations: [{ kind: 'deleteImage', page, imageId: id }],
+        },
+        image === undefined ? null : { page, from: image.placement, to: null, picture: null },
+      );
+      set({ selected: null });
+    });
   },
 
   exportImage: async (page, id) => {
     const sessionId = useDocumentStore.getState().activeId;
     if (sessionId === null) return;
 
-    set({ busy: true });
-    try {
-      const result = await invoke('images:export', { sessionId, page, imageId: id });
-      const written = result.paths[0];
-      if (result.canceled || written === undefined) return;
-      useUiStore.getState().showToast({
-        title: 'Image saved.',
-        description: written,
-        intent: 'success',
-      });
-    } catch (error) {
-      report(error);
-    } finally {
-      set({ busy: false });
-    }
+    await exclusive(async () => {
+      try {
+        const result = await invoke('images:export', { sessionId, page, imageId: id });
+        const written = result.paths[0];
+        if (result.canceled || written === undefined) return;
+        useUiStore.getState().showToast({
+          title: 'Image saved.',
+          description: written,
+          intent: 'success',
+        });
+      } catch (error) {
+        report(error);
+      }
+    });
   },
 
   choose: async () => {
@@ -321,27 +335,59 @@ export const useImageEditStore = create<ImageEditStore>((set, get) => ({
     if (pending === null || sessionId === null) return;
 
     set({ pending: null });
-    const placement = {
-      x,
-      y: y - pending.height,
-      width: pending.width,
-      height: pending.height,
-      rotation: 0,
-      flipX: false,
-      flipY: false,
-    };
-
-    await run(sessionId, {
-      label: 'Add image',
-      operations: [{ kind: 'addImage', page, token: pending.token, placement, opacity: 1 }],
-    });
-    await reselect(sessionId, page, placement);
+    await exclusive(() =>
+      addStaged(sessionId, page, pending, { x, y: y - pending.height }, 'Add image'),
+    );
   },
+
+  ...createImageTools(set, get, { exclusive, run, reselect, addStaged, imageOf, report }),
 }));
 
 /**
- * Applies a change, keeping the editor from being used while it is in flight,
- * and shows a moved image where it now goes until the page is drawn with it.
+ * Runs one change with the editor to itself. A change asked for while another
+ * is being made is dropped, not queued: the second would be made against an
+ * image the first has already moved, replaced or removed.
+ */
+async function exclusive(change: () => Promise<void>): Promise<void> {
+  if (useImageEditStore.getState().busy) return;
+  useImageEditStore.setState({ busy: true });
+  try {
+    await change();
+  } finally {
+    useImageEditStore.setState({ busy: false });
+  }
+}
+
+/**
+ * Draws a staged picture on a page with its bottom-left corner at a point,
+ * under a name chosen here so it can be selected the moment it is written.
+ */
+async function addStaged(
+  sessionId: string,
+  page: number,
+  staged: StampImage,
+  corner: { x: number; y: number },
+  label: string,
+): Promise<void> {
+  const imageId = `pf-${globalThis.crypto.randomUUID()}`;
+  const placement = {
+    ...corner,
+    width: staged.width,
+    height: staged.height,
+    rotation: 0,
+    flipX: false,
+    flipY: false,
+  };
+  await run(sessionId, {
+    label,
+    operations: [{ kind: 'addImage', page, token: staged.token, placement, opacity: 1, imageId }],
+  });
+  await reselect(sessionId, page, placement, imageId);
+}
+
+/**
+ * Applies a change, and shows a moved image where it now goes until the page
+ * is drawn with it. Callers hold the editor with {@link exclusive}.
  */
 async function run(
   sessionId: string,
@@ -350,7 +396,6 @@ async function run(
 ): Promise<void> {
   const before = revisionOf(sessionId);
   useImageEditStore.setState({
-    busy: true,
     moved: moved === null ? null : { ...moved, sessionId, madeIn: null },
   });
   try {
@@ -358,7 +403,6 @@ async function run(
   } finally {
     const after = revisionOf(sessionId);
     useImageEditStore.setState((state) => ({
-      busy: false,
       moved:
         state.moved === null || state.moved.madeIn !== null
           ? state.moved
@@ -388,6 +432,7 @@ async function reselect(
   sessionId: string,
   page: number,
   placement: ImagePlacementInput,
+  id?: string,
 ): Promise<void> {
   const revision = useDocumentStore.getState().tabs.find((tab) => tab.session.id === sessionId)
     ?.edit.revision;
@@ -395,6 +440,14 @@ async function reselect(
 
   await useImageEditStore.getState().load(sessionId, page, revision);
   const images = imagesFor(useImageEditStore.getState().pages, sessionId, page);
+
+  // An image PaperForge added keeps its name, so there is nothing to guess.
+  if (id?.startsWith('pf-') === true) {
+    if (images.some((image) => image.id === id)) {
+      useImageEditStore.setState({ selected: { page, id } });
+    }
+    return;
+  }
 
   const wanted = centreOf(placement);
   let nearest: { id: string; distance: number } | null = null;

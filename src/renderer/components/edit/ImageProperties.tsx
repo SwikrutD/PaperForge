@@ -1,13 +1,16 @@
-import { useState, type ReactElement } from 'react';
+import type { ReactElement } from 'react';
 import {
+  Check,
   Crop,
   FlipHorizontal,
   FlipVertical,
   RotateCcw,
   RotateCw,
   Save,
+  Scissors,
   Trash2,
   Upload,
+  X,
 } from 'lucide-react';
 import type { ImagePlacementInput } from '@shared/schemas/edit';
 import { Button } from '../controls/Button';
@@ -21,17 +24,19 @@ import styles from './EditProperties.module.css';
  * What the selected image is, and what can be done to it.
  *
  * The box, the turn and the crop are the things the page says; the buttons
- * write them back through the same undoable change a drag does. Cropping is a
- * clip, so the image keeps every pixel it arrived with and the crop can be
- * taken off again.
+ * write them back through the same undoable change a drag does. Cropping is
+ * done on the page, by dragging the crop's handles. A crop is a clip, so the
+ * image keeps every pixel it arrived with and the crop can be taken off again
+ * — unless the reader chooses to cut the picture down, which throws the
+ * hidden part away.
  */
 export function ImageProperties(): ReactElement {
   const selected = useImageEditStore((store) => store.selected);
   const pages = useImageEditStore((store) => store.pages);
   const busy = useImageEditStore((store) => store.busy);
   const pending = useImageEditStore((store) => store.pending);
+  const cropping = useImageEditStore((store) => store.cropping);
   const sessionId = useDocumentStore((store) => store.activeId);
-  const [trim, setTrim] = useState({ left: 0, right: 0, top: 0, bottom: 0 });
 
   const store = useImageEditStore.getState;
   const image =
@@ -44,7 +49,7 @@ export function ImageProperties(): ReactElement {
       <div className={styles.panel}>
         <p className={styles.empty}>
           {pending === null
-            ? 'Click an image on the page to move, resize, crop or replace it.'
+            ? 'Click an image on the page to move, resize, turn, crop or replace it, or press Ctrl+V to paste one.'
             : `Click the page where “${pending.fileName}” should go.`}
         </p>
       </div>
@@ -56,13 +61,7 @@ export function ImageProperties(): ReactElement {
   };
 
   const cropped = image.crop !== null;
-  const applyCrop = (): void => {
-    const x = clampUnit(trim.left / 100);
-    const y = clampUnit(trim.bottom / 100);
-    const width = Math.max(0.01, 1 - x - clampUnit(trim.right / 100));
-    const height = Math.max(0.01, 1 - y - clampUnit(trim.top / 100));
-    void store().crop(selected.page, selected.id, { x, y, width, height });
-  };
+  const croppingThis = cropping?.page === selected.page && cropping.id === selected.id;
 
   return (
     <div className={styles.panel}>
@@ -166,40 +165,52 @@ export function ImageProperties(): ReactElement {
 
       <section className={styles.group}>
         <h3 className={styles.title}>Crop</h3>
-        <p className={styles.note}>
-          Trims the picture without changing it, as a percentage from each edge.
-        </p>
-        <div className={styles.cropGrid}>
-          {(['left', 'right', 'top', 'bottom'] as const).map((edge) => (
-            <label key={edge} className={styles.cropField}>
-              {`From the ${edge}`}
-              <input
-                className={styles.number}
-                type="number"
-                min={0}
-                max={95}
-                step={1}
-                value={trim[edge]}
-                aria-label={`Trim from the ${edge}`}
-                onChange={(event) => setTrim({ ...trim, [edge]: Number(event.target.value) || 0 })}
-              />
-            </label>
-          ))}
-        </div>
-        <div className={styles.actions}>
-          <Button icon={Crop} disabled={busy} onClick={applyCrop}>
-            Crop
-          </Button>
-          <Button
-            disabled={busy || !cropped}
-            onClick={() => {
-              setTrim({ left: 0, right: 0, top: 0, bottom: 0 });
-              void store().crop(selected.page, selected.id, null);
-            }}
-          >
-            Reset crop
-          </Button>
-        </div>
+        {croppingThis ? (
+          <>
+            <p className={styles.note}>
+              Drag the crop’s edges on the page, or drag inside it to move it. Enter keeps it,
+              Escape leaves the picture as it was.
+            </p>
+            <div className={styles.actions}>
+              <Button icon={Check} disabled={busy} onClick={() => void store().applyCrop()}>
+                Apply crop
+              </Button>
+              <Button icon={X} disabled={busy} onClick={() => store().cancelCrop()}>
+                Cancel
+              </Button>
+            </div>
+            <p className={styles.note}>
+              Cutting throws away the hidden part for good: the file gets smaller and the crop
+              cannot be taken off again, except by undo.
+            </p>
+            <div className={styles.actions}>
+              <Button
+                icon={Scissors}
+                disabled={busy}
+                onClick={() => void store().applyCrop({ cut: true })}
+              >
+                Cut to crop
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className={styles.note}>
+              Hides part of the picture without changing it, so the crop can be taken off again.
+            </p>
+            <div className={styles.actions}>
+              <Button icon={Crop} disabled={busy} onClick={() => store().beginCrop()}>
+                Crop on page
+              </Button>
+              <Button
+                disabled={busy || !cropped}
+                onClick={() => void store().crop(selected.page, selected.id, null)}
+              >
+                Reset crop
+              </Button>
+            </div>
+          </>
+        )}
       </section>
 
       <section className={styles.group}>
@@ -229,10 +240,6 @@ export function ImageProperties(): ReactElement {
       </section>
     </div>
   );
-}
-
-function clampUnit(value: number): number {
-  return Math.max(0, Math.min(0.95, value));
 }
 
 function round(value: number): string {

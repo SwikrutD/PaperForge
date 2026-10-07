@@ -1,4 +1,4 @@
-import { dialog, type BrowserWindow } from 'electron';
+import { clipboard, dialog, nativeImage, type BrowserWindow } from 'electron';
 import path from 'node:path';
 import { PDFDocument } from 'pdf-lib';
 import { AppError } from '@shared/errors/appError';
@@ -7,11 +7,14 @@ import type { PageImageModel, PageImagesModel } from '@shared/schemas/image';
 import { placementOf, type ImagePlacement } from '@pdf/content/images';
 import { resourcesOf } from '@pdf/content/pageContent';
 import { exportImage, isAddedImage } from '@pdf/mutate/imageResources';
+import { cropImagePixels } from '@pdf/mutate/imageCrop';
+import { nativeImageCodec } from '../../services/optimize/nativeImageCodec';
 import { findImage, imageIdOf, readPageWithImages } from '@pdf/mutate/images';
 import type { DocumentEditor } from '../../services/documents/documentEditor';
 import type { DocumentService } from '../../services/documents/documentService';
 import type { StagedAssets } from '../../services/documents/stagedAssets';
 import { writeFileAtomic } from '../../services/filesystem/atomicWrite';
+import { clipboardPicture } from '../../services/documents/clipboardPicture';
 import type { RegisterInvoke } from '../registry';
 
 export interface ImageHandlerDeps {
@@ -67,6 +70,37 @@ export function registerImageHandlers(
   });
 
   /**
+   * Stages the picture on the clipboard. It is read here, in the main
+   * process, so the renderer needs no clipboard permission and the pixels
+   * never cross IPC.
+   */
+  registerInvoke('images:paste', async ({ sessionId }) => {
+    const bytes = await clipboardPicture(await clipboard.read(), (other) => {
+      const picture = nativeImage.createFromBuffer(Buffer.from(other));
+      return picture.isEmpty() ? null : new Uint8Array(picture.toPNG());
+    });
+    if (bytes === null) return null;
+    return deps.stagedAssets.stageImageBytes(sessionId, bytes, 'Pasted image');
+  });
+
+  /** Cuts an image down to its crop, and stages what is left to draw in its place. */
+  registerInvoke('images:cut', async ({ sessionId, page, imageId, crop }) => {
+    const document = await load(deps, sessionId);
+    const placement = await imageOn(document, page, imageId);
+    const cut = cropImagePixels(
+      document,
+      resourcesOf(document, document.getPage(page - 1)),
+      placement.resourceName,
+      crop,
+      nativeImageCodec,
+    );
+    return {
+      image: deps.stagedAssets.stageImageBytes(sessionId, cut.bytes, 'Cut image'),
+      crop: cut.crop,
+    };
+  });
+
+  /**
    * Writes an image out as the file the document holds: a JPEG untouched, and
    * anything else as a PNG of the samples themselves.
    */
@@ -77,14 +111,7 @@ export function registerImageHandlers(
     }
 
     const document = await load(deps, sessionId);
-    const content = await readPageWithImages(document, page - 1);
-    const placement = findImage(content, imageId);
-    if (placement === undefined) {
-      throw new AppError('pdf/malformed-content', {
-        message: 'That image is no longer on the page.',
-        details: `image ${imageId} on page ${String(page)}`,
-      });
-    }
+    const placement = await imageOn(document, page, imageId);
 
     const exported = exportImage(
       document,
@@ -122,6 +149,28 @@ async function load(deps: ImageHandlerDeps, sessionId: string): Promise<PDFDocum
       cause: error,
     });
   }
+}
+
+async function imageOn(
+  document: PDFDocument,
+  page: number,
+  imageId: string,
+): Promise<ImagePlacement> {
+  if (page < 1 || page > document.getPageCount()) {
+    throw new AppError('internal/unexpected', {
+      message: 'That page is not in this document.',
+      details: `page ${String(page)} of ${String(document.getPageCount())}`,
+    });
+  }
+  const content = await readPageWithImages(document, page - 1);
+  const placement = findImage(content, imageId);
+  if (placement === undefined) {
+    throw new AppError('pdf/malformed-content', {
+      message: 'That image is no longer on the page.',
+      details: `image ${imageId} on page ${String(page)}`,
+    });
+  }
+  return placement;
 }
 
 function describeImage(placement: ImagePlacement): PageImageModel {

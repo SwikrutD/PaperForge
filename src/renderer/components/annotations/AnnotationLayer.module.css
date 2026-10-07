@@ -86,3 +86,69 @@
   overflow: visible;
   pointer-events: none;
 }
+
+/*
+ * The handles on a selected stamp PaperForge made. The frame itself lets the
+ * pointer through to the stamp underneath, which is what moving drags; only
+ * the handles and the copy button take it.
+ */
+.stampFrame {
+  position: absolute;
+  border: 1px solid var(--pf-color-accent);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.stampHandle {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -5px 0 0 -5px;
+  border: 1px solid var(--pf-color-accent);
+  border-radius: 2px;
+  background-color: var(--pf-color-bg-surface);
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.rotateHandle {
+  left: 50%;
+  top: -22px;
+  border-radius: 50%;
+  cursor: grab;
+}
+
+.rotateStem {
+  position: absolute;
+  left: 50%;
+  top: -17px;
+  height: 17px;
+  border-left: 1px solid var(--pf-color-accent);
+}
+
+.duplicate {
+  position: absolute;
+  top: -30px;
+  right: -6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--pf-color-border-strong);
+  border-radius: var(--pf-radius-sm);
+  background-color: var(--pf-color-bg-surface);
+  color: var(--pf-color-text-primary);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.duplicate:hover {
+  background-color: var(--pf-color-bg-hover);
+}
+
+.duplicate:focus-visible {
+  outline: 2px solid var(--pf-color-focus-ring);
+  outline-offset: 1px;
+}

@@ -65,6 +65,13 @@ Shell behaviour that needs no chord:
 | `Alt+Shift+Right` / `Left` | In the bookmarks: nest it under the one above, or move it out a level                            |
 | `Enter` while measuring    | Finish a perimeter or area; `Backspace` removes the last point, `Escape` abandons the shape      |
 | `Shift` while measuring    | Keep the next segment level, upright or at 45°                                                   |
+| `Ctrl+V` in Edit PDF       | Paste the picture on the clipboard, centred in the window, and select it                         |
+| `Delete` on an image       | In Edit images: remove the selected image                                                        |
+| `Arrow keys` on an image   | In Edit images: nudge the selected image 1 pt; with `Shift`, 10 pt; one undo per key press       |
+| `Escape` on an image       | In Edit images: let go of the selected image                                                     |
+| `Enter` / `Escape` in crop | Keep or abandon the crop being dragged on the page                                               |
+| `Shift` on a corner handle | Resize an image or stamp freely; without it a corner keeps the shape                             |
+| `Shift` on a turn handle   | Turn an image or stamp in steps of 15°                                                           |
 
 Bare printable keys are suppressed while the focus is in a text field. Function keys are not:
 `F3` has to keep stepping through matches while the find field has focus, and `F4`, `F6` and `F11`
@@ -74,11 +81,11 @@ type nothing either. Chords with `Ctrl` or `Alt` always work, which is what Wind
 
 Taken from `CLAUDE.md` section 7; each lands with the segment that implements the command.
 
-| Keys                           | Command                       | Segment  |
-| ------------------------------ | ----------------------------- | -------- |
-| `Ctrl+Shift+O`                 | Open recent / open options    | later    |
-| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / Cut / Paste in context | 6 onward |
-| `Ctrl+A`                       | Select all text or comments   | later    |
+| Keys                | Command                     | Segment  |
+| ------------------- | --------------------------- | -------- |
+| `Ctrl+Shift+O`      | Open recent / open options  | later    |
+| `Ctrl+C` / `Ctrl+X` | Copy / Cut in context       | 6 onward |
+| `Ctrl+A`            | Select all text or comments | later    |
 
 In a continuously scrolling column, `Page Up`, `Page Down`, `Home` and `End` scroll the document,
 which is what those keys do in every Windows reader. Explicit page navigation — next page, previous

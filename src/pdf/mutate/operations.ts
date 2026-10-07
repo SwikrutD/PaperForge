@@ -135,6 +135,8 @@ export function describeOperation(operation: EditOperation): string {
       return operation.updates.length === 1 ? 'Change comment' : 'Change comments';
     case 'deleteAnnotations':
       return operation.ids.length === 1 ? 'Delete comment' : 'Delete comments';
+    case 'duplicateAnnotations':
+      return operation.copies.length === 1 ? 'Duplicate comment' : 'Duplicate comments';
     case 'movePages':
       return `Move ${plural(operation.pages)} ${formatPageList(operation.pages)}`;
     case 'duplicatePages':

@@ -1,6 +1,7 @@
 import { spliceBytes } from './editText';
 import { appendIsolated } from './appendContent';
 import type { ImagePlacement } from './images';
+import { ADDED_IMAGE_ID, IMAGE_TAG } from './imageGroups';
 import { invert, multiply, type Matrix } from './state';
 import { formatNumber } from './values';
 
@@ -15,6 +16,10 @@ import { formatNumber } from './values';
  * force. The `Do` becomes `q <M> cm /Name Do Q`, where `M` cancels the page's
  * own transform and applies the one the reader asked for, so the result does
  * not depend on how the page got there.
+ *
+ * When the picture has a `q … Q` of its own — its transform, its clip, its
+ * transparency and nothing else — that whole group is what is drawn again, so
+ * the clip goes with the picture and changes never nest inside one another.
  */
 
 export interface ImageEdit {
@@ -49,7 +54,10 @@ export function moveImage(
   placement: ImagePlacement,
   edit: ImageEdit,
 ): Uint8Array | null {
-  const undo = invert(placement.matrix);
+  const { group } = placement;
+  // The group starts from the transform in force at its `q`; a bare `Do`
+  // from the one in force where it is.
+  const undo = invert(group === null ? placement.matrix : group.ctm);
   if (undo === null) return null;
 
   // Apply the transform the reader asked for, then undo the page's own, so
@@ -57,14 +65,23 @@ export function moveImage(
   const local = multiply(edit.matrix, undo);
   const name = edit.resourceName ?? placement.resourceName;
   const clip = edit.crop == null ? '' : `${cropRect(edit.crop)} `;
+  // The document's own graphics states may do more than fade — a blend mode,
+  // a soft mask — so they are kept. PaperForge's own are replaced.
+  const kept = (group?.states ?? [])
+    .filter((state) => !state.startsWith(ALPHA_PREFIX))
+    .map((state) => `/${state} gs `)
+    .join('');
   const alpha = edit.alphaName === undefined ? '' : `/${edit.alphaName} gs `;
 
   return spliceBytes(
     content,
-    placement.operationRange,
-    `q ${alpha}${formatMatrix(local)} cm ${clip}/${name} Do Q`,
+    group?.range ?? placement.operationRange,
+    `q ${kept}${alpha}${formatMatrix(local)} cm ${clip}/${name} Do Q`,
   );
 }
+
+/** Names a transparency state PaperForge added; see `imageResources.ts`. */
+const ALPHA_PREFIX = 'PFAlpha';
 
 /** The clip a crop needs, in the image's own square. */
 function cropRect(crop: { x: number; y: number; width: number; height: number }): string {
@@ -81,9 +98,13 @@ function clampUnit(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
-/** Takes an image off the page, leaving everything else as it was. */
+/**
+ * Takes an image off the page, leaving everything else as it was: with its
+ * marking when PaperForge added it, with its group when it has one.
+ */
 export function removeImage(content: Uint8Array, placement: ImagePlacement): Uint8Array {
-  return spliceBytes(content, placement.operationRange, '');
+  const range = placement.mark?.range ?? placement.group?.range ?? placement.operationRange;
+  return spliceBytes(content, range, '');
 }
 
 /**
@@ -95,10 +116,19 @@ export function appendImage(
   content: Uint8Array,
   matrix: Matrix,
   resourceName: string,
-  alphaName?: string,
+  alphaName: string | undefined,
+  imageId: string,
 ): Uint8Array {
+  // The id is written into the stream, so only the shape PaperForge gives out
+  // is accepted: nothing in it can end the string early.
+  if (!ADDED_IMAGE_ID.test(imageId)) throw new Error(`not an image id: ${imageId}`);
   const alpha = alphaName === undefined ? '' : `/${alphaName} gs `;
-  return appendIsolated(content, `\nq ${alpha}${formatMatrix(matrix)} cm /${resourceName} Do Q\n`);
+  return appendIsolated(
+    content,
+    `\n/${IMAGE_TAG} << /PFId (${imageId}) >> BDC\nq ${alpha}${formatMatrix(
+      matrix,
+    )} cm /${resourceName} Do Q\nEMC\n`,
+  );
 }
 
 /** Six decimal places is more than a page needs, and keeps the file small. */

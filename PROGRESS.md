@@ -1260,6 +1260,38 @@ which for them is a change appearing rather than something jumping back.
 showed 3 frames with its box back where it was and 10 with the picture still at the old place and
 missing from the new one; after, none.
 
+## Follow-up — image editing and stamp transforms
+
+**Images.** Ctrl+V in Edit PDF pastes the clipboard picture (read in the main process) centred in
+the window, selected. Corner handles keep the shape unless Shift is held; a handle above the box
+turns it (15° steps with Shift); Delete removes, the arrow keys nudge (one undo per key press);
+crop is dragged on the page, with an optional Cut to crop that throws the hidden pixels away. One
+image change at a time: a change asked for while another is in flight is dropped.
+
+**Root cause fixed on the way.** Editing an image replaced only its `Do`, so a cropped picture left
+its clip behind when moved, and each change nested inside the last: a crop could not really be
+taken off, and a faded picture could not be made solid again. The picture's own `q … Q` group is
+now what is redrawn (`content/imageGroups.ts`). Mirrored images also showed their resize handles
+mirrored, so the right-hand handle shrank the picture; handles now sit on an unmirrored box.
+
+**Stable ids.** Images PaperForge adds are wrapped in `/PFImage << /PFId (pf-…) >> BDC … EMC` and keep
+that id through moves, crops, replacements and other changes on the page.
+
+**Stamps and signatures.** Ones PaperForge made can be resized, turned and duplicated, on the page
+and from the properties panel. The turn is in the appearance's `/Matrix` with a `/Rect` that fits it,
+so other readers draw it turned too; `/PFRotate` and `/PFRect` record it.
+
+| Area   | Files                                                                                                                                                                                                      |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PDF    | `content/{imageGroups,images,editImage}.ts`, `mutate/{images,imageCrop}.ts`, `mutate/annotations/{stampTransform,duplicate}.ts`                                                                            |
+| Main   | `ipc/handlers/imageHandlers.ts` (`images:paste`, `images:cut`), `services/documents/clipboardPicture.ts`                                                                                                   |
+| Editor | `edit/{ImageEditLayer,ImageCropFrame,ImageProperties,useImageEditKeys,imageGeometry}.ts(x)`, `stores/imageEditTools.ts`                                                                                    |
+| Stamps | `annotations/{StampTransformFrame,AnnotationLayer,AnnotationProperties}.tsx`, `stores/annotationStore.ts`                                                                                                  |
+| Tests  | `unit/shared/{imageGroups,imageCrop,stampTransforms}`, `unit/renderer/{imageEditing,imageEditKeys,imageEditLayer,stampTransforms}`, `unit/main/{clipboardPicture,imageEditHistory}`, `e2e/imageTransforms` |
+
+**Not verified on Windows yet.** Developed on Linux: `e2e/imageTransforms.e2e.ts` has not been run,
+nor has Ctrl+V against a real Windows clipboard or Cut to crop through Chromium's JPEG codec.
+
 ## What is not yet verified
 
 **The new viewer layouts and tools by hand.** Touchpads, a presentation clicker, a touch screen

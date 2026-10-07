@@ -1,14 +1,16 @@
 import type { ReactElement } from 'react';
+import { Copy } from 'lucide-react';
 import type {
   Annotation,
   AnnotationColor,
   AnnotationStyle,
   BuiltInStamp,
 } from '@shared/schemas/annotation';
-import { BUILT_IN_STAMPS } from '@shared/schemas/annotation';
+import { BUILT_IN_STAMPS, isOwnStamp } from '@shared/schemas/annotation';
 import { describeKind } from '@pdf/mutate/operations';
 import { formatMeasurement, measure, measuredPoints } from '@shared/utils/measure';
 import { useAnnotationStore } from '../../stores/annotationStore';
+import { Button } from '../controls/Button';
 import { formatRelativeTime } from '../../utils/time';
 import { cx } from '../../utils/classNames';
 import styles from './AnnotationProperties.module.css';
@@ -279,6 +281,23 @@ export function AnnotationProperties({ annotation }: AnnotationPropertiesProps):
               </option>
             ))}
           </select>
+        </fieldset>
+      )}
+
+      {annotation !== null && isOwnStamp(annotation) && (
+        <fieldset className={styles.group}>
+          <legend className={styles.legend}>Size and turn</legend>
+          <p className={styles.note}>
+            {`Turned ${String(Math.round((annotation.rotation ?? 0) * 10) / 10)}°. `}
+            Drag its corners to resize it and the handle above it to turn it; hold Shift to turn in
+            steps of 15°.
+          </p>
+          <Button
+            icon={Copy}
+            onClick={() => void useAnnotationStore.getState().duplicate(annotation.id)}
+          >
+            Duplicate
+          </Button>
         </fieldset>
       )}
 

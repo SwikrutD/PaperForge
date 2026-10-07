@@ -27,6 +27,7 @@ import {
 } from '../../stores/annotationStore';
 import { TextEditLayer } from '../edit/TextEditLayer';
 import { ImageEditLayer } from '../edit/ImageEditLayer';
+import { pastePointFor, useImageEditKeys } from '../edit/useImageEditKeys';
 import { EditToolbar } from '../edit/EditToolbar';
 import { runsFor, useTextEditStore } from '../../stores/textEditStore';
 import { imagesFor, useImageEditStore } from '../../stores/imageEditStore';
@@ -128,6 +129,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const imageDrag = useImageEditStore((store) => store.drag);
   const imagePending = useImageEditStore((store) => store.pending);
   const imageMoved = useImageEditStore((store) => store.moved);
+  const imageCropping = useImageEditStore((store) => store.cropping);
   const settleImageMoved = useImageEditStore((store) => store.settleMoved);
   const linkPages = useLinkEditStore((store) => store.pages);
   const linkSelected = useLinkEditStore((store) => store.selected);
@@ -388,6 +390,44 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
     () => ({ onDraw: setMarquee, onFinish: finishMarquee }),
     [finishMarquee],
   );
+  // Stamps and signatures PaperForge made can be resized, turned and copied.
+  const transformStamp = useCallback(
+    (
+      annotation: { id: string },
+      rect: { x: number; y: number; width: number; height: number },
+      turn: number,
+    ) => void useAnnotationStore.getState().transform(annotation.id, rect, turn),
+    [],
+  );
+  const duplicateStamp = useCallback(
+    (annotation: { id: string }) => void useAnnotationStore.getState().duplicate(annotation.id),
+    [],
+  );
+
+  // Ctrl+V, Delete and the arrows, for pictures in Edit PDF.
+  const pastePoint = useCallback(() => {
+    const element = scrollerRef.current;
+    if (element === null) return null;
+    return pastePointFor({
+      layout,
+      scroll: { left: element.scrollLeft, top: element.scrollTop },
+      viewport: { width: element.clientWidth, height: element.clientHeight },
+      candidates: mounted,
+      geometryOf: (page) => pages[page - 1],
+      scale,
+      rotation: view.rotation,
+    });
+  }, [layout, mounted, pages, scale, view.rotation]);
+  const pageRotation = useCallback(
+    (page: number) => (pages[page - 1]?.rotation ?? 0) + view.rotation,
+    [pages, view.rotation],
+  );
+  useImageEditKeys({
+    editing: editing && !filling && state.status === 'ready',
+    pastePoint,
+    pageRotation,
+  });
+
   useMarqueeZoom(
     scrollerRef,
     activeViewerTool === 'marqueeZoom' && state.status === 'ready',
@@ -764,6 +804,8 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                           }}
                           onMove={tools.move}
                           onErase={tools.erase}
+                          onTransform={transformStamp}
+                          onDuplicate={duplicateStamp}
                         />
                         {draft !== null && draft.pageNumber === pageNumber && (
                           <DraftEditor
@@ -820,6 +862,8 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                         selectedId={imageSelected?.page === pageNumber ? imageSelected.id : null}
                         drag={imageDrag?.page === pageNumber ? imageDrag : null}
                         placing={imagePending !== null}
+                        cropping={imageCropping?.page === pageNumber ? imageCropping : null}
+                        onCropDraft={(crop) => useImageEditStore.getState().setCropDraft(crop)}
                         moved={
                           imageMoved?.sessionId === sessionId && imageMoved.page === pageNumber
                             ? imageMoved
@@ -886,6 +930,8 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                           onCreate={tools.create}
                           onMove={tools.move}
                           onErase={tools.erase}
+                          onTransform={transformStamp}
+                          onDuplicate={duplicateStamp}
                         />
                         {draft !== null && draft.pageNumber === pageNumber && (
                           <DraftEditor

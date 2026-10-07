@@ -65,7 +65,7 @@ export function listPictures(document: PDFDocument): PictureInfo[] {
   for (const [ref, object] of document.context.enumerateIndirectObjects()) {
     if (!(object instanceof PDFRawStream)) continue;
     if (object.dict.lookup(PDFName.of('Subtype')) !== PDFName.of('Image')) continue;
-    pictures.push(describe(document, ref, object));
+    pictures.push(describePicture(document, ref, object));
   }
   return pictures;
 }
@@ -142,7 +142,12 @@ export function optimizePictures(
   return tally;
 }
 
-function describe(document: PDFDocument, ref: PDFRef, stream: PDFRawStream): PictureInfo {
+/** What a stored picture is, and whether PaperForge can read its samples. */
+export function describePicture(
+  document: PDFDocument,
+  ref: PDFRef,
+  stream: PDFRawStream,
+): PictureInfo {
   const dict = stream.dict;
   const width = numberOf(dict.lookup(PDFName.of('Width')));
   const height = numberOf(dict.lookup(PDFName.of('Height')));
@@ -173,7 +178,8 @@ function describe(document: PDFDocument, ref: PDFRef, stream: PDFRawStream): Pic
   return untouchable;
 }
 
-function readRaster(picture: PictureInfo, codec: ImageCodec | null): Raster | null {
+/** A picture's samples, or null when PaperForge cannot read them exactly. */
+export function readRaster(picture: PictureInfo, codec: ImageCodec | null): Raster | null {
   if (picture.channels === null) return null;
   if (picture.kind === 'jpeg') {
     if (codec === null) return null;
@@ -281,7 +287,7 @@ function resampleSoftMask(
   const mask = document.context.lookup(ref);
   if (!(mask instanceof PDFRawStream)) return;
 
-  const info = describe(document, ref, mask);
+  const info = describePicture(document, ref, mask);
   if (info.kind !== 'lossless' || info.channels !== 1) return;
   const samples = readRaster(info, null);
   if (samples === null) return;

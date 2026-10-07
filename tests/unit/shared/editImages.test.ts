@@ -219,10 +219,13 @@ describe('moving an image', () => {
 
   it('refuses a page that draws it in a way it cannot undo', async () => {
     // A transform that flattens everything onto a line cannot be inverted.
+    // Inside the picture's own group it would simply be replaced; around the
+    // group, it is the page's, and nothing drawn inside can escape it.
     const bytes = documentOf({
       pages: [
         {
-          image: { x: 0, y: 0, width: 1, height: 1, matrix: [0, 0, 0, 0, 100, 100] },
+          content: '0 0 0 0 100 100 cm q 1 0 0 1 0 0 cm /Im0 Do Q\n',
+          image: { x: 0, y: 0, width: 1, height: 1, draw: false },
         },
       ],
     });

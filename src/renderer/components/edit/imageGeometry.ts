@@ -84,6 +84,157 @@ export function resizedBy(
 }
 
 /**
+ * The resize a handle makes: a corner keeps the picture's shape unless Shift
+ * is held, and an edge only ever changes the one dimension it faces.
+ */
+export function resizeGesture(
+  placement: ImagePlacementInput,
+  handle: Handle,
+  dx: number,
+  dy: number,
+  shift: boolean,
+): ImagePlacementInput {
+  const corner = handle.x !== 0.5 && handle.y !== 0.5;
+  return resizedBy(placement, handle, dx, dy, corner && !shift);
+}
+
+/** How far Shift snaps a turn, in degrees. */
+export const ROTATION_SNAP = 15;
+
+/**
+ * Turns an image by the angle the pointer has swung through about its middle,
+ * from where the drag began. Shift snaps the result to whole steps of
+ * {@link ROTATION_SNAP}. Angles are anticlockwise, as the placement keeps them.
+ */
+export function rotatedTo(
+  placement: ImagePlacementInput,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  snap: boolean,
+): ImagePlacementInput {
+  const centre = pointAt(placement, { x: 0.5, y: 0.5 });
+  const swing =
+    Math.atan2(to.y - centre.y, to.x - centre.x) - Math.atan2(from.y - centre.y, from.x - centre.x);
+  let rotation = normalizeDegrees(placement.rotation + (swing * 180) / Math.PI);
+  if (snap) rotation = normalizeDegrees(Math.round(rotation / ROTATION_SNAP) * ROTATION_SNAP);
+  return { ...placement, rotation };
+}
+
+function normalizeDegrees(degrees: number): number {
+  return ((degrees % 360) + 360) % 360;
+}
+
+/** The part of an image that shows, where the whole image is the unit square. */
+export interface ImageCrop {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** The smallest a crop may be dragged to, as a share of the picture. */
+const MINIMUM_CROP = 0.02;
+
+/**
+ * Drags a crop handle, or the whole crop when `handle` is null.
+ *
+ * Handles sit on the image's box as the reader sees it; the crop is in the
+ * image's own square. The drag is turned into the image's axes and units, and
+ * a mirrored image swaps which side the box's left edge is.
+ */
+export function cropDraggedBy(
+  placement: ImagePlacementInput,
+  crop: ImageCrop,
+  handle: Handle | null,
+  dx: number,
+  dy: number,
+): ImageCrop {
+  const radians = (placement.rotation * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const mirror = placement.flipX ? -1 : 1;
+  const du = (mirror * (dx * cos + dy * sin)) / placement.width;
+  const dv = (-dx * sin + dy * cos) / placement.height;
+
+  let left = crop.x;
+  let right = crop.x + crop.width;
+  let bottom = crop.y;
+  let top = crop.y + crop.height;
+
+  if (handle === null) {
+    const shiftX = Math.max(-left, Math.min(1 - right, du));
+    const shiftY = Math.max(-bottom, Math.min(1 - top, dv));
+    return { x: left + shiftX, y: bottom + shiftY, width: crop.width, height: crop.height };
+  }
+
+  // Which of the image's own edges the handle is on.
+  const edgeX = handle.x === 0.5 ? 0.5 : placement.flipX ? 1 - handle.x : handle.x;
+  if (edgeX === 0) left = Math.max(0, Math.min(right - MINIMUM_CROP, left + du));
+  if (edgeX === 1) right = Math.min(1, Math.max(left + MINIMUM_CROP, right + du));
+  if (handle.y === 0) bottom = Math.max(0, Math.min(top - MINIMUM_CROP, bottom + dv));
+  if (handle.y === 1) top = Math.min(1, Math.max(bottom + MINIMUM_CROP, top + dv));
+
+  return { x: left, y: bottom, width: right - left, height: top - bottom };
+}
+
+/**
+ * The box a picture cut down to its crop is drawn in: the part of the old box
+ * that showed, turned and mirrored as the picture was.
+ */
+export function placementOfCrop(
+  placement: ImagePlacementInput,
+  crop: ImageCrop,
+): ImagePlacementInput {
+  const middle = crop.x + crop.width / 2;
+  const centre = pointAt(placement, {
+    x: placement.flipX ? 1 - middle : middle,
+    y: crop.y + crop.height / 2,
+  });
+  const width = placement.width * crop.width;
+  const height = placement.height * crop.height;
+  return { ...placement, x: centre.x - width / 2, y: centre.y - height / 2, width, height };
+}
+
+/** How far an arrow key moves an image, in PDF units; Shift moves further. */
+const NUDGE = 1;
+const NUDGE_FAR = 10;
+
+const ARROWS: Readonly<Record<string, { x: number; y: number }>> = {
+  ArrowUp: { x: 0, y: -1 },
+  ArrowDown: { x: 0, y: 1 },
+  ArrowLeft: { x: -1, y: 0 },
+  ArrowRight: { x: 1, y: 0 },
+};
+
+/**
+ * Which way an arrow key moves an image on the page: the way the arrow points
+ * on screen, whatever way the page is turned. `rotation` is how far the page
+ * is turned clockwise on screen, its own turn and the view's together.
+ */
+export function nudgeFor(
+  key: string,
+  shift: boolean,
+  rotation: number,
+): { dx: number; dy: number } | null {
+  const arrow = ARROWS[key];
+  if (arrow === undefined) return null;
+  const step = shift ? NUDGE_FAR : NUDGE;
+  const radians = (rotation * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  // Undo the page's turn on screen, then flip y: the screen counts it down.
+  const x = arrow.x * cos + arrow.y * sin;
+  const y = -arrow.x * sin + arrow.y * cos;
+  return { dx: clean(x * step), dy: clean(-y * step) };
+}
+
+/** Rounds away the dust a quarter turn leaves, so -0 and 1e-16 read as 0. */
+function clean(value: number): number {
+  const rounded = Math.round(value * 1e9) / 1e9;
+  return rounded === 0 ? 0 : rounded;
+}
+
+/**
  * Where a point of the box lands in PDF user space, given as fractions of the
  * box's width and height.
  */

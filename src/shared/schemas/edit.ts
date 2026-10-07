@@ -63,6 +63,25 @@ export const deleteAnnotationsOperationSchema = z.strictObject({
   ids: z.array(z.string().min(1).max(120)).min(1).max(500),
 });
 
+/**
+ * Copies annotations onto the same page, moved by an offset. Each copy gets
+ * the id asked for, so it can be selected the moment it is written.
+ */
+export const duplicateAnnotationsOperationSchema = z.strictObject({
+  kind: z.literal('duplicateAnnotations'),
+  copies: z
+    .array(
+      z.strictObject({
+        id: z.string().min(1).max(120),
+        newId: z.string().regex(/^pf-[A-Za-z0-9-]{1,80}$/),
+      }),
+    )
+    .min(1)
+    .max(100),
+  dx: z.number().finite().min(-10_000).max(10_000),
+  dy: z.number().finite().min(-10_000).max(10_000),
+});
+
 /** Moves pages to a new position, keeping their order among themselves. */
 export const movePagesOperationSchema = z.strictObject({
   kind: z.literal('movePages'),
@@ -204,13 +223,23 @@ export const deleteImageOperationSchema = z.strictObject({
   imageId: z.string().min(1).max(64),
 });
 
-/** Draws a staged image on a page, over what is already there. */
+/**
+ * Draws a staged image on a page, over what is already there.
+ *
+ * The id is chosen by whoever adds the image, so it can be selected the moment
+ * the change is written; it is kept with the image for as long as it is there.
+ * Left out, one is made up.
+ */
 export const addImageOperationSchema = z.strictObject({
   kind: z.literal('addImage'),
   page: z.number().int().min(1).max(100_000),
   token: z.string().min(1).max(200),
   placement: imagePlacementSchema,
   opacity: z.number().min(0.05).max(1),
+  imageId: z
+    .string()
+    .regex(/^pf-[A-Za-z0-9-]{1,40}$/)
+    .optional(),
 });
 
 /** Adds a link over part of a page. */
@@ -526,6 +555,7 @@ export const editOperationSchema = z.discriminatedUnion('kind', [
   addAnnotationsOperationSchema,
   updateAnnotationsOperationSchema,
   deleteAnnotationsOperationSchema,
+  duplicateAnnotationsOperationSchema,
   setMetadataOperationSchema,
   setDocumentLanguageOperationSchema,
   setDocumentTitleOperationSchema,

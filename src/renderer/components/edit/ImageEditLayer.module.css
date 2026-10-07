@@ -41,6 +41,33 @@
   touch-action: none;
 }
 
+/* Handles sit on a copy of the box that is never mirrored. */
+.handles {
+  position: absolute;
+  inset: 0;
+}
+
+/* The turning handle stands clear of the top edge, on a short stem. */
+.rotate {
+  left: 50%;
+  top: -22px;
+  border-radius: 50%;
+  cursor: grab;
+}
+
+.rotate:active {
+  cursor: grabbing;
+}
+
+.rotateStem {
+  position: absolute;
+  left: 50%;
+  top: -17px;
+  height: 17px;
+  border-left: 1px solid var(--pf-color-accent);
+  pointer-events: none;
+}
+
 /* While an image is waiting to be placed, the page itself is the target. */
 .placing {
   cursor: crosshair;
@@ -58,4 +85,40 @@
 
 .pendingCover {
   background-color: var(--pf-color-page);
+}
+
+/*
+ * The crop being dragged. Its outline is the part that will show; the shadow
+ * it casts outwards shades the part that will be hidden, clipped to the box.
+ */
+.cropArea {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid var(--pf-color-accent);
+  box-shadow: 0 0 0 9999px var(--pf-color-crop-shade);
+  cursor: move;
+  touch-action: none;
+}
+
+.selected:has(.cropArea) {
+  overflow: hidden;
+}
+
+.cropHandle {
+  position: absolute;
+  margin: -4px 0 0 -4px;
+  border: 1px solid var(--pf-color-accent);
+  background-color: var(--pf-color-bg-surface);
+  touch-action: none;
+}
+
+.cropCorner {
+  width: 8px;
+  height: 8px;
+}
+
+.cropEdge {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
 }
