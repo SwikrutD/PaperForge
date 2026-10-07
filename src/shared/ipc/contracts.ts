@@ -16,6 +16,7 @@ import {
 import {
   documentEditStateSchema,
   editTransactionSchema,
+  imageCropSchema,
   qpdfStatusSchema,
   saveModeSchema,
   saveOutcomeSchema,
@@ -253,6 +254,26 @@ export const invokeContracts = {
   'images:choose': {
     request: z.strictObject({ sessionId: z.string().min(1) }),
     response: stampImageSchema.nullable(),
+  },
+
+  /** Stages the picture on the clipboard; null when it holds none. */
+  'images:paste': {
+    request: z.strictObject({ sessionId: z.string().min(1) }),
+    response: stampImageSchema.nullable(),
+  },
+
+  /**
+   * Cuts an image down to a crop, for good, and stages the result to draw in
+   * its place. The crop comes back rounded out to whole pixels.
+   */
+  'images:cut': {
+    request: z.strictObject({
+      sessionId: z.string().min(1),
+      page: z.number().int().min(1).max(100_000),
+      imageId: z.string().min(1).max(64),
+      crop: imageCropSchema,
+    }),
+    response: z.strictObject({ image: stampImageSchema, crop: imageCropSchema }),
   },
 
   /** The links a page carries, with where each one goes. */

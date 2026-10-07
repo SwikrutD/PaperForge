@@ -37,6 +37,8 @@ export const INVOKE_CHANNEL_NAMES = [
   'text:canWrite',
   'images:page',
   'images:choose',
+  'images:paste',
+  'images:cut',
   'images:export',
   'links:page',
   'forms:model',

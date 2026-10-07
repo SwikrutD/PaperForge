@@ -154,13 +154,6 @@
   font-size: var(--pf-font-size-100);
 }
 
-/* Crop is four numbers; two by two keeps them legible in a narrow panel. */
-.cropGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--pf-space-100);
-}
-
 .cropField {
   display: flex;
   flex-direction: column;

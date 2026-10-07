@@ -84,6 +84,8 @@
   --pf-color-bg-selected: #e9f2fd;
   --pf-color-workspace: #f0eeec;
   --pf-color-page: #ffffff;
+  /* Shades the part of a picture a crop will hide; it lies over the page. */
+  --pf-color-crop-shade: rgba(32, 31, 30, 0.5);
   /* Presentation mode surrounds the page with black in both themes. */
   --pf-color-presentation: #000000;
   --pf-color-presentation-text: #f3f2f1;
@@ -130,6 +132,8 @@
   --pf-color-bg-selected: #0d2c45;
   --pf-color-workspace: #141313;
   --pf-color-page: #ffffff;
+  /* Shades the part of a picture a crop will hide; it lies over the page. */
+  --pf-color-crop-shade: rgba(32, 31, 30, 0.5);
 
   --pf-color-border: #3b3a39;
   --pf-color-border-strong: #565452;
