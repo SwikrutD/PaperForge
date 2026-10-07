@@ -5,9 +5,9 @@ import type { TextStyle } from '@shared/schemas/text';
 import { readPageContent, type PageContent } from '@pdf/content/pageContent';
 import { rewriteRunText } from '@pdf/content/editText';
 import { appendTextBlock, neutralizeRun } from '@pdf/content/drawText';
-import { multiply, type Matrix } from '@pdf/content/state';
-import type { TextRun } from '@pdf/content/textRuns';
-import { toWinAnsi } from '@pdf/text/layout';
+import { matrixScale, multiply, type Matrix } from '@pdf/content/state';
+import { seenFontSize, type TextRun } from '@pdf/content/textRuns';
+import { encodeWinAnsi } from '@pdf/text/layout';
 import { ensureFontResource } from './textResources';
 
 /**
@@ -114,13 +114,16 @@ export async function applyTextOperation(
   setPageContent(
     document,
     pageIndex,
-    appendTextBlock(emptied, replacementMatrix(run, style), drawable(operation.text), {
+    appendTextBlock(emptied, replacementMatrix(run), drawable(operation.text), {
       fontResource: resource,
       size: style.size,
       color: style.color,
       ...(run.charSpacing === 0 ? {} : { charSpacing: run.charSpacing }),
       ...(run.wordSpacing === 0 ? {} : { wordSpacing: run.wordSpacing }),
       ...(run.horizontalScale === 100 ? {} : { horizontalScale: run.horizontalScale }),
+      // The words of a recognised scan sit invisibly over its picture; a
+      // corrected word must stay invisible, or it is printed over the scan.
+      renderMode: run.invisible ? 3 : 0,
     }),
   );
   return true;
@@ -130,14 +133,15 @@ export async function applyTextOperation(
  * Where replacement text goes: exactly where the original sat.
  *
  * The run's matrix already carries the page's own transform, so the text
- * lands in the same place at the same angle. The size is taken out of the
- * matrix and put in `Tf`, so a page that scales its text still gets text of
- * the size the reader chose.
+ * lands in the same place at the same angle. Its scale is divided back out,
+ * so `Tf` alone sets the size: a page that draws at `1 Tf` and scales the
+ * matrix still gets text of the size the reader chose (or saw, by default).
  */
-function replacementMatrix(run: TextRun, style: TextStyle): Matrix {
+function replacementMatrix(run: TextRun): Matrix {
   const rise: Matrix = { a: 1, b: 0, c: 0, d: 1, e: 0, f: run.rise };
-  const scale = run.fontSize === 0 ? 1 : style.size / run.fontSize;
-  const normalize: Matrix = { a: 1 / scale, b: 0, c: 0, d: 1 / scale, e: 0, f: 0 };
+  const scale = matrixScale(run.matrix).y;
+  const unscale = scale === 0 ? 1 : 1 / scale;
+  const normalize: Matrix = { a: unscale, b: 0, c: 0, d: unscale, e: 0, f: 0 };
   return multiply(normalize, multiply(rise, run.matrix));
 }
 
@@ -155,8 +159,9 @@ function styleOf(run: TextRun): TextStyle {
     family,
     bold: /bold|black|heavy/.test(base),
     italic: /italic|oblique/.test(base),
-    // The run's size already includes whatever its matrix scales by.
-    size: run.fontSize === 0 ? 12 : run.fontSize,
+    // The size the run is seen at, which is what Tf sets once the
+    // replacement matrix has divided its own scale out.
+    size: run.fontSize === 0 ? 12 : seenFontSize(run),
     color: colorOf(run),
   };
 }
@@ -178,16 +183,13 @@ function colorOf(run: TextRun): { r: number; g: number; b: number } {
 /**
  * What a standard font can draw.
  *
- * The fourteen standard fonts are Latin-1; a character outside that cannot be
- * drawn with one at all, so it is shown as a question mark rather than
- * silently dropped. Text that needs more than Latin-1 needs an embedded font,
- * which is its own piece of work.
+ * The standard fonts are written in WinAnsi: Latin-1 plus the punctuation in
+ * 0x80–0x9F (curly quotes, dashes, ellipsis, euro, bullets), all of which are
+ * drawn as themselves. A character outside that cannot be drawn with one at
+ * all and comes out as a question mark; the editor refuses such text before
+ * it gets here, saying which character stopped it. Text that needs more than
+ * WinAnsi needs an embedded font, which is its own piece of work.
  */
 function drawable(text: string): Uint8Array {
-  const usable = toWinAnsi(text);
-  const bytes = new Uint8Array(usable.length);
-  for (let index = 0; index < usable.length; index += 1) {
-    bytes[index] = usable.charCodeAt(index) & 0xff;
-  }
-  return bytes;
+  return encodeWinAnsi(text).bytes;
 }

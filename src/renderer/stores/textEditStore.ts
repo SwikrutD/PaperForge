@@ -9,7 +9,7 @@ import {
   type TextRunModel,
   type TextStyle,
 } from '@shared/schemas/text';
-import { isDrawable, toWinAnsi } from '@pdf/text/layout';
+import { encodeWinAnsi } from '@pdf/text/layout';
 import { invoke } from '../services/ipcClient';
 import { useDocumentStore } from './documentStore';
 import { useUiStore } from './uiStore';
@@ -65,6 +65,12 @@ export interface TextEditStore {
   placement: TextPlacement | null;
   /** What text PaperForge draws itself looks like. */
   style: TextStyle;
+  /**
+   * True once the reader has changed the style since opening the run being
+   * edited. A changed style is applied on the edit — as a replacement drawn in
+   * that style — even when the words are left as they were.
+   */
+  styleTouched: boolean;
   busy: boolean;
   /** The text last written, until its page has been redrawn. */
   pendingText: PendingText | null;
@@ -120,6 +126,7 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
   placing: false,
   placement: null,
   style: DEFAULT_TEXT_STYLE,
+  styleTouched: false,
   busy: false,
   pendingText: null,
 
@@ -162,14 +169,30 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
     const run = runOf(get(), sessionId, page, id);
     if (run === undefined) return;
 
-    set({ selected: { page, id }, draft: run.text, placement: null, placing: false });
+    // Opening the run that is already open changes nothing: what was typed
+    // and the style chosen for it stay as they are.
+    const { selected, draft, placement } = get();
+    if (selected?.page === page && selected.id === id && draft !== null && placement === null) {
+      return;
+    }
+
+    // The style controls start from how the run looks, so what the reader
+    // changes there is a change to this text rather than to a default.
+    set({
+      selected: { page, id },
+      draft: run.text,
+      placement: null,
+      placing: false,
+      style: lookOf(run),
+      styleTouched: false,
+    });
   },
 
   setDraft: (draft) => set({ draft }),
   cancelEdit: () => set({ draft: null, placement: null }),
 
   commitEdit: async () => {
-    const { selected, draft, placement, style, busy } = get();
+    const { selected, draft, placement, style, styleTouched, busy } = get();
     const sessionId = useDocumentStore.getState().activeId;
     // One change at a time: Enter followed by the field losing focus, or a
     // click elsewhere while a change is still being written, must not send it
@@ -178,8 +201,13 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
 
     // New text, put where the reader pointed.
     if (placement !== null) {
+      if (draft.trim() === '') {
+        set({ draft: null, placement: null });
+        return;
+      }
+      // Kept open, so the reader can correct what cannot be drawn.
+      if (refuseUndrawable(draft)) return;
       set({ draft: null, placement: null });
-      if (draft.trim() === '') return;
 
       await write(
         sessionId,
@@ -212,8 +240,8 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
 
     if (selected === null) return;
     const existing = runOf(get(), sessionId, selected.page, selected.id);
-    // Typing nothing new is not a change.
-    if (existing === undefined || existing.text === draft) {
+    // Typing nothing new, and choosing no new style, is not a change.
+    if (existing === undefined || (existing.text === draft && !styleTouched)) {
       set({ draft: null });
       return;
     }
@@ -242,22 +270,13 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
           };
 
     const replaceWith = async (): Promise<void> => {
-      // PaperForge draws replacement text with the fonts every reader has, and
-      // those are Latin-1. Anything else would come out as question marks, so
-      // it is refused instead.
-      if (!isDrawable(draft)) {
-        set({ draft: null });
-        useUiStore.getState().showToast({
-          title: `PaperForge cannot write “${firstUndrawable(draft)}” into a PDF yet.`,
-          description:
-            'Replacement text is drawn with the standard fonts, which cover Latin-1 only. Embedding a font for other writing systems is not built yet.',
-          intent: 'error',
-        });
-        return;
-      }
+      // PaperForge draws replacement text with the fonts every reader has.
+      // Anything they cannot draw would come out as question marks, so it is
+      // refused instead, and the draft stays open to be corrected.
+      if (refuseUndrawable(draft)) return;
 
-      set({ draft: null, selected: null });
-      await write(sessionId, preview(existing.replaced), {
+      set({ draft: null, selected: null, styleTouched: false });
+      await write(sessionId, preview(styleTouched), {
         label: draft === '' ? 'Delete text' : 'Replace text',
         operations: [
           {
@@ -265,16 +284,17 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
             page: selected.page,
             runId: selected.id,
             text: draft,
-            // Text PaperForge drew keeps whatever the reader has chosen;
-            // text from the document keeps its own look.
-            style: existing.replaced ? style : null,
+            // A style the reader chose for this text is applied; otherwise
+            // the text keeps its own look, whoever drew it.
+            style: styleTouched ? style : null,
           },
         ],
       });
     };
 
-    // A run PaperForge cannot rewrite in place is replaced outright.
-    if (!existing.editable) {
+    // A run PaperForge cannot rewrite in place is replaced outright, and so
+    // is one the reader has restyled: its own font cannot take a new style.
+    if (!existing.editable || styleTouched) {
       await replaceWith();
       return;
     }
@@ -307,7 +327,9 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
     }
 
     // The font cannot write it. Replacing it is a different thing, so the
-    // reader is asked rather than told afterwards.
+    // reader is asked rather than told afterwards — unless the standard fonts
+    // cannot write it either, which is said before anything is offered.
+    if (refuseUndrawable(draft)) return;
     useUiStore.getState().requestConfirmation({
       title: 'Replace this text instead?',
       message:
@@ -328,17 +350,33 @@ export const useTextEditStore = create<TextEditStore>((set, get) => ({
     }
   },
 
-  setStyle: (patch) => set((state) => ({ style: { ...state.style, ...patch } })),
+  setStyle: (patch) =>
+    set((state) => ({ style: { ...state.style, ...patch }, styleTouched: true })),
   setPlacing: (placing) => set({ placing, selected: null, draft: null, placement: null }),
   placeText: (placement) => set({ placement, draft: '', placing: false, selected: null }),
 }));
 
-/** The first character the standard fonts cannot draw. */
-function firstUndrawable(text: string): string {
-  for (const character of text) {
-    if (toWinAnsi(character) !== character) return character;
-  }
-  return '?';
+/**
+ * Refuses text the standard fonts cannot draw, naming the characters that
+ * stopped it. Returns true when it refused.
+ *
+ * The standard fonts are WinAnsi: Western European letters and the usual
+ * punctuation (curly quotes, dashes, ellipsis, euro, bullets). Writing
+ * anything else would silently become question marks.
+ */
+function refuseUndrawable(text: string): boolean {
+  const { undrawable } = encodeWinAnsi(text);
+  if (undrawable.length === 0) return false;
+
+  const shown = undrawable.slice(0, 5).map((character) => `“${character}”`);
+  const more = undrawable.length > shown.length ? ' and others' : '';
+  useUiStore.getState().showToast({
+    title: `PaperForge cannot write ${shown.join(', ')}${more} with a standard font.`,
+    description:
+      'Text PaperForge draws itself uses the standard PDF fonts, which cover Western European letters and common punctuation. Change those characters, or press Escape to leave the text as it was. Embedding a font for other writing systems is not built yet.',
+    intent: 'warning',
+  });
+  return true;
 }
 
 /** The revision a document is at, as its tab knows it. */
@@ -385,6 +423,19 @@ function familyOf(baseFont: string): TextFamily {
   if (name.includes('sans')) return 'helvetica';
   if (name.includes('times') || name.includes('serif') || name.includes('roman')) return 'times';
   return 'helvetica';
+}
+
+/** How a run looks, as the nearest style PaperForge can draw it in. */
+function lookOf(run: TextRunModel): TextStyle {
+  const name = run.baseFont.toLowerCase();
+  return {
+    family: familyOf(run.baseFont),
+    bold: /bold|black|heavy/.test(name),
+    italic: /italic|oblique/.test(name),
+    // The schema's bounds; a run seen at 0.5 pt is still edited sensibly.
+    size: Math.min(400, Math.max(1, Math.round(run.fontSize * 100) / 100)),
+    color: run.color,
+  };
 }
 
 function runOf(

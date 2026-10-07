@@ -1,7 +1,7 @@
 import type { FontMetrics } from './fonts';
 import type { ByteRange } from './parser';
 import type { TextRun } from './textRuns';
-import { formatValue } from './values';
+import { formatNumber, formatValue } from './values';
 
 /**
  * Writing a run of text back into the content stream it came from.
@@ -49,6 +49,69 @@ export function encodeForFont(font: FontMetrics, text: string): EncodeResult {
   return { ok: true, encoded: { bytes, hex: true } };
 }
 
+/**
+ * A run's text as a show operation writes it: strings of codes, with the gaps
+ * between words as `TJ` adjustments where the run spaces its words that way.
+ */
+export type RunPiece = EncodedText | number;
+
+export type RunEncodeResult =
+  | { ok: true; pieces: RunPiece[] }
+  /** The first character the run's font has no code for. */
+  | { ok: false; missing: string };
+
+/** How far a word gap moves the pen when the run has none to copy: a quarter em. */
+const DEFAULT_WORD_GAP = -250;
+
+/**
+ * How a run writes the space between words: the way it already does.
+ *
+ * A run that draws space characters keeps drawing them. A run that separates
+ * its words with `TJ` gaps — as pdfTeX, Quartz and many other generators do —
+ * keeps doing that, with the gap it used. A run with neither uses its font's
+ * space when the font has a visible one, and a gap when it has none.
+ */
+function spaceOf(run: TextRun, font: FontMetrics): { code: number } | { gap: number } {
+  const drawn = run.glyphs.find((glyph) => glyph.text === ' ');
+  if (drawn !== undefined) return { code: drawn.code };
+  if (run.wordGap !== null) return { gap: run.wordGap };
+  const code = font.codeFor(' ');
+  if (code !== null && font.width(code) > 0) return { code };
+  return { gap: DEFAULT_WORD_GAP };
+}
+
+/** Turns text into what the run's show operation writes, spaces included. */
+export function encodeRunText(run: TextRun, font: FontMetrics, text: string): RunEncodeResult {
+  const space = spaceOf(run, font);
+  const pieces: RunPiece[] = [];
+  let word = '';
+
+  const flush = (): RunEncodeResult | null => {
+    if (word === '') return null;
+    const encoded = encodeForFont(font, word);
+    word = '';
+    if (!encoded.ok) return encoded;
+    pieces.push(encoded.encoded);
+    return null;
+  };
+
+  for (const character of text) {
+    if (character !== ' ' || 'code' in space) {
+      word += character;
+      continue;
+    }
+    const failed = flush();
+    if (failed !== null) return failed;
+    // Consecutive spaces are one wider gap.
+    const last = pieces[pieces.length - 1];
+    if (typeof last === 'number') pieces[pieces.length - 1] = last + space.gap;
+    else pieces.push(space.gap);
+  }
+  const failed = flush();
+  if (failed !== null) return failed;
+  return { ok: true, pieces };
+}
+
 /** How a show operation spells its text once it has been re-encoded. */
 export function formatShowOperand(operator: string, encoded: EncodedText): string {
   const value = formatValue({ kind: 'string', bytes: encoded.bytes, hex: encoded.hex });
@@ -93,15 +156,60 @@ export type RewriteResult =
 export function rewriteRunText(content: Uint8Array, run: TextRun, text: string): RewriteResult {
   if (run.font === null) return { ok: false, reason: 'no-font' };
 
-  const encoded = encodeForFont(run.font, text);
+  const encoded = encodeRunText(run, run.font, text);
   if (!encoded.ok) {
     return { ok: false, reason: 'unsupported-character', character: encoded.missing };
   }
 
+  const strings = encoded.pieces.filter((piece): piece is EncodedText => typeof piece !== 'number');
+  const gaps = encoded.pieces.length !== strings.length;
+
+  // No gaps: the run's text operand is replaced, and nothing else.
+  if (!gaps) {
+    const joined = joinEncoded(strings, run.font.singleByte);
+    return {
+      ok: true,
+      bytes: spliceBytes(content, run.textRange, formatShowOperand(run.operator, joined)),
+    };
+  }
+
+  // Gaps need a TJ array. A TJ keeps its operator; a Tj, ' or " becomes a TJ,
+  // with the line move a quote operator made written out first.
+  const array = `[${encoded.pieces
+    .map((piece) =>
+      typeof piece === 'number'
+        ? formatNumber(piece)
+        : formatValue({ kind: 'string', bytes: piece.bytes, hex: piece.hex }),
+    )
+    .join(' ')}]`;
   return {
     ok: true,
-    bytes: spliceBytes(content, run.textRange, formatShowOperand(run.operator, encoded.encoded)),
+    bytes:
+      run.operator === 'TJ'
+        ? spliceBytes(content, run.textRange, array)
+        : spliceBytes(content, run.operationRange, `${lineMoveFor(run)}${array} TJ`),
   };
+}
+
+/** Several encoded strings as one, for a run written without gaps. */
+function joinEncoded(strings: readonly EncodedText[], singleByte: boolean): EncodedText {
+  const total = strings.reduce((sum, piece) => sum + piece.bytes.length, 0);
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const piece of strings) {
+    bytes.set(piece.bytes, offset);
+    offset += piece.bytes.length;
+  }
+  return { bytes, hex: !singleByte };
+}
+
+/** What `'` and `"` do before they show, written as operators of their own. */
+export function lineMoveFor(run: TextRun): string {
+  if (run.operator === "'") return 'T* ';
+  if (run.operator === '"') {
+    return `${formatNumber(run.wordSpacing)} Tw ${formatNumber(run.charSpacing)} Tc T* `;
+  }
+  return '';
 }
 
 /** Whether a run can be rewritten in place, and why not when it cannot. */
@@ -116,15 +224,12 @@ export function rewritability(run: TextRun): { editable: boolean; reason?: strin
     };
   }
   // A font that cannot write back the text it is already showing cannot write
-  // anything else either.
-  const sample = run.text;
-  for (const character of sample) {
-    if (run.font.codeFor(character) === null) {
-      return {
-        editable: false,
-        reason: 'This font is written in a way PaperForge cannot add characters to.',
-      };
-    }
+  // anything else either. Spaces it shows as gaps are written as gaps.
+  if (!encodeRunText(run, run.font, run.text).ok) {
+    return {
+      editable: false,
+      reason: 'This font is written in a way PaperForge cannot add characters to.',
+    };
   }
   return { editable: true };
 }

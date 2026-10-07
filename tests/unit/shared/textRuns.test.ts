@@ -68,7 +68,8 @@ describe('the text state machine', () => {
     const runs = runsOf('BT /F1 10 Tf 0 0 Td [(A) -1000 (B)] TJ (C) Tj ET');
     // One glyph (5), the offset (10) and another glyph (5).
     expect(runs[1]?.origin.x).toBeCloseTo(20, 5);
-    expect(runs[0]?.text).toBe('AB');
+    // A whole em of gap separates two words, as PDF.js reads it too.
+    expect(runs[0]?.text).toBe('A B');
   });
 
   it('applies character, word and horizontal spacing', () => {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, type KeyboardEvent, type PointerEvent, type ReactElement } from 'react';
 import type { PdfPageGeometry } from '@pdf/render/types';
-import type { TextRunModel } from '@shared/schemas/text';
+import type { TextRunModel, TextStyle } from '@shared/schemas/text';
 import { cx } from '../../utils/classNames';
 import { cssPointToPdf, pdfRectToCss } from '../viewer/pageGeometry';
 import { awaitingPaint, usePaintedRevision } from '../viewer/paintedRevision';
@@ -19,6 +19,12 @@ interface TextEditLayerProps {
   placement: TextPlacement | null;
   /** True while the reader is choosing where new text goes. */
   placing: boolean;
+  /**
+   * The style the open text will be written in: the run's own look when it is
+   * opened, and whatever the reader chooses after that. The field shows it as
+   * it changes.
+   */
+  textStyle: TextStyle;
   /** Text just written on this page, until the page is drawn with it. */
   pending?: PendingText | null;
   /** Called once the page's picture shows the pending text itself. */
@@ -51,6 +57,7 @@ export function TextEditLayer({
   draft,
   placement,
   placing,
+  textStyle,
   pending = null,
   onSettle,
   onSelect,
@@ -115,24 +122,56 @@ export function TextEditLayer({
     onPlace(point.x, point.y);
   };
 
-  const field = (value: string, label: string, fontSize: number): ReactElement => (
-    <input
-      ref={inputRef}
-      className={styles.input}
-      value={value}
-      style={{ fontSize: `${String(Math.max(8, fontSize * scale))}px` }}
-      aria-label={label}
-      onChange={(event) => onDraft(event.target.value)}
-      onKeyDown={onKeyDown}
-      onBlur={onCommit}
-    />
-  );
+  /**
+   * The field, drawn in the style the text will be written in, on the page's
+   * own colour, so a font, size or colour chosen while typing shows at once.
+   * It grows upwards from the bottom of its box when the chosen size needs a
+   * taller line than the box has.
+   */
+  const field = (value: string, label: string, boxHeight: number): ReactElement => {
+    const size = Math.max(8, textStyle.size * scale);
+    const channel = (part: number): string => String(Math.round(part * 255));
+    const { r, g, b } = textStyle.color;
+    return (
+      <input
+        ref={inputRef}
+        className={styles.input}
+        value={value}
+        style={{
+          top: 'auto',
+          height: `${String(Math.max(boxHeight + 2, size * 1.25))}px`,
+          fontSize: `${String(size)}px`,
+          fontFamily: FAMILIES[textStyle.family],
+          fontWeight: textStyle.bold ? 'bold' : 'normal',
+          fontStyle: textStyle.italic ? 'italic' : 'normal',
+          color: `rgb(${channel(r)}, ${channel(g)}, ${channel(b)})`,
+        }}
+        aria-label={label}
+        onChange={(event) => onDraft(event.target.value)}
+        onKeyDown={onKeyDown}
+        onBlur={(event) => {
+          // Choosing a size or a colour for this text is part of editing it:
+          // focus moving into the style controls does not write it yet.
+          const next = event.relatedTarget;
+          if (next instanceof Element && next.closest('[data-keeps-text-draft]') !== null) return;
+          onCommit();
+        }}
+      />
+    );
+  };
 
+  // The box for new text sits on its baseline, a line of type high: a
+  // quarter of the size below the baseline and the rest above it.
   const placementBox =
     placement === null
       ? null
       : pdfRectToCss(
-          { x: placement.x, y: placement.y - 4, width: 240, height: 24 },
+          {
+            x: placement.x,
+            y: placement.y - textStyle.size * 0.25,
+            width: Math.max(240, textStyle.size * 12),
+            height: textStyle.size * 1.5,
+          },
           geometry,
           scale,
           rotation,
@@ -179,20 +218,25 @@ export function TextEditLayer({
               // page: the press belongs to the layer underneath.
               if (placing) return;
               event.stopPropagation();
+              // A press in the open field is the field's own: it puts the
+              // caret where it lands, or starts a selection.
+              if (inField(event.target)) return;
               // Opening the field on the press would lose it again: the page
               // column takes focus on pointer down, and the field would blur
               // the moment it appeared.
               if (selected) event.preventDefault();
               else onSelect(run.id);
             }}
-            onClick={() => {
-              if (!placing && selected) onBeginEdit(run.id);
+            onClick={(event) => {
+              // Clicks in the open field move the caret; they do not reopen it.
+              if (!placing && selected && !inField(event.target)) onBeginEdit(run.id);
             }}
-            onDoubleClick={() => {
-              if (!placing) onBeginEdit(run.id);
+            onDoubleClick={(event) => {
+              // A double click in the open field selects a word, as in any field.
+              if (!placing && !inField(event.target)) onBeginEdit(run.id);
             }}
           >
-            {editing && field(draft, `Text: ${run.text}`, run.fontSize)}
+            {editing && field(draft, `Text: ${run.text}`, box.height)}
           </div>
         );
       })}
@@ -212,11 +256,16 @@ export function TextEditLayer({
           }}
           data-new-text="true"
         >
-          {field(draft, 'New text', 12)}
+          {field(draft, 'New text', placementBox.height)}
         </div>
       )}
     </div>
   );
+}
+
+/** True when an event started inside the open text field. */
+function inField(target: EventTarget): boolean {
+  return target instanceof Element && target.closest('input') !== null;
 }
 
 const FAMILIES = {

@@ -119,6 +119,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const textDraft = useTextEditStore((store) => store.draft);
   const textPlacement = useTextEditStore((store) => store.placement);
   const textPlacing = useTextEditStore((store) => store.placing);
+  const textStyle = useTextEditStore((store) => store.style);
   const textPending = useTextEditStore((store) => store.pendingText);
   const settleTextPending = useTextEditStore((store) => store.settlePending);
   const editTarget = useEditTargetStore((store) => store.target);
@@ -852,6 +853,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                         }
                         placement={textPlacement?.page === pageNumber ? textPlacement : null}
                         placing={textPlacing}
+                        textStyle={textStyle}
                         pending={
                           textPending?.sessionId === sessionId && textPending.page === pageNumber
                             ? textPending

@@ -2,8 +2,8 @@ import { PDFDocument } from 'pdf-lib';
 import { AppError } from '@shared/errors/appError';
 import type { PageTextModel, TextColor, TextRunModel } from '@shared/schemas/text';
 import { readPageContent } from '@pdf/content/pageContent';
-import { encodeForFont, rewritability } from '@pdf/content/editText';
-import { runBounds, type TextRun } from '@pdf/content/textRuns';
+import { encodeRunText, rewritability } from '@pdf/content/editText';
+import { runBounds, seenFontSize, type TextRun } from '@pdf/content/textRuns';
 import { findRun, runIdOf } from '@pdf/mutate/text';
 import { isReplacementFont } from '@pdf/mutate/textResources';
 import type { Color } from '@pdf/content/state';
@@ -68,7 +68,7 @@ export function registerTextHandlers(registerInvoke: RegisterInvoke, deps: TextH
     if (run?.font === undefined || run.font === null) return { ok: false, missing: null };
     if (!rewritability(run).editable) return { ok: false, missing: null };
 
-    const encoded = encodeForFont(run.font, text);
+    const encoded = encodeRunText(run, run.font, text);
     return encoded.ok ? { ok: true, missing: null } : { ok: false, missing: encoded.missing };
   });
 }
@@ -89,7 +89,7 @@ function describeRun(run: TextRun): TextRunModel {
     rotation: run.rotation,
     fontName: run.fontName ?? '',
     baseFont: run.font?.baseFont ?? 'Unknown',
-    fontSize: run.fontSize,
+    fontSize: seenFontSize(run),
     color: toRgb(run.color),
     invisible: run.invisible,
     editable: verdict.editable,

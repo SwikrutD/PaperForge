@@ -10,16 +10,20 @@ const FAMILIES: Array<{ id: TextFamily; label: string }> = [
 ];
 
 /**
- * What text PaperForge draws itself looks like: new text, and text it has to
- * replace because the original font cannot write it.
+ * What text PaperForge draws itself looks like: new text, and the text being
+ * edited when the reader restyles it.
  *
  * These are the fonts every PDF reader already has, so nothing is embedded and
- * no font is redistributed. Text drawn from the document keeps its own font;
- * this is only for what PaperForge adds.
+ * no font is redistributed. Opening a run sets these to how it looks; changing
+ * one redraws that text in a standard font when the edit is written. Focus
+ * moving in here does not write the text being typed (`data-keeps-text-draft`).
  */
 export function TextStyleControls(): ReactElement {
   const style = useTextEditStore((store) => store.style);
   const setStyle = useTextEditStore((store) => store.setStyle);
+  const editingRun = useTextEditStore(
+    (store) => store.selected !== null && store.draft !== null && store.placement === null,
+  );
 
   const color = `#${[style.color.r, style.color.g, style.color.b]
     .map((part) =>
@@ -30,8 +34,13 @@ export function TextStyleControls(): ReactElement {
     .join('')}`;
 
   return (
-    <section className={styles.group}>
-      <h3 className={styles.title}>Text PaperForge adds</h3>
+    <section className={styles.group} data-keeps-text-draft>
+      <h3 className={styles.title}>{editingRun ? 'Style for this text' : 'Style for new text'}</h3>
+      {editingRun && (
+        <p className={styles.note}>
+          Changing the style redraws this text in a standard font when you press Enter.
+        </p>
+      )}
 
       <div className={styles.row}>
         <label className={styles.label} htmlFor="text-family">

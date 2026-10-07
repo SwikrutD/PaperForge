@@ -1,6 +1,9 @@
 import type { TextRun } from './textRuns';
 import { formatNumber, formatValue } from './values';
-import { spliceBytes } from './editText';
+import { lineMoveFor, spliceBytes } from './editText';
+
+export { lineMoveFor };
+import { appendIsolated } from './appendContent';
 import type { Matrix } from './state';
 
 /**
@@ -24,6 +27,11 @@ export interface DrawnTextStyle {
   /** Percentage, as `Tz` takes it. */
   horizontalScale?: number;
   rise?: number;
+  /**
+   * `Tr`: 0 fills, 3 draws nothing. Replacing the invisible text of a
+   * recognised scan keeps it invisible.
+   */
+  renderMode?: number;
 }
 
 /**
@@ -46,15 +54,6 @@ export function neutralizeRun(content: Uint8Array, run: TextRun): Uint8Array {
   return spliceBytes(content, run.operationRange, `${prefix}${replacement}`);
 }
 
-/** What `'` and `"` do before they show, written as operators of their own. */
-export function lineMoveFor(run: TextRun): string {
-  if (run.operator === "'") return 'T* ';
-  if (run.operator === '"') {
-    return `${formatNumber(run.wordSpacing)} Tw ${formatNumber(run.charSpacing)} Tc T* `;
-  }
-  return '';
-}
-
 /** How far a run moves the pen, in unscaled text units. */
 export function advanceOf(run: TextRun): number {
   const last = run.glyphs[run.glyphs.length - 1];
@@ -65,7 +64,10 @@ export function advanceOf(run: TextRun): number {
  * Appends a block of text to a page's content, drawn at a given transform.
  *
  * It is appended rather than inserted, so it is drawn last: over whatever was
- * there, which is what replacing text has to do. `q`/`Q` keep the block's own
+ * there, which is what replacing text has to do. The page's own drawing is
+ * closed off first (`appendIsolated`), so the block starts from the page's
+ * initial state wherever the page left off, and every text setting the block
+ * depends on is stated rather than inherited. `q`/`Q` keep the block's own
  * state to itself.
  */
 export function appendTextBlock(
@@ -80,20 +82,12 @@ export function appendTextBlock(
     'BT',
     `${formatNumber(style.color.r)} ${formatNumber(style.color.g)} ${formatNumber(style.color.b)} rg`,
     `/${style.fontResource} ${formatNumber(style.size)} Tf`,
+    `${formatNumber(style.charSpacing ?? 0)} Tc`,
+    `${formatNumber(style.wordSpacing ?? 0)} Tw`,
+    `${formatNumber(style.horizontalScale ?? 100)} Tz`,
+    `${formatNumber(style.rise ?? 0)} Ts`,
+    `${formatNumber(style.renderMode ?? 0)} Tr`,
   ];
-
-  if (style.charSpacing !== undefined && style.charSpacing !== 0) {
-    parts.push(`${formatNumber(style.charSpacing)} Tc`);
-  }
-  if (style.wordSpacing !== undefined && style.wordSpacing !== 0) {
-    parts.push(`${formatNumber(style.wordSpacing)} Tw`);
-  }
-  if (style.horizontalScale !== undefined && style.horizontalScale !== 100) {
-    parts.push(`${formatNumber(style.horizontalScale)} Tz`);
-  }
-  if (style.rise !== undefined && style.rise !== 0) {
-    parts.push(`${formatNumber(style.rise)} Ts`);
-  }
 
   parts.push(
     `${formatNumber(round(matrix.a))} ${formatNumber(round(matrix.b))} ${formatNumber(
@@ -105,8 +99,7 @@ export function appendTextBlock(
   parts.push(`${formatValue({ kind: 'string', bytes: text, hex })} Tj`);
   parts.push('ET', 'Q');
 
-  const block = `\n${parts.join('\n')}\n`;
-  return spliceBytes(content, { start: content.length, end: content.length }, block);
+  return appendIsolated(content, `\n${parts.join('\n')}\n`);
 }
 
 /** Six decimal places is more than a page ever needs, and keeps files small. */

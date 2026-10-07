@@ -175,22 +175,22 @@ test('the change is still there when the document is reopened', async () => {
   await expect(shownOnPage(1, 'A changed line')).toBeVisible();
 });
 
-test('text the font cannot write offers a replacement instead', async () => {
+test('text no font can write is refused before a replacement is offered', async () => {
   await openEditor();
   await runsOn(1).first().click();
   await runsOn(1).first().click();
   await page.keyboard.press('Control+a');
-  // WinAnsi has no Cyrillic, and the page is drawn in a WinAnsi font.
+  // WinAnsi has no Cyrillic: neither the page's font nor the standard fonts
+  // can draw it, so no replacement is offered and nothing is written.
   await page.keyboard.type('Привет');
   await page.keyboard.press('Enter');
 
-  const dialog = page.getByRole('dialog');
-  await expect(dialog).toContainText('cannot write “П”');
-  await dialog.getByRole('button', { name: 'Replace the text' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'cannot write “П”' })).toBeVisible();
+  await expect(page.getByRole('dialog')).toBeHidden();
 
-  // The standard fonts cannot draw it either, so nothing is written and the
-  // reader is told why rather than being given question marks.
-  await expect(page.getByRole('alert')).toContainText('cannot write “П” into a PDF yet');
+  // The draft stays open to be corrected; Escape leaves the text as it was.
+  await expect(field()).toHaveValue('Привет');
+  await page.keyboard.press('Escape');
   await expect(shownOnPage(1, 'A changed line')).toBeVisible();
   await expect(page.getByLabel('Unsaved changes')).toBeHidden();
 });

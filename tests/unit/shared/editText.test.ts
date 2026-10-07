@@ -97,8 +97,9 @@ describe('rewriting a run', () => {
   });
 
   it('writes a TJ array back as a single string', async () => {
+    // Kerning only: no gap here is wide enough to be a space between words.
     const original = documentOf({
-      pages: [{ content: 'BT /F1 12 Tf 1 0 0 1 60 700 Tm [(A) -200 (W) 120 (E)] TJ ET' }],
+      pages: [{ content: 'BT /F1 12 Tf 1 0 0 1 60 700 Tm [(A) -60 (W) 120 (E)] TJ ET' }],
     });
     const { run, id } = await firstRun(original);
     expect(run.text).toBe('AWE');
@@ -291,6 +292,22 @@ describe('replacing text PaperForge cannot write natively', () => {
     expect(drawn?.fontSize).toBeCloseTo(30, 4);
     expect(drawn?.font?.baseFont).toContain('Times');
     expect(drawn?.color.components).toEqual([1, 0, 0]);
+  });
+
+  it('keeps the invisible text of a recognised scan invisible', async () => {
+    // An OCR layer: words drawn in render mode 3, over a picture of the page.
+    const original = documentOf({
+      pages: [{ content: 'BT 3 Tr /F1 12 Tf 60 700 Td (recognised) Tj ET' }],
+    });
+    const result = await engine.apply(original, [
+      { kind: 'replaceText', page: 1, runId: 'op4', text: 'corrected', style: null },
+    ]);
+
+    const drawn = (await firstRun(result.bytes)).content.runs.find(
+      (run) => run.text === 'corrected',
+    );
+    expect(drawn?.invisible).toBe(true);
+    expect(await textOnPage(result.bytes)).toContain('corrected');
   });
 
   it('draws a question mark for what no standard font can write', async () => {

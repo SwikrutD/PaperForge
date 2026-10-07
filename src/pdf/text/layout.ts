@@ -1,4 +1,5 @@
 import type { PDFFont } from 'pdf-lib';
+import { codeForUnicode } from '../content/encodings';
 
 /**
  * Laying text out with a standard PDF font: what can be drawn, and where the
@@ -46,9 +47,51 @@ export function toWinAnsi(value: string): string {
   return result;
 }
 
-/** True when every character can be drawn as written. */
+/** Text in the bytes a standard font is written with, and what it could not hold. */
+export interface WinAnsiText {
+  /** WinAnsi codes; an undrawable character is a question mark. */
+  bytes: Uint8Array;
+  /** Each character that could not be encoded, once, in the order met. */
+  undrawable: string[];
+}
+
+/**
+ * Encodes text for one of the standard fonts as pdf-lib embeds them, which is
+ * WinAnsi (code page 1252): Latin-1 plus the curly quotes, dashes, ellipsis,
+ * euro sign, bullets and the rest of 0x80–0x9F.
+ *
+ * A tab is four spaces, as everywhere else PaperForge lays text out; any other
+ * control character, and anything outside WinAnsi, is undrawable.
+ */
+export function encodeWinAnsi(value: string): WinAnsiText {
+  const codes: number[] = [];
+  const undrawable: string[] = [];
+
+  for (const character of value) {
+    if (character === '\t') {
+      codes.push(0x20, 0x20, 0x20, 0x20);
+      continue;
+    }
+    const point = character.codePointAt(0) ?? 0;
+    const control = point < 0x20 || point === 0x7f;
+    const code = control ? null : codeForUnicode('WinAnsiEncoding', character);
+    if (code === null) {
+      if (!undrawable.includes(character)) undrawable.push(character);
+      codes.push(REPLACEMENT.charCodeAt(0));
+    } else {
+      codes.push(code);
+    }
+  }
+
+  return { bytes: Uint8Array.from(codes), undrawable };
+}
+
+/**
+ * True when every character can be drawn as itself by the text editor's
+ * standard fonts — WinAnsi punctuation included.
+ */
 export function isDrawable(value: string): boolean {
-  return toWinAnsi(value) === value;
+  return encodeWinAnsi(value).undrawable.length === 0;
 }
 
 /** One line of drawable text, for a label that cannot wrap. */
