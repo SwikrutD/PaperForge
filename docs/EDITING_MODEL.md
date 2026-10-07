@@ -175,41 +175,84 @@ big it is, how far it is turned, and whether it has been mirrored.
 
 ### Changing one in place
 
-Every image edit replaces the `Do` operation where it stands with
+An image is usually drawn inside a group of its own: `q`, the transform that places it, often a
+clip that crops it and a transparency state that fades it, then `/Name Do` and `Q`. When the group
+draws that picture and nothing else — no other painting, no clip other than rectangles, no marked
+content — the whole group is what is replaced, with
 
 ```
-q [/PFAlphaNN gs] <M> cm [x y w h re W n] /Name Do Q
+q [kept gs] [/PFAlphaNN gs] <M> cm [x y w h re W n] /Name Do Q
 ```
 
-where `M = new × inverse(current)`. The inverse cancels whatever transform the page had already
-built up, so what is left inside the `q`/`Q` is exactly the placement the reader asked for,
-whatever route the page took to get there.
+where `M = new × inverse(transform at the group's q)`. The inverse cancels whatever transform the
+page had built up before the group, so what is left is exactly the placement the reader asked for.
+The document's own graphics states are kept (they may set a blend mode or a soft mask); PaperForge's
+`PFAlpha` ones are replaced. Replacing the group, not just the `Do`, is what makes the crop go with
+the picture when it moves, and what keeps changes from nesting: before, each edit wrapped a new
+`q … Q` inside the last, so the old clip still cut the picture, a crop could not be taken off and a
+faded picture could not be made solid again.
+
+A picture that shares its group with other drawing keeps the old behaviour: only the `Do` is
+replaced, inside whatever clip the page set, because that clip is the other drawing's too.
 
 Editing in place is what keeps the drawing order. Appending the image to the end of the stream
 would lift it in front of anything that used to cover it — a caption, a box, a redaction — and the
 page would no longer look like itself.
 
 A page that draws an image with a transform that cannot be inverted (everything flattened onto a
-line) is refused with a message that says so, rather than moved to a place that means nothing.
+line) outside the picture's own group is refused with a message that says so, rather than moved to
+a place that means nothing.
+
+### Images PaperForge adds
+
+An added image (from Add image or Ctrl+V) is wrapped in marked content:
+
+```
+/PFImage << /PFId (pf-…) >> BDC q … /PFImgN Do Q EMC
+```
+
+The id is chosen by the renderer before the change is written, so the image is selected the moment
+it appears, and it names the image for as long as it is there — moving, cropping or replacing it,
+or deleting something drawn before it, does not change it. Deleting it removes the marking with
+it. Images the document came with are still named by where they are drawn (`img<n>`), which holds
+for one revision; the editor finds those again by position after each change.
 
 ### What each edit is
 
-| Edit                       | What is written                                                      |
-| -------------------------- | -------------------------------------------------------------------- |
-| Move, resize, turn, mirror | A new matrix, built by `placementMatrix` from the box and the turn   |
-| Crop                       | `x y w h re W n` inside the block: a clip, in the image's own square |
-| Opacity                    | `/PFAlphaNN gs`, a transparency state in the page's resources        |
-| Replace                    | The new image embedded as `PFImgN`, drawn with the same matrix       |
-| Delete                     | The operation removed; nothing else on the page moves                |
-| Add                        | `q … cm /PFImgN Do Q` appended, so it goes on top                    |
+| Edit                       | What is written                                                       |
+| -------------------------- | --------------------------------------------------------------------- |
+| Move, resize, turn, mirror | A new matrix, built by `placementMatrix` from the box and the turn    |
+| Crop                       | `x y w h re W n` inside the group: a clip, in the image's own square  |
+| Cut to crop                | The cropped pixels staged as a new image and drawn in the cropped box |
+| Opacity                    | `/PFAlphaNN gs`, a transparency state in the page's resources         |
+| Replace                    | The new image embedded as `PFImgN`, drawn with the same matrix        |
+| Delete                     | The group (or the marking) removed; nothing else on the page moves    |
+| Add, paste                 | The marked block above, appended, so it goes on top                   |
 
 Cropping clips rather than re-encoding: the picture keeps every pixel it arrived with, and the crop
 can be taken off again. Reading a page back recovers the crop from the clip and the opacity from
 the transparency state, so neither is cumulative and the panel says what the page does rather than
 what was last asked for.
 
+Cutting to the crop (`imageCrop.ts`) throws the hidden pixels away. The crop is rounded out to whole
+pixels, the samples are cut, and the result goes back through the replace path, so it is one undo.
+Only pictures PaperForge can read exactly are cut — 8-bit grey or RGB, stored plainly, deflated, or
+JPEG (through Chromium's codec in the main process) — and a soft mask is cut with them. A JPEG is
+re-encoded as JPEG at quality 92; anything else becomes a PNG.
+
 Mirroring down is mirroring across turned half a circle — the same matrix — so that is how a
 mirrored image is reported, and what is read back is what was written.
+
+### On the page
+
+Corner handles keep the picture's shape unless Shift is held; edge handles change one dimension.
+The handle above the box turns the picture about its middle, in 15° steps with Shift. Crop on page
+gives the crop its own handles; Enter keeps it and Escape abandons it. With an image selected,
+Delete removes it and the arrow keys nudge it (1 pt, 10 pt with Shift) the way the arrow points on
+screen, whatever way the page is turned; the nudges of one key press are written as one change
+when the key comes up. Only one image change is made at a time: one asked for while another is
+being written is dropped rather than queued, because it would be made against an image the first
+has already changed.
 
 ### Writing an image out
 
@@ -217,6 +260,26 @@ A stream that is already a JPEG is handed over untouched. Anything else is decod
 and written as a PNG by a small encoder in `imageResources.ts` — stored deflate blocks, no
 dependency, lossless. An image in an indexed or ICC colour space is written with its samples as
 they are; a CMYK image is refused rather than guessed at.
+
+## Stamps and signatures
+
+A stamp or signature PaperForge made (its `/NM` starts `pf-`) can be resized, turned and
+duplicated; one made elsewhere is only moved, as before.
+
+A reader draws an annotation by putting its appearance's `/BBox` through the appearance's
+`/Matrix` and stretching the result onto `/Rect`. PaperForge puts the turn in the `/Matrix` and makes
+the `/Rect` exactly the box the turned stamp occupies, so the stretch is an identity and every
+reader draws the stamp turned and at its true size. PDF has no portable entry for a stamp's turn,
+so PaperForge records it as `/PFRotate` and the stamp's upright box as `/PFRect`; `/RD` is dropped
+while a stamp is turned, because it cannot describe a turned box.
+
+A signature from an earlier session has no picture PaperForge could draw again; its appearance is
+kept, and the same `/Matrix` maps the box its picture was drawn in exactly onto the new one, rather
+than stretching the padding around it along with it.
+
+Duplicating copies the annotation's dictionary and every appearance stream, so changing one copy
+leaves the other alone. Only boxes are copied — stamps, shapes, text boxes — because moving those is
+moving the rectangle; ink, lines and text markup are refused.
 
 ## Links
 

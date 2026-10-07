@@ -111,6 +111,26 @@ describe('with an image selected', () => {
     expect(actions.select).not.toHaveBeenCalled();
   });
 
+  it('leaves the keys to a dialog, and the arrows to a slider', () => {
+    const { container } = render(
+      <>
+        <Harness editing />
+        <div role="dialog" aria-label="Settings">
+          <button type="button">A button in a dialog</button>
+        </div>
+        <input type="range" aria-label="Opacity" />
+      </>,
+    );
+    const inDialog = container.querySelector('[role="dialog"] button')!;
+    press('Delete', {}, inDialog);
+    press('v', { ctrlKey: true }, inDialog);
+    press('ArrowRight', {}, container.querySelector('input[type="range"]')!);
+
+    expect(actions.remove).not.toHaveBeenCalled();
+    expect(actions.paste).not.toHaveBeenCalled();
+    expect(actions.nudge).not.toHaveBeenCalled();
+  });
+
   it('leaves the keys alone while editing text', () => {
     useEditTargetStore.setState({ target: 'text' });
     render(<Harness editing />);

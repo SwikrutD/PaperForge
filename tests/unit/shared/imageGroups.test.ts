@@ -175,6 +175,36 @@ describe('a cropped image', () => {
     expect((await pageOf(solid.bytes)).images[0]?.opacity).toBe(1);
   });
 
+  it('keeps a clip set around its group, which it does not call its crop', async () => {
+    // A scanned page often sits inside a clip of its own. That clip is not
+    // the picture's crop, so editing the picture must not quietly drop it.
+    const bytes = new Uint8Array(
+      buildPdf({
+        pages: [
+          {
+            content: 'q 150 520 100 60 re W n q 200 0 0 100 100 500 cm /Im0 Do Q Q\n',
+            image: { x: 0, y: 0, width: 1, height: 1, draw: false },
+          },
+        ],
+      }),
+    );
+    const image = (await pageOf(bytes)).images[0]!;
+    expect(image.crop).toBeNull();
+
+    const result = await engine.apply(bytes, [
+      {
+        kind: 'placeImage',
+        page: 1,
+        imageId: imageIdOf(image),
+        placement: { ...elsewhere, x: 100, y: 500 },
+        crop: null,
+        opacity: 0.5,
+        token: null,
+      },
+    ]);
+    expect(contentOf(await pageOf(result.bytes))).toContain('150 520 100 60 re W n');
+  });
+
   it('leaves a clip it shares with other drawing where it is', async () => {
     // The clip also cuts the square drawn beside the picture, so it is the
     // page's, not the picture's, and must stay for the square's sake.

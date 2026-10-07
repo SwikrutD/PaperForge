@@ -74,6 +74,9 @@ interface Frame {
   painted: number;
   /** The image `Do`s inside, by operation index. */
   images: number[];
+  /** How deep in `q` the picture is drawn, and each clip inside is set. */
+  imageDepth: number;
+  clipDepths: number[];
   /** Set when the group holds something it would be wrong to drop. */
   unsafe: boolean;
   states: string[];
@@ -114,6 +117,8 @@ export function findImageGroups(
           ctm: state.ctm,
           painted: 0,
           images: [],
+          imageDepth: 0,
+          clipDepths: [],
           unsafe: false,
           states: [],
         });
@@ -124,8 +129,11 @@ export function findImageGroups(
         if (frame === undefined) return;
         const [only] = frame.images;
         // The outermost group that holds only the picture wins: an inner one
-        // would leave the outer one's clip and transform behind.
-        if (only !== undefined && frame.painted === 1 && !frame.unsafe) {
+        // would leave the outer one's clip and transform behind. But a clip
+        // set further out than the picture's own level is not its crop — it
+        // is not read as one — and dropping it would change the page.
+        const ownClips = frame.clipDepths.every((depth) => depth === frame.imageDepth);
+        if (only !== undefined && frame.painted === 1 && !frame.unsafe && ownClips) {
           groups.set(only, {
             range: { start: frame.start, end: operation.range.end },
             ctm: frame.ctm,
@@ -163,6 +171,10 @@ export function findImageGroups(
         if (name !== null) for (const frame of frames) frame.states.push(name);
         return;
       }
+      if (operator === 'W' || operator === 'W*') {
+        for (const frame of frames) frame.clipDepths.push(frames.length);
+        return;
+      }
       if (PATHS.has(operator)) {
         for (const frame of frames) frame.unsafe = true;
         return;
@@ -171,7 +183,10 @@ export function findImageGroups(
 
       for (const frame of frames) frame.painted += 1;
       if (operator !== 'Do' || !isImage(index)) return;
-      for (const frame of frames) frame.images.push(index);
+      for (const frame of frames) {
+        frame.images.push(index);
+        frame.imageDepth = frames.length;
+      }
       // Only the innermost PaperForge marking names the picture.
       for (let depth = marked.length - 1; depth >= 0; depth -= 1) {
         const mark = marked[depth];

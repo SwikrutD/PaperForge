@@ -47,7 +47,7 @@ export function useImageEditKeys({
     if (!editing) return;
 
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.defaultPrevented || isTypingTarget(event.target)) return;
+      if (event.defaultPrevented || isTypingTarget(event.target) || ownsKeys(event.target)) return;
       const store = useImageEditStore.getState();
       const handled = (): void => {
         event.preventDefault();
@@ -107,6 +107,19 @@ export function useImageEditKeys({
       window.removeEventListener('keyup', onKeyUp, true);
     };
   }, [editing, pastePoint, pageRotation]);
+}
+
+/**
+ * True when the focus is somewhere with keys of its own: a dialog or menu,
+ * which is about something else, or a slider, which the arrows move.
+ */
+function ownsKeys(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  return (
+    target.closest('[role="dialog"], [role="alertdialog"], [role="menu"], [role="menubar"]') !==
+      null ||
+    (target instanceof HTMLInputElement && target.type === 'range')
+  );
 }
 
 /**
