@@ -25,6 +25,10 @@ export interface ConfirmationRequest {
   /** Styles the confirm button as destructive. */
   danger?: boolean | undefined;
   onConfirm: () => void;
+  /** Called when the reader dismisses the question instead. */
+  onCancel?: (() => void) | undefined;
+  /** A third answer, beside cancel and confirm. */
+  alternative?: { label: string; onChoose: () => void } | undefined;
 }
 
 export type ToastIntent = 'info' | 'success' | 'warning' | 'error';

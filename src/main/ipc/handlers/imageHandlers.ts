@@ -3,13 +3,19 @@ import path from 'node:path';
 import { PDFDocument } from 'pdf-lib';
 import { AppError } from '@shared/errors/appError';
 import type { ExportResult } from '@shared/schemas/pages';
-import type { PageImageModel, PageImagesModel } from '@shared/schemas/image';
+import type { PageImageModel, PageImagesModel, SkippedImageReason } from '@shared/schemas/image';
 import { placementOf, type ImagePlacement } from '@pdf/content/images';
-import { resourcesOf } from '@pdf/content/pageContent';
 import { exportImage, isAddedImage } from '@pdf/mutate/imageResources';
 import { cropImagePixels } from '@pdf/mutate/imageCrop';
 import { nativeImageCodec } from '../../services/optimize/nativeImageCodec';
-import { findImage, imageIdOf, readPageWithImages } from '@pdf/mutate/images';
+import {
+  findImage,
+  formUsesOf,
+  imageIdOf,
+  pictureSource,
+  readPageWithImages,
+} from '@pdf/mutate/images';
+import { appearanceImageCount } from '@pdf/mutate/formImages';
 import type { DocumentEditor } from '../../services/documents/documentEditor';
 import type { DocumentService } from '../../services/documents/documentService';
 import type { StagedAssets } from '../../services/documents/stagedAssets';
@@ -37,6 +43,9 @@ export function registerImageHandlers(
   registerInvoke: RegisterInvoke,
   deps: ImageHandlerDeps,
 ): void {
+  /** How often each form is drawn, by session, for the revision it was counted in. */
+  const formUseCache = new Map<string, { revision: number; uses: ReadonlyMap<string, number> }>();
+
   registerInvoke('images:page', async ({ sessionId, page }) => {
     const document = await load(deps, sessionId);
     if (page < 1 || page > document.getPageCount()) {
@@ -47,10 +56,23 @@ export function registerImageHandlers(
     }
 
     const content = await readPageWithImages(document, page - 1);
+    // Counting a form's drawings reads every page, so only when it matters,
+    // and once for each revision rather than once for each page read.
+    const revision = deps.editor.revisionOf(sessionId);
+    let uses: ReadonlyMap<string, number> = new Map();
+    if (content.images.some((image) => image.forms.length > 0)) {
+      const cached = formUseCache.get(sessionId);
+      uses = cached?.revision === revision ? cached.uses : formUsesOf(document);
+      formUseCache.set(sessionId, { revision, uses });
+    }
+    const skipped: SkippedImageReason[] = [...content.skipped];
+    if (appearanceImageCount(document, page - 1) > 0) skipped.push('annotation');
+
     const model: PageImagesModel = {
       page,
-      revision: deps.editor.revisionOf(sessionId),
-      images: content.images.map(describeImage),
+      revision,
+      images: content.images.map((image) => describeImage(image, uses)),
+      skipped: [...new Set(skipped)],
     };
     return model;
   });
@@ -87,10 +109,11 @@ export function registerImageHandlers(
   registerInvoke('images:cut', async ({ sessionId, page, imageId, crop }) => {
     const document = await load(deps, sessionId);
     const placement = await imageOn(document, page, imageId);
+    const source = pictureSource(document, page - 1, placement);
     const cut = cropImagePixels(
       document,
-      resourcesOf(document, document.getPage(page - 1)),
-      placement.resourceName,
+      source.resources,
+      source.resourceName,
       crop,
       nativeImageCodec,
     );
@@ -113,11 +136,8 @@ export function registerImageHandlers(
     const document = await load(deps, sessionId);
     const placement = await imageOn(document, page, imageId);
 
-    const exported = exportImage(
-      document,
-      resourcesOf(document, document.getPage(page - 1)),
-      placement.resourceName,
-    );
+    const source = pictureSource(document, page - 1, placement);
+    const exported = exportImage(document, source.resources, source.resourceName);
 
     const stem = path.basename(session.file.displayName, path.extname(session.file.displayName));
     const suggested = `${stem} page ${String(page)} image.${exported.extension}`;
@@ -173,7 +193,10 @@ async function imageOn(
   return placement;
 }
 
-function describeImage(placement: ImagePlacement): PageImageModel {
+function describeImage(
+  placement: ImagePlacement,
+  uses: ReadonlyMap<string, number>,
+): PageImageModel {
   return {
     id: imageIdOf(placement),
     resourceName: placement.resourceName,
@@ -184,5 +207,7 @@ function describeImage(placement: ImagePlacement): PageImageModel {
     pixelHeight: Math.round(placement.facts.height),
     hasAlpha: placement.facts.hasAlpha,
     added: isAddedImage(placement.resourceName),
+    source: placement.inline !== null ? 'inline' : placement.forms.length > 0 ? 'form' : 'page',
+    formUses: Math.max(1, ...placement.forms.map((step) => uses.get(step.ref) ?? 1)),
   };
 }

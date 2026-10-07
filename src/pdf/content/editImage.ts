@@ -63,7 +63,7 @@ export function moveImage(
   // Apply the transform the reader asked for, then undo the page's own, so
   // that what is left inside the q/Q is exactly the new placement.
   const local = multiply(edit.matrix, undo);
-  const name = edit.resourceName ?? placement.resourceName;
+  const draw = drawingOf(content, placement, edit.resourceName);
   const clip = edit.crop == null ? '' : `${cropRect(edit.crop)} `;
   // The document's own graphics states may do more than fade — a blend mode,
   // a soft mask — so they are kept. PaperForge's own are replaced.
@@ -76,8 +76,31 @@ export function moveImage(
   return spliceBytes(
     content,
     group?.range ?? placement.operationRange,
-    `q ${kept}${alpha}${formatMatrix(local)} cm ${clip}/${name} Do Q`,
+    `q ${kept}${alpha}${formatMatrix(local)} cm ${clip}${draw} Q`,
   );
+}
+
+/**
+ * The operation that paints the picture: `/Name Do`, or for an inline image
+ * its own `BI … EI`, carried byte for byte. A replacement is always a named
+ * resource, so an inline picture replaced becomes an ordinary one.
+ */
+function drawingOf(
+  content: Uint8Array,
+  placement: ImagePlacement,
+  replacement: string | undefined,
+): string {
+  if (replacement !== undefined || placement.kind !== 'inline') {
+    return `/${replacement ?? placement.resourceName} Do`;
+  }
+  // Latin-1 maps every byte to one character and back, so the samples
+  // survive `spliceBytes` untouched.
+  const { start, end } = placement.operationRange;
+  let text = '';
+  for (let offset = start; offset < end; offset += 8192) {
+    text += String.fromCharCode(...content.subarray(offset, Math.min(end, offset + 8192)));
+  }
+  return text;
 }
 
 /** Names a transparency state PaperForge added; see `imageResources.ts`. */

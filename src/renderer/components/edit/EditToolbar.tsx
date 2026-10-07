@@ -16,7 +16,8 @@ import { Button } from '../controls/Button';
 import { CommandIconButton } from '../controls/CommandIconButton';
 import { IconButton } from '../controls/IconButton';
 import { useEditTargetStore, type EditTarget } from '../../stores/editTargetStore';
-import { useImageEditStore } from '../../stores/imageEditStore';
+import { useImageEditStore, type ImagePageStatus } from '../../stores/imageEditStore';
+import { imageHint } from './editHints';
 import { useLinkEditStore } from '../../stores/linkEditStore';
 import { useTextEditStore } from '../../stores/textEditStore';
 import styles from './EditToolbar.module.css';
@@ -32,14 +33,14 @@ import styles from './EditToolbar.module.css';
 export function EditToolbar({
   disabled,
   hasText,
-  hasImages,
+  images,
   hasLinks,
 }: {
   disabled: boolean;
   /** False when the page being read draws no text this editor can see. */
   hasText: boolean;
-  /** False when the page being read draws no images. */
-  hasImages: boolean;
+  /** What is known of the images on the page being read. */
+  images: ImagePageStatus;
   /** False when the page carries no links. */
   hasLinks: boolean;
 }): ReactElement {
@@ -126,7 +127,7 @@ export function EditToolbar({
 
       <p className={styles.hint} aria-live="polite">
         {target === 'images'
-          ? imageHint({ pending, hasImages, selected: imageSelected !== null })
+          ? imageHint({ pending, status: images, selected: imageSelected !== null })
           : target === 'links'
             ? linkHint({ drawing, hasLinks, selected: linkSelected !== null })
             : textHint({ placing, editing, hasText, selected: selected !== null })}
@@ -169,21 +170,6 @@ function textHint({
   return selected
     ? 'Type to change it, or press Escape to leave it alone.'
     : 'Click a piece of text to change it.';
-}
-
-function imageHint({
-  pending,
-  hasImages,
-  selected,
-}: {
-  pending: { fileName: string } | null;
-  hasImages: boolean;
-  selected: boolean;
-}): string {
-  if (pending !== null) return `Click the page where “${pending.fileName}” should go.`;
-  if (!hasImages) return 'This page draws no images. Add image puts one on it.';
-  if (!selected) return 'Click an image to move, resize or replace it.';
-  return 'Drag to move it, drag a handle to resize it; hold Shift to keep its shape.';
 }
 
 function linkHint({

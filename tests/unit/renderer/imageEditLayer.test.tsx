@@ -43,6 +43,8 @@ const image: PageImageModel = {
   opacity: 1,
   hasAlpha: false,
   added: false,
+  source: 'page',
+  formUses: 1,
 };
 
 beforeAll(() => {

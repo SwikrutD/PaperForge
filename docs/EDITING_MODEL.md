@@ -203,6 +203,33 @@ A page that draws an image with a transform that cannot be inverted (everything 
 line) outside the picture's own group is refused with a message that says so, rather than moved to
 a place that means nothing.
 
+### Images inside forms, and inline images
+
+Many producers draw a picture from inside a form XObject — a letterhead, a logo, a scanned page —
+rather than from the page's own content. The editor walks into every form a page draws
+(`images.ts`, `formImages.ts`), carrying the transform in force at the `Do`, the form's `/Matrix`,
+its `/BBox` and its resources (or the drawer's, when it has none), up to eight forms deep and never
+round a form that draws itself. A picture found there is changed in the form's own content stream,
+by the same in-place rewrite as on a page, and every form on the way down grows its `/BBox` to take
+the picture in where it now goes.
+
+A form can be drawn more than once — twice on a page, or on every page. Before changing a picture
+in such a form, the editor asks whether the change is for this drawing only or for all of them.
+"Only this one" copies each shared form on the way down (`PFFormN`) and points this drawing at the
+copy; "All" changes the shared form, so every drawing moves by the same amount in the form's own
+space. How often each form is drawn is counted across all pages, once per revision.
+
+An inline image (`BI … ID … EI`) is found, moved, cropped, faded and deleted like any other; its
+bytes are carried into the rewrite unchanged. Replacing one draws an ordinary image XObject in its
+place. Exporting or cutting one reads it as the image XObject it would be, with its short names
+spelled out.
+
+Pictures the editor does not offer are named rather than ignored: those in an annotation's
+appearance (a stamp — the comment tools change those), those in a form that cannot be decoded, and
+those nested deeper than the editor follows. The edit bar says which, instead of claiming the page
+has no images; a page whose images could not be read at all (an encrypted document, say) says that.
+Annotation appearances that draw a form are not counted as drawings of it.
+
 ### Images PaperForge adds
 
 An added image (from Add image or Ctrl+V) is wrapped in marked content:
