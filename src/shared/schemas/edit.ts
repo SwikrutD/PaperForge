@@ -204,13 +204,23 @@ export const deleteImageOperationSchema = z.strictObject({
   imageId: z.string().min(1).max(64),
 });
 
-/** Draws a staged image on a page, over what is already there. */
+/**
+ * Draws a staged image on a page, over what is already there.
+ *
+ * The id is chosen by whoever adds the image, so it can be selected the moment
+ * the change is written; it is kept with the image for as long as it is there.
+ * Left out, one is made up.
+ */
 export const addImageOperationSchema = z.strictObject({
   kind: z.literal('addImage'),
   page: z.number().int().min(1).max(100_000),
   token: z.string().min(1).max(200),
   placement: imagePlacementSchema,
   opacity: z.number().min(0.05).max(1),
+  imageId: z
+    .string()
+    .regex(/^pf-[A-Za-z0-9-]{1,40}$/)
+    .optional(),
 });
 
 /** Adds a link over part of a page. */

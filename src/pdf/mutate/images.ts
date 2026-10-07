@@ -16,9 +16,19 @@ import { setPageContent } from './text';
  * drawn, so it keeps its place in front of and behind everything else.
  */
 
-/** How an image is named outside this process. */
+/**
+ * How an image is named outside this process.
+ *
+ * One PaperForge added carries its name in the page; any other is named by
+ * where it is drawn, which holds only until the page's content next changes.
+ */
 export function imageIdOf(placement: ImagePlacement): string {
-  return `img${String(placement.operationIndex)}`;
+  return placement.mark?.id ?? `img${String(placement.operationIndex)}`;
+}
+
+/** A fresh id for an image PaperForge adds. */
+export function newImageId(): string {
+  return `pf-${globalThis.crypto.randomUUID()}`;
 }
 
 export function findImage(content: PageContent, imageId: string): ImagePlacement | undefined {
@@ -67,13 +77,27 @@ export async function applyImageOperation(
       });
     }
 
+    const imageId = operation.imageId ?? newImageId();
+    if (findImage(content, imageId) !== undefined) {
+      throw new AppError('internal/unexpected', {
+        message: 'That page already has an image by that name.',
+        details: imageId,
+      });
+    }
+
     const embedded = await embedImage(document, page, asset.bytes, asset.format);
     const alpha =
       operation.opacity >= 1 ? undefined : ensureAlphaResource(document, page, operation.opacity);
     setPageContent(
       document,
       pageIndex,
-      appendImage(content.bytes, placementMatrix(operation.placement), embedded.name, alpha),
+      appendImage(
+        content.bytes,
+        placementMatrix(operation.placement),
+        embedded.name,
+        alpha,
+        imageId,
+      ),
     );
     return true;
   }
@@ -104,13 +128,16 @@ export async function applyImageOperation(
     resourceName = (await embedImage(document, page, asset.bytes, asset.format)).name;
   }
 
+  // A picture going back to solid needs saying so when the page faded it.
+  const alphaName =
+    operation.opacity < 1 || placement.opacity < 1
+      ? ensureAlphaResource(document, page, operation.opacity)
+      : undefined;
   const moved = moveImage(content.bytes, placement, {
     matrix: placementMatrix(operation.placement),
     crop: operation.crop,
     ...(resourceName === undefined ? {} : { resourceName }),
-    ...(operation.opacity >= 1
-      ? {}
-      : { alphaName: ensureAlphaResource(document, page, operation.opacity) }),
+    ...(alphaName === undefined ? {} : { alphaName }),
   });
 
   if (moved === null) {

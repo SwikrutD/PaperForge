@@ -47,6 +47,8 @@ export interface ImagePlacementSpec {
   height: number;
   /** Written into the content stream instead of the default `cm`. */
   matrix?: [number, number, number, number, number, number];
+  /** False keeps the image in the resources only, for `content` to draw itself. */
+  draw?: boolean;
 }
 
 /** A font resource beyond the Helvetica every fixture already has. */
@@ -256,7 +258,7 @@ ${page.form.content}endstream`,
     const text = page.text ?? '';
     const layerNumber = page.layer === undefined ? undefined : layerNumbers.get(page.layer);
     const picture =
-      page.image === undefined
+      page.image === undefined || page.image.draw === false
         ? ''
         : `q ${(
             page.image.matrix ?? [

@@ -1,4 +1,5 @@
 import type { ByteRange, ContentOperation } from './parser';
+import { findImageGroups, type ImageGroup, type ImageMark } from './imageGroups';
 import { applyMatrix, invert, matrixRotation, walkContent, type Matrix } from './state';
 import { nameOf, numberOf } from './values';
 
@@ -52,6 +53,13 @@ export interface ImagePlacement {
   /** How see-through the page draws it, where 1 is solid. */
   opacity: number;
   facts: ImageFacts;
+  /**
+   * The `q … Q` that draws this picture and nothing else, with its clip and
+   * transparency; null when the picture shares its drawing state.
+   */
+  group: ImageGroup | null;
+  /** PaperForge's marking around a picture it added, which names it. */
+  mark: ImageMark | null;
 }
 
 /** Every image a content stream draws, in the order it draws them. */
@@ -68,7 +76,9 @@ export function extractImages(
    */
   let rect: Rect | null = null;
   let clip: Rect | null = null;
+  // Transparency is graphics state: it outlasts a `q` and comes back at `Q`.
   let opacity = 1;
+  const opacities: number[] = [];
 
   walkContent(operations, {
     ...(options.ctm === undefined ? {} : { ctm: options.ctm }),
@@ -78,7 +88,8 @@ export function extractImages(
       if (operation.operator === 'q' || operation.operator === 'Q') {
         rect = null;
         clip = null;
-        opacity = 1;
+        if (operation.operator === 'q') opacities.push(opacity);
+        else opacity = opacities.pop() ?? 1;
         return;
       }
       if (operation.operator === 'gs') {
@@ -121,14 +132,22 @@ export function extractImages(
         crop: cropOf(clip, state.ctm),
         opacity,
         facts,
+        group: null,
+        mark: null,
       });
       clip = null;
       rect = null;
-      opacity = 1;
     },
   });
 
-  return images;
+  if (images.length === 0) return images;
+  const drawn = new Set(images.map((image) => image.operationIndex));
+  const { groups, marks } = findImageGroups(operations, (index) => drawn.has(index), options.ctm);
+  return images.map((image) => ({
+    ...image,
+    group: groups.get(image.operationIndex) ?? null,
+    mark: marks.get(image.operationIndex) ?? null,
+  }));
 }
 
 interface Rect {

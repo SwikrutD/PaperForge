@@ -245,8 +245,10 @@ export function encodePng(
   height: number,
   components: number,
   bitsPerComponent: number,
+  /** True when the last component of each pixel is its transparency. */
+  alpha = false,
 ): Uint8Array {
-  if (width <= 0 || height <= 0 || bitsPerComponent !== 8 || components === 4) {
+  if (width <= 0 || height <= 0 || bitsPerComponent !== 8 || (components === 4 && !alpha)) {
     throw new AppError('internal/unexpected', {
       message: 'PaperForge cannot write that image out yet.',
       details: `${String(width)}×${String(height)}, ${String(components)} components at ${String(
@@ -255,7 +257,8 @@ export function encodePng(
     });
   }
 
-  const colorType = components === 1 ? 0 : 2;
+  // Grey, grey with alpha, RGB, RGB with alpha.
+  const colorType = alpha ? (components === 2 ? 4 : 6) : components === 1 ? 0 : 2;
   const rowLength = width * components;
   const raw = new Uint8Array((rowLength + 1) * height);
 
