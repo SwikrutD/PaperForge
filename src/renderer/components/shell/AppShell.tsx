@@ -9,6 +9,8 @@ import { CommandBar } from './CommandBar';
 import { FileDropZone } from './FileDropZone';
 import { LeftRail } from './LeftRail';
 import { PanelResizer } from './PanelResizer';
+import { ReadingModeNotice } from './ReadingModeNotice';
+import { usePointerAtTop } from './usePointerAtTop';
 import { StatusBar } from './StatusBar';
 import { TitleBar } from './TitleBar';
 import styles from './AppShell.module.css';
@@ -47,6 +49,7 @@ export function AppShell({
   const readingMode = useUiStore((state) => state.readingMode);
   const setReadingMode = useUiStore((state) => state.setReadingMode);
   const { layout } = settings;
+  const offerExit = usePointerAtTop(readingMode);
 
   // Escape is the way out of reading mode, since the bars that would offer one
   // are exactly what it hides.
@@ -78,8 +81,14 @@ export function AppShell({
 
   return (
     <FileDropZone>
-      <TitleBar version={version} />
-      {layout.commandBarVisible && !readingMode && <CommandBar />}
+      <TitleBar
+        version={version}
+        menuBarHidden={!layout.menuBarVisible && !readingMode}
+        onShowMenuBar={() => void patchSettings({ layout: { menuBarVisible: true } })}
+        onExitReadingMode={offerExit ? () => setReadingMode(false) : undefined}
+      />
+      {layout.menuBarVisible && !readingMode && <CommandBar />}
+      {readingMode && <ReadingModeNotice />}
 
       <div className={styles.body}>
         {!readingMode && <LeftRail />}

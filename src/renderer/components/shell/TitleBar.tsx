@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { Activity, FolderOpen, Settings as SettingsIcon } from 'lucide-react';
+import { Activity, FolderOpen, PanelTop, Search, Settings as SettingsIcon, X } from 'lucide-react';
 import { APP_NAME } from '@shared/constants/app';
 import { useCommands } from '../../commands/useCommands';
 import { useUiStore } from '../../stores/uiStore';
@@ -11,11 +11,28 @@ import { IconButton } from '../controls/IconButton';
 import { TabStrip } from './TabStrip';
 import styles from './TitleBar.module.css';
 
+interface TitleBarProps {
+  version: string | null;
+  /** True while Settings has the menu bar hidden (reading mode aside). */
+  menuBarHidden?: boolean;
+  onShowMenuBar?: () => void;
+  /** Offered in reading mode while the pointer is at the top of the window. */
+  onExitReadingMode?: (() => void) | undefined;
+}
+
 /**
- * Top strip of the window: product identity, the document context area, and
- * window-level actions. Document tabs move into the centre region in Segment 2.
+ * Top strip of the window: product identity, the document tabs, and
+ * window-level actions. It is always there, reading mode included, so
+ * Settings is always a click away. While the menu bar is hidden it also
+ * carries the menu bar's search and a button that brings the menu bar back;
+ * in reading mode, a way out when the pointer comes up to it.
  */
-export function TitleBar({ version }: { version: string | null }): ReactElement {
+export function TitleBar({
+  version,
+  menuBarHidden = false,
+  onShowMenuBar,
+  onExitReadingMode,
+}: TitleBarProps): ReactElement {
   const { execute, resolve } = useCommands();
   const progressOpen = useUiStore((state) => state.progressCenterOpen);
   const activeJobs = useJobStore((state) => state.jobs.filter(isJobActive).length);
@@ -38,6 +55,28 @@ export function TitleBar({ version }: { version: string | null }): ReactElement 
       </div>
 
       <div className={styles.actions}>
+        {onExitReadingMode !== undefined && (
+          <button type="button" className={styles.exitReading} onClick={onExitReadingMode}>
+            <X className={styles.exitIcon} aria-hidden="true" strokeWidth={1.75} />
+            Exit reading mode
+          </button>
+        )}
+        {menuBarHidden && (
+          <>
+            <IconButton
+              icon={Search}
+              label="Search commands"
+              tooltip="Search commands (Ctrl+K)"
+              onClick={() => execute('app.commandPalette')}
+            />
+            <IconButton
+              icon={PanelTop}
+              label="Show menu bar"
+              tooltip="Show the menu bar again. Settings can hide it."
+              onClick={onShowMenuBar}
+            />
+          </>
+        )}
         <IconButton
           icon={FolderOpen}
           label="Open"

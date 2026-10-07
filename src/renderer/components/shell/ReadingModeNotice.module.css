@@ -1,0 +1,22 @@
+/* At the foot of the window, centred, over the document. */
+.notice {
+  position: fixed;
+  bottom: var(--pf-space-300);
+  left: 50%;
+  z-index: var(--pf-layer-toolbar);
+  margin: 0;
+  padding: var(--pf-space-100) var(--pf-space-200);
+  transform: translateX(-50%);
+  border: 1px solid var(--pf-color-border);
+  border-radius: var(--pf-radius-lg);
+  background-color: var(--pf-color-bg-surface);
+  box-shadow: var(--pf-shadow-8);
+  color: var(--pf-color-text-primary);
+  font-size: var(--pf-font-size-300);
+  pointer-events: none;
+  transition: opacity var(--pf-duration-slow) ease-out;
+}
+
+.notice[data-shown='false'] {
+  opacity: 0;
+}

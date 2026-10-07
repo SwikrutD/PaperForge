@@ -63,7 +63,8 @@ Run in both light and dark themes:
 - [ ] Rail buttons switch the left panel; clicking the active one collapses the panel.
 - [ ] Drag each divider: the panel resizes smoothly, and the width survives a restart. With the
       divider focused, arrows resize in steps and `Home`/`End` jump to the limits.
-- [ ] Hide the command bar from the View menu, restart, and confirm it stays hidden.
+- [ ] Turn off Settings > General > Show menu bar, restart, and confirm it stays hidden; the
+      title bar's Show menu bar button brings it back, and Search commands works meanwhile.
 - [ ] Settings (`Ctrl+,`) opens, traps Tab, closes on `Escape`, and returns focus to whatever
       opened it. The same for About.
 - [ ] "Clear Recent Files" is disabled with an explanatory tooltip while the list is empty.
@@ -186,8 +187,9 @@ Run in both light and dark themes:
       abandons the previous scan rather than queueing another.
 - [ ] Page labels: a document with roman front matter shows `ii (2 of 20)` in the page field;
       typing a label goes to that page, and so does typing a plain page number.
-- [ ] Reading mode (`Ctrl+Shift+R`) leaves only the title bar and the document; `Escape` restores
-      the shell with the panels as they were.
+- [ ] Reading mode (`Ctrl+Shift+R`) leaves only the title bar and the document, says how to leave
+      it, and offers Exit reading mode in the title bar when the pointer reaches the top; `Escape`
+      restores the shell with the panels, and the menu bar setting, as they were.
 - [ ] Highlights stay on the words when the page is zoomed and when the view is rotated, on a page
       that carries its own `/Rotate` as well as on an upright one.
 

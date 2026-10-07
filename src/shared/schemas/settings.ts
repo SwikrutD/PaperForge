@@ -41,7 +41,8 @@ export const layoutSettingsSchema = z.object({
   rightPanel: panelStateSchema,
   activeLeftPanel: leftPanelIdSchema,
   activeRightPanel: rightPanelIdSchema,
-  commandBarVisible: z.boolean(),
+  /** Settings > General > Show menu bar. */
+  menuBarVisible: z.boolean(),
 });
 export type LayoutSettings = z.infer<typeof layoutSettingsSchema>;
 
@@ -121,7 +122,7 @@ export const settingsPatchSchema = z.strictObject({
       rightPanel: panelStateSchema.partial().optional(),
       activeLeftPanel: leftPanelIdSchema.optional(),
       activeRightPanel: rightPanelIdSchema.optional(),
-      commandBarVisible: z.boolean().optional(),
+      menuBarVisible: z.boolean().optional(),
     })
     .optional(),
   session: sessionSettingsSchema.partial().optional(),
@@ -153,7 +154,7 @@ export const DEFAULT_SETTINGS: Settings = {
     rightPanel: { visible: false, width: 300 },
     activeLeftPanel: 'pages',
     activeRightPanel: 'properties',
-    commandBarVisible: true,
+    menuBarVisible: true,
   },
   session: { restoreOnStartup: true, openDocuments: [] },
   editing: { annotationAuthor: '' },
@@ -179,9 +180,9 @@ export function applySettingsPatch(current: Settings, patch: SettingsPatch): Set
         ...(patch.layout?.activeRightPanel === undefined
           ? {}
           : { activeRightPanel: patch.layout.activeRightPanel }),
-        ...(patch.layout?.commandBarVisible === undefined
+        ...(patch.layout?.menuBarVisible === undefined
           ? {}
-          : { commandBarVisible: patch.layout.commandBarVisible }),
+          : { menuBarVisible: patch.layout.menuBarVisible }),
       }),
       leftPanel: mergeDefined(current.layout.leftPanel, patch.layout?.leftPanel),
       rightPanel: mergeDefined(current.layout.rightPanel, patch.layout?.rightPanel),
@@ -235,7 +236,8 @@ function mergeDefined<T extends Record<string, unknown>>(
  * A file written by an older version is repaired rather than discarded: every
  * section that still validates is kept, and the rest reverts to defaults.
  */
-export function parseStoredSettings(value: unknown): { settings: Settings; repaired: boolean } {
+export function parseStoredSettings(stored: unknown): { settings: Settings; repaired: boolean } {
+  const value = withoutCommandBarToggle(stored);
   const direct = settingsSchema.safeParse(value);
   if (direct.success) return { settings: direct.data, repaired: false };
 
@@ -256,4 +258,23 @@ export function parseStoredSettings(value: unknown): { settings: Settings; repai
     }
   }
   return { settings: DEFAULT_SETTINGS, repaired: true };
+}
+
+/**
+ * Earlier versions saved `layout.commandBarVisible`, set from a View menu item
+ * that hid the menu holding it, so a reader who turned it off had no way back
+ * they could see. Its place is taken by `layout.menuBarVisible`, set in
+ * Settings, and a file that still has the old field starts with the menu bar
+ * shown. That happens once: the next save writes the new field and drops the
+ * old one, and from then on the reader's own choice is kept.
+ */
+function withoutCommandBarToggle(value: unknown): unknown {
+  if (value === null || typeof value !== 'object') return value;
+  const source = value as Record<string, unknown>;
+  const layout = source.layout;
+  if (layout === null || typeof layout !== 'object' || !('commandBarVisible' in layout)) {
+    return value;
+  }
+  const { commandBarVisible: _old, ...rest } = layout as Record<string, unknown>;
+  return { ...source, layout: { ...rest, menuBarVisible: true } };
 }
