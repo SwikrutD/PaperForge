@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { AppError } from '@shared/errors/appError';
 import type { StampImage } from '@shared/schemas/annotation';
-import type { ImagePlacementInput } from '@shared/schemas/edit';
-import type { PageImageModel, PageImagesModel } from '@shared/schemas/image';
+import type { EditOperation, ImagePlacementInput, ImageScope } from '@shared/schemas/edit';
+import type { PageImageModel, PageImagesModel, SkippedImageReason } from '@shared/schemas/image';
 import { invoke } from '../services/ipcClient';
 import { useDocumentStore } from './documentStore';
 import { useUiStore } from './uiStore';
@@ -42,6 +42,8 @@ export interface MovedImage {
 export interface ImageEditStore extends ImageTools {
   /** Keyed by `${sessionId}:${page}`. */
   pages: Map<string, LoadedImagePage>;
+  /** Pages whose images could not be read, with what went wrong; same keys. */
+  failed: Map<string, string>;
   selected: { page: number; id: string } | null;
   /** Where the image being dragged is now, before it is written. */
   drag: ImageDrag | null;
@@ -118,6 +120,7 @@ function report(error: unknown): void {
  */
 export const useImageEditStore = create<ImageEditStore>((set, get) => ({
   pages: new Map(),
+  failed: new Map(),
   selected: null,
   drag: null,
   pending: null,
@@ -137,9 +140,15 @@ export const useImageEditStore = create<ImageEditStore>((set, get) => ({
       set((state) => {
         const pages = new Map(state.pages);
         pages.set(key, { model, revision: model.revision });
-        return { pages };
+        const failed = new Map(state.failed);
+        failed.delete(key);
+        return { pages, failed };
       });
     } catch (error) {
+      // Kept, so the edit bar can say the page could not be read rather than
+      // that it has no images.
+      const { message } = AppError.serialize(error);
+      set((state) => ({ failed: new Map(state.failed).set(key, message) }));
       report(error);
     }
   },
@@ -394,6 +403,22 @@ async function run(
   transaction: Parameters<ReturnType<typeof useDocumentStore.getState>['applyEdit']>[1],
   moved: Omit<MovedImage, 'sessionId' | 'madeIn'> | null = null,
 ): Promise<void> {
+  // Asked only when there is something to ask, so a plain change is applied
+  // without waiting a turn.
+  const uses = sharedUses(sessionId, transaction.operations);
+  if (uses > 1) {
+    const scope = await askScope(uses);
+    if (scope === null) return;
+    transaction = {
+      ...transaction,
+      operations: transaction.operations.map((operation) =>
+        operation.kind === 'placeImage' || operation.kind === 'deleteImage'
+          ? { ...operation, scope }
+          : operation,
+      ),
+    };
+  }
+
   const before = revisionOf(sessionId);
   useImageEditStore.setState({
     moved: moved === null ? null : { ...moved, sessionId, madeIn: null },
@@ -412,6 +437,42 @@ async function run(
             : { ...state.moved, madeIn: after },
     }));
   }
+}
+
+/** The most times any picture a change touches is drawn, through a shared form. */
+function sharedUses(sessionId: string, operations: readonly EditOperation[]): number {
+  let uses = 1;
+  for (const operation of operations) {
+    if (operation.kind !== 'placeImage' && operation.kind !== 'deleteImage') continue;
+    const image = imageOf(
+      useImageEditStore.getState(),
+      sessionId,
+      operation.page,
+      operation.imageId,
+    );
+    uses = Math.max(uses, image?.formUses ?? 1);
+  }
+  return uses;
+}
+
+/**
+ * For a picture inside a form the document draws more than once, asks whether
+ * the change is for this drawing or for all of them; null when the reader
+ * dismissed the question.
+ */
+function askScope(uses: number): Promise<ImageScope | null> {
+  return new Promise((resolve) => {
+    useUiStore.getState().requestConfirmation({
+      title: 'Change every copy?',
+      message: `This picture is part of a drawing the document uses ${String(
+        uses,
+      )} times. Change only the one you picked, or all ${String(uses)}?`,
+      confirmLabel: 'Only this one',
+      alternative: { label: `All ${String(uses)}`, onChoose: () => resolve('all') },
+      onConfirm: () => resolve('this'),
+      onCancel: () => resolve(null),
+    });
+  });
 }
 
 /** The revision a document is at, as its tab knows it. */
@@ -486,6 +547,27 @@ export function imagesFor(
   page: number,
 ): readonly PageImageModel[] {
   return pages.get(keyOf(sessionId, page))?.model.images ?? NO_IMAGES;
+}
+
+/** What is known about the images of a page, for saying so. */
+export type ImagePageStatus =
+  | { state: 'loading' }
+  | { state: 'failed'; message: string }
+  | { state: 'read'; count: number; skipped: readonly SkippedImageReason[] };
+
+export function imagePageStatus(
+  pages: ReadonlyMap<string, LoadedImagePage>,
+  failed: ReadonlyMap<string, string>,
+  sessionId: string,
+  page: number,
+): ImagePageStatus {
+  const key = keyOf(sessionId, page);
+  const loaded = pages.get(key);
+  if (loaded !== undefined) {
+    return { state: 'read', count: loaded.model.images.length, skipped: loaded.model.skipped };
+  }
+  const message = failed.get(key);
+  return message === undefined ? { state: 'loading' } : { state: 'failed', message };
 }
 
 /** One frozen empty list, so a page with no images does not re-render forever. */

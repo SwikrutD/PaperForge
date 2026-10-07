@@ -11,7 +11,13 @@ import {
 import { parseContent, type ContentOperation } from './parser';
 import { readPageFonts, type FontMetrics } from './fonts';
 import { extractTextRuns, type TextRun } from './textRuns';
-import { extractImages, type ImageFacts, type ImagePlacement } from './images';
+import {
+  extractImages,
+  type FormOpener,
+  type ImageFacts,
+  type ImagePlacement,
+  type SkippedImageReason,
+} from './images';
 
 /**
  * A page's drawing, read for editing.
@@ -31,13 +37,15 @@ export interface PageContent {
   runs: TextRun[];
   /** The images the page draws, in the order it draws them. */
   images: ImagePlacement[];
+  /** Pictures the page shows that are not offered for editing, and why. */
+  skipped: SkippedImageReason[];
 }
 
 /** What the page's XObjects are; supplied by the caller, which has pdf-lib. */
 export type XObjectReader = (
   document: PDFDocument,
   resources: PDFDict | undefined,
-) => { images: Map<string, ImageFacts>; alphas: Map<string, number> };
+) => { images: Map<string, ImageFacts>; alphas: Map<string, number>; openForm?: FormOpener };
 
 export async function readPageContent(
   document: PDFDocument,
@@ -52,11 +60,15 @@ export async function readPageContent(
   const runs = extractTextRuns(operations, { fonts: (name) => fonts.get(name) });
 
   const resourcesRead = readXObjects?.(document, resources);
+  const skipped: SkippedImageReason[] = [];
   const images = extractImages(operations, (name) => resourcesRead?.images.get(name), {
     alphas: (name) => resourcesRead?.alphas.get(name),
+    onSkipped: (reason) => skipped.push(reason),
+    bytes,
+    ...(resourcesRead?.openForm === undefined ? {} : { openForm: resourcesRead.openForm }),
   });
 
-  return { pageIndex, bytes, operations, fonts, runs, images };
+  return { pageIndex, bytes, operations, fonts, runs, images, skipped };
 }
 
 /** The page's resource dictionary, inherited from its parents when absent. */
@@ -105,7 +117,7 @@ export function contentBytes(document: PDFDocument, page: PDFPage): Uint8Array {
   return joined;
 }
 
-function decodeStream(value: unknown): Uint8Array | null {
+export function decodeStream(value: unknown): Uint8Array | null {
   if (!(value instanceof PDFStream)) return null;
   try {
     return value instanceof PDFRawStream ? decodePDFRawStream(value).decode() : value.getContents();

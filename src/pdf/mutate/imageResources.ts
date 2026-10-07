@@ -5,11 +5,13 @@ import {
   PDFRawStream,
   PDFStream,
   decodePDFRawStream,
+  type PDFRef,
   type PDFDocument,
   type PDFPage,
 } from 'pdf-lib';
 import { AppError } from '@shared/errors/appError';
 import type { ImageFacts } from '@pdf/content/images';
+import { resourcesOf } from '@pdf/content/pageContent';
 
 /**
  * The images a page has, and the images PaperForge puts there.
@@ -54,12 +56,15 @@ function numberOf(value: unknown): number {
   return value instanceof PDFNumber ? value.asNumber() : 0;
 }
 
-/** The page's own resources, created when it only inherits some. */
+/**
+ * The page's own resources, created when it only inherits some — as a copy of
+ * what it inherits, so the fonts and pictures it already draws stay named.
+ */
 export function ownResources(document: PDFDocument, page: PDFPage): PDFDict {
   const existing = document.context.lookupMaybe(page.node.get(PDFName.of('Resources')), PDFDict);
   if (existing !== undefined) return existing;
 
-  const created = document.context.obj({});
+  const created = resourcesOf(document, page)?.clone(document.context) ?? document.context.obj({});
   page.node.set(PDFName.of('Resources'), created);
   return created;
 }
@@ -74,26 +79,53 @@ function subDictionary(document: PDFDocument, resources: PDFDict, key: string): 
 }
 
 /** Puts an image in a page's resources and says what to call it. */
-export async function embedImage(
+export function embedImage(
   document: PDFDocument,
   page: PDFPage,
   bytes: Uint8Array,
   format: 'png' | 'jpeg',
 ): Promise<{ name: string; width: number; height: number }> {
+  return embedImageIn(document, ownResources(document, page), bytes, format);
+}
+
+/** Puts an image in a resource dictionary — a page's or a form's — and names it. */
+export async function embedImageIn(
+  document: PDFDocument,
+  resources: PDFDict,
+  bytes: Uint8Array,
+  format: 'png' | 'jpeg',
+): Promise<{ name: string; width: number; height: number }> {
+  const embedded = await embedImageObject(document, bytes, format);
+  return {
+    name: nameImageIn(document, resources, embedded.ref),
+    width: embedded.width,
+    height: embedded.height,
+  };
+}
+
+/** Writes an image into the document, not yet named by any resources. */
+export async function embedImageObject(
+  document: PDFDocument,
+  bytes: Uint8Array,
+  format: 'png' | 'jpeg',
+): Promise<{ ref: PDFRef; width: number; height: number }> {
   const embedded =
     format === 'png' ? await document.embedPng(bytes) : await document.embedJpg(bytes);
-  const xobjects = subDictionary(document, ownResources(document, page), 'XObject');
+  return { ref: embedded.ref, width: embedded.width, height: embedded.height };
+}
 
-  // A name of PaperForge's own, and never one the page already uses.
+/** Names an image in a resource dictionary, under a name of PaperForge's own. */
+export function nameImageIn(document: PDFDocument, resources: PDFDict, ref: PDFRef): string {
+  const xobjects = subDictionary(document, resources, 'XObject');
+  // Never a name the resources already use.
   let index = 1;
   let name = `${ADDED_IMAGE_PREFIX}${String(index)}`;
   while (xobjects.has(PDFName.of(name))) {
     index += 1;
     name = `${ADDED_IMAGE_PREFIX}${String(index)}`;
   }
-
-  xobjects.set(PDFName.of(name), embedded.ref);
-  return { name, width: embedded.width, height: embedded.height };
+  xobjects.set(PDFName.of(name), ref);
+  return name;
 }
 
 /** How see-through each of the page's transparency states makes its drawing. */
@@ -121,7 +153,11 @@ export function readAlphas(
  * which lives in the page's resources under a name.
  */
 export function ensureAlphaResource(document: PDFDocument, page: PDFPage, opacity: number): string {
-  const resources = ownResources(document, page);
+  return ensureAlphaIn(document, ownResources(document, page), opacity);
+}
+
+/** {@link ensureAlphaResource}, in any resource dictionary. */
+export function ensureAlphaIn(document: PDFDocument, resources: PDFDict, opacity: number): string {
   const existing = document.context.lookupMaybe(resources.get(PDFName.of('ExtGState')), PDFDict);
   const states =
     existing ??

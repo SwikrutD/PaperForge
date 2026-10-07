@@ -57,6 +57,8 @@ export interface UiStore {
   dismissToast: (id: string) => void;
   requestConfirmation: (request: ConfirmationRequest) => void;
   resolveConfirmation: (confirmed: boolean) => void;
+  /** Answers a pending confirmation with its third choice. */
+  chooseAlternative: () => void;
 }
 
 export const useUiStore = create<UiStore>((set) => ({
@@ -108,5 +110,12 @@ export const useUiStore = create<UiStore>((set) => ({
     const pending = useUiStore.getState().confirmation;
     set({ confirmation: null });
     if (confirmed) pending?.onConfirm();
+    else pending?.onCancel?.();
+  },
+
+  chooseAlternative: () => {
+    const pending = useUiStore.getState().confirmation;
+    set({ confirmation: null });
+    pending?.alternative?.onChoose();
   },
 }));

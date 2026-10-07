@@ -30,7 +30,7 @@ import { ImageEditLayer } from '../edit/ImageEditLayer';
 import { pastePointFor, useImageEditKeys } from '../edit/useImageEditKeys';
 import { EditToolbar } from '../edit/EditToolbar';
 import { runsFor, useTextEditStore } from '../../stores/textEditStore';
-import { imagesFor, useImageEditStore } from '../../stores/imageEditStore';
+import { imagePageStatus, imagesFor, useImageEditStore } from '../../stores/imageEditStore';
 import { LinkEditLayer } from '../edit/LinkEditLayer';
 import { linksFor, useLinkEditStore } from '../../stores/linkEditStore';
 import { useEditTargetStore } from '../../stores/editTargetStore';
@@ -125,6 +125,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
   const settleTextPending = useTextEditStore((store) => store.settlePending);
   const editTarget = useEditTargetStore((store) => store.target);
   const imagePages = useImageEditStore((store) => store.pages);
+  const imageFailures = useImageEditStore((store) => store.failed);
   const imageSelected = useImageEditStore((store) => store.selected);
   const imageDrag = useImageEditStore((store) => store.drag);
   const imagePending = useImageEditStore((store) => store.pending);
@@ -659,7 +660,7 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
         <EditToolbar
           disabled={state.status !== 'ready'}
           hasText={runsFor(textPages, sessionId, view.pageNumber).length > 0}
-          hasImages={imagesFor(imagePages, sessionId, view.pageNumber).length > 0}
+          images={imagePageStatus(imagePages, imageFailures, sessionId, view.pageNumber)}
           hasLinks={linksFor(linkPages, sessionId, view.pageNumber).length > 0}
         />
       )}

@@ -205,6 +205,14 @@ export const imageCropSchema = z.strictObject({
 });
 
 /** Moves, resizes, turns, crops or replaces an image the page already draws. */
+/**
+ * For a picture inside a form drawn more than once: change only the drawing
+ * the reader is pointing at (the form is copied for it), or every drawing of
+ * the form. Left out, only this one changes.
+ */
+export const imageScopeSchema = z.enum(['this', 'all']);
+export type ImageScope = z.infer<typeof imageScopeSchema>;
+
 export const placeImageOperationSchema = z.strictObject({
   kind: z.literal('placeImage'),
   page: z.number().int().min(1).max(100_000),
@@ -215,12 +223,14 @@ export const placeImageOperationSchema = z.strictObject({
   opacity: z.number().min(0.05).max(1),
   /** A staged image to draw in its place, or null to keep the one there. */
   token: z.string().min(1).max(200).nullable(),
+  scope: imageScopeSchema.optional(),
 });
 
 export const deleteImageOperationSchema = z.strictObject({
   kind: z.literal('deleteImage'),
   page: z.number().int().min(1).max(100_000),
   imageId: z.string().min(1).max(64),
+  scope: imageScopeSchema.optional(),
 });
 
 /**

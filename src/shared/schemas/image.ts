@@ -9,6 +9,14 @@ import { imageCropSchema, imagePlacementSchema } from './edit';
  * there itself.
  */
 
+/**
+ * Why a picture on the page is not offered for editing: it is inside a form
+ * that cannot be read, inside forms nested too deep to follow, or part of an
+ * annotation's appearance (a stamp, say), which the comment tools change.
+ */
+export const skippedImageReasonSchema = z.enum(['form-unreadable', 'form-too-deep', 'annotation']);
+export type SkippedImageReason = z.infer<typeof skippedImageReasonSchema>;
+
 export const pageImageSchema = z.strictObject({
   /** Names the image within its page, for as long as this revision stands. */
   id: z.string().min(1).max(64),
@@ -27,6 +35,17 @@ export const pageImageSchema = z.strictObject({
   hasAlpha: z.boolean(),
   /** True when PaperForge added this image rather than the document. */
   added: z.boolean(),
+  /**
+   * Where the picture is drawn from: the page's own content, a form XObject
+   * the page draws, or samples written into the content stream itself.
+   */
+  source: z.enum(['page', 'form', 'inline']),
+  /**
+   * How many times the form it is drawn from is drawn in the document — the
+   * most of any form on the way down. Above 1, a change asks whether it is for
+   * this drawing only or for all of them.
+   */
+  formUses: z.number().int().min(1),
 });
 export type PageImageModel = z.infer<typeof pageImageSchema>;
 
@@ -35,5 +54,7 @@ export const pageImageModelSchema = z.strictObject({
   /** The revision the model was read from, so a stale one can be spotted. */
   revision: z.number().int().min(0),
   images: z.array(pageImageSchema),
+  /** Pictures the page shows that are not offered for editing, and why. */
+  skipped: z.array(skippedImageReasonSchema),
 });
 export type PageImagesModel = z.infer<typeof pageImageModelSchema>;

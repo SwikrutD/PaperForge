@@ -46,6 +46,8 @@ const image: PageImageModel = {
   opacity: 1,
   hasAlpha: false,
   added: false,
+  source: 'page',
+  formUses: 1,
 };
 
 const link: LinkModel = {
@@ -112,7 +114,10 @@ beforeEach(() => {
 
   useImageEditStore.setState({
     pages: new Map([
-      [`${SESSION}:1`, { revision: 0, model: { page: 1, revision: 0, images: [image] } }],
+      [
+        `${SESSION}:1`,
+        { revision: 0, model: { page: 1, revision: 0, images: [image], skipped: [] } },
+      ],
     ]),
     selected: null,
     drag: null,

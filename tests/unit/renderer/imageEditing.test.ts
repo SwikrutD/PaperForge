@@ -44,6 +44,8 @@ const image: PageImageModel = {
   opacity: 1,
   hasAlpha: false,
   added: false,
+  source: 'page',
+  formUses: 1,
 };
 
 const STAGED = { token: 'image-1', fileName: 'Pasted image.png', width: 120, height: 60 };
@@ -116,7 +118,10 @@ beforeEach(() => {
   useUiStore.setState({ toasts: [] });
   useImageEditStore.setState({
     pages: new Map([
-      [`${SESSION}:1`, { revision: 0, model: { page: 1, revision: 0, images: [image] } }],
+      [
+        `${SESSION}:1`,
+        { revision: 0, model: { page: 1, revision: 0, images: [image], skipped: [] } },
+      ],
     ]),
     selected: null,
     drag: null,
@@ -275,7 +280,10 @@ describe('an image PaperForge added', () => {
     const added: PageImageModel = { ...image, id: 'pf-keep', added: true };
     useImageEditStore.setState({
       pages: new Map([
-        [`${SESSION}:1`, { revision: 0, model: { page: 1, revision: 0, images: [added, image] } }],
+        [
+          `${SESSION}:1`,
+          { revision: 0, model: { page: 1, revision: 0, images: [added, image], skipped: [] } },
+        ],
       ]),
     });
     // Read back after the move with the other picture now nearer the drop.

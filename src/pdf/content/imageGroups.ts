@@ -60,9 +60,8 @@ const PAINTING = new Set([
   'TJ',
   "'",
   '"',
-  'BI',
+  // An inline image paints once, at its `ID`; `BI` only opens its dictionary.
   'ID',
-  'EI',
 ]);
 
 /** Path construction other than a rectangle: a clip PaperForge cannot redraw. */
@@ -89,7 +88,7 @@ interface MarkFrame {
 }
 
 /**
- * For each image `Do` (by operation index), the group it is drawn in and the
+ * For each image `Do` or inline image `ID` (by operation index), the group it is drawn in and the
  * PaperForge marking around it, where there is one.
  *
  * A group counts only when the picture is the one thing it draws: no other
@@ -182,7 +181,7 @@ export function findImageGroups(
       if (!PAINTING.has(operator)) return;
 
       for (const frame of frames) frame.painted += 1;
-      if (operator !== 'Do' || !isImage(index)) return;
+      if ((operator !== 'Do' && operator !== 'ID') || !isImage(index)) return;
       for (const frame of frames) {
         frame.images.push(index);
         frame.imageDepth = frames.length;

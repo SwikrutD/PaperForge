@@ -10,6 +10,7 @@ import { Dialog } from './Dialog';
  */
 export function ConfirmationDialog({ request }: { request: ConfirmationRequest }): ReactElement {
   const resolve = useUiStore((state) => state.resolveConfirmation);
+  const chooseAlternative = useUiStore((state) => state.chooseAlternative);
 
   return (
     <Dialog
@@ -18,6 +19,9 @@ export function ConfirmationDialog({ request }: { request: ConfirmationRequest }
       footer={
         <>
           <Button onClick={() => resolve(false)}>{request.cancelLabel ?? 'Cancel'}</Button>
+          {request.alternative !== undefined && (
+            <Button onClick={chooseAlternative}>{request.alternative.label}</Button>
+          )}
           <Button
             appearance={request.danger === true ? 'danger' : 'primary'}
             onClick={() => resolve(true)}
