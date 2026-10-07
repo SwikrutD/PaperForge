@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactElement,
+} from 'react';
 import { Check } from 'lucide-react';
 import { formatShortcut } from '../../keyboard/shortcuts';
 import { cx } from '../../utils/classNames';
@@ -23,15 +30,40 @@ export interface MenuModel {
   items: MenuItemModel[];
 }
 
+/** Room left between an open menu and the bottom of the window, in pixels. */
+const WINDOW_MARGIN = 8;
+
 /**
  * Windows-style menu bar: Alt-free click or keyboard operation, roving focus
  * inside a menu, Escape to close, and arrow keys to move between menus.
  * Items are supplied by the command registry, so every entry does something.
+ *
+ * A menu longer than the room below it is no taller than that room and
+ * scrolls, by wheel or by keyboard: the arrow keys skip what cannot be used,
+ * Home and End go to either end, and the item with focus is kept in view.
  */
 export function MenuBar({ menus }: { menus: readonly MenuModel[] }): ReactElement {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [maxHeight, setMaxHeight] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef(new Map<string, HTMLButtonElement>());
+
+  // The open menu may be as tall as the room between its trigger and the
+  // bottom of the window, and no taller; it scrolls beyond that.
+  useLayoutEffect(() => {
+    if (openMenuId === null) return;
+    const measure = (): void => {
+      const trigger = containerRef.current?.querySelector<HTMLButtonElement>(
+        `[data-menu-trigger="${openMenuId}"]`,
+      );
+      if (trigger === null || trigger === undefined) return;
+      const below = window.innerHeight - trigger.getBoundingClientRect().bottom;
+      setMaxHeight(Math.max(120, below - WINDOW_MARGIN));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [openMenuId]);
 
   const closeAndFocusTrigger = useCallback((menuId: string) => {
     setOpenMenuId(null);
@@ -51,14 +83,25 @@ export function MenuBar({ menus }: { menus: readonly MenuModel[] }): ReactElemen
     return () => window.removeEventListener('pointerdown', onPointerDown);
   }, [openMenuId]);
 
-  const focusItem = (menuId: string, index: number): void => {
+  /**
+   * Moves focus to the first usable item at or after `index`, going the way
+   * `direction` says and round the end. A disabled button cannot take focus,
+   * so landing on one would leave the keyboard stuck where it was.
+   */
+  const focusItem = (menuId: string, index: number, direction: 1 | -1 = 1): void => {
     const menu = menus.find((candidate) => candidate.id === menuId);
     if (menu === undefined || menu.items.length === 0) return;
     const count = menu.items.length;
-    const wrapped = ((index % count) + count) % count;
-    const item = menu.items[wrapped];
-    if (item === undefined) return;
-    itemRefs.current.get(`${menuId}:${item.id}`)?.focus();
+    for (let step = 0; step < count; step += 1) {
+      const wrapped = (((index + step * direction) % count) + count) % count;
+      const item = menu.items[wrapped];
+      if (item === undefined || item.disabled === true) continue;
+      const element = itemRefs.current.get(`${menuId}:${item.id}`);
+      if (element === undefined) return;
+      // Focusing scrolls the menu, if it has to, to show the item.
+      element.focus();
+      return;
+    }
   };
 
   const siblingMenuId = (menuId: string, delta: number): string | undefined => {
@@ -114,7 +157,12 @@ export function MenuBar({ menus }: { menus: readonly MenuModel[] }): ReactElemen
             </button>
 
             {open && (
-              <div className={styles.popup} role="menu" aria-label={menu.label}>
+              <div
+                className={styles.popup}
+                role="menu"
+                aria-label={menu.label}
+                style={maxHeight === null ? undefined : { maxHeight: `${String(maxHeight)}px` }}
+              >
                 {menu.items.map((item, index) => {
                   const previous = menu.items[index - 1];
                   const startsGroup = index > 0 && previous?.group !== item.group;
@@ -140,10 +188,16 @@ export function MenuBar({ menus }: { menus: readonly MenuModel[] }): ReactElemen
                         onKeyDown={(event) => {
                           if (event.key === 'ArrowDown') {
                             event.preventDefault();
-                            focusItem(menu.id, index + 1);
+                            focusItem(menu.id, index + 1, 1);
                           } else if (event.key === 'ArrowUp') {
                             event.preventDefault();
-                            focusItem(menu.id, index - 1);
+                            focusItem(menu.id, index - 1, -1);
+                          } else if (event.key === 'Home') {
+                            event.preventDefault();
+                            focusItem(menu.id, 0, 1);
+                          } else if (event.key === 'End') {
+                            event.preventDefault();
+                            focusItem(menu.id, menu.items.length - 1, -1);
                           } else if (event.key === 'Escape') {
                             event.preventDefault();
                             closeAndFocusTrigger(menu.id);

@@ -38,6 +38,10 @@
   border: 1px solid var(--pf-color-border);
   border-radius: var(--pf-radius-lg);
   box-shadow: var(--pf-shadow-16);
+  /* A long menu scrolls inside the window rather than running off it; the
+     height comes from the room below the trigger (MenuBar.tsx). */
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .item {

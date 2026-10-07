@@ -30,6 +30,7 @@ import { cx } from '../../utils/classNames';
 import { IconButton } from '../controls/IconButton';
 import { ToolCard } from '../home/ToolCard';
 import { TOOL_CATALOG } from '../home/toolCatalog';
+import { CommentToolsSection } from './CommentToolsSection';
 import { EmptyPanelState } from './EmptyPanelState';
 import styles from './RightPanel.module.css';
 
@@ -159,11 +160,16 @@ export function RightPanel({ panel }: { panel: RightPanelId }): ReactElement {
             description="Open a document to use the tools that work on one. The full list is on the home screen."
           />
         ) : (
-          <div className={styles.tools}>
-            {availableTools.map((tool) => (
-              <ToolCard key={tool.id} tool={tool} compact />
-            ))}
-          </div>
+          <>
+            {/* Comment tools work on the document in front of the reader, in
+                any mode: first, so they are always in the same place. */}
+            {activeTab !== null && <CommentToolsSection />}
+            <div className={styles.tools}>
+              {availableTools.map((tool) => (
+                <ToolCard key={tool.id} tool={tool} compact />
+              ))}
+            </div>
+          </>
         )}
       </div>
     </section>

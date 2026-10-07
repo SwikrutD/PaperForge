@@ -76,6 +76,17 @@ export function SettingsDialog({ settings }: { settings: Settings }): ReactEleme
             onChange={(checked) => void patchSettings({ session: { restoreOnStartup: checked } })}
           />
         </SettingRow>
+        <SettingRow
+          label="Show menu bar"
+          description="File, Edit, View, Tools and Help. While it is hidden, the title bar has a button to show it again, and Ctrl+K still searches every command."
+        >
+          <Toggle
+            checked={settings.layout.menuBarVisible}
+            label={settings.layout.menuBarVisible ? 'On' : 'Off'}
+            accessibleName="Show menu bar"
+            onChange={(checked) => void patchSettings({ layout: { menuBarVisible: checked } })}
+          />
+        </SettingRow>
       </section>
 
       <section className={styles.section} aria-label="Windows">

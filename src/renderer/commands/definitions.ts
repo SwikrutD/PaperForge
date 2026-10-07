@@ -541,20 +541,6 @@ export function buildCommands(): CommandDefinition[] {
           layout: { rightPanel: { visible: !context.settings.layout.rightPanel.visible } },
         }),
     },
-    {
-      id: 'view.toggleCommandBar',
-      title: 'Command Bar',
-      description: 'Show or hide the menu bar.',
-      category: 'view',
-      group: 'layout',
-      icon: PanelTop,
-      keywords: ['toolbar', 'menu'],
-      isChecked: (context) => context.settings.layout.commandBarVisible,
-      run: (context) =>
-        context.actions.patchSettings({
-          layout: { commandBarVisible: !context.settings.layout.commandBarVisible },
-        }),
-    },
     ...leftPanelCommands(),
     {
       id: 'view.zoomIn',

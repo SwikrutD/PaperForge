@@ -42,6 +42,14 @@ describe('command bar', () => {
     );
   });
 
+  it('has no item in the View menu that hides the menu bar', async () => {
+    renderWithCommands(<CommandBar />);
+    await userEvent.click(screen.getByRole('menuitem', { name: 'View' }));
+    const menu = screen.getByRole('menu', { name: 'View' });
+    expect(menu).not.toHaveTextContent(/Command Bar/i);
+    expect(menu).not.toHaveTextContent(/Menu Bar/i);
+  });
+
   it('shows the keyboard chord next to a command', async () => {
     renderWithCommands(<CommandBar />);
     await userEvent.click(screen.getByRole('menuitem', { name: 'View' }));

@@ -90,12 +90,69 @@ describe('AppShell layout', () => {
     expect(screen.getByRole('menubar', { name: 'Main menu' })).toBeInTheDocument();
   });
 
-  it('can hide the command bar', () => {
+  it('says how to leave reading mode as it starts', () => {
+    renderShell();
+    act(() => useUiStore.getState().setReadingMode(true));
+    expect(screen.getByText('Reading mode. Press Esc to exit.')).toBeVisible();
+  });
+
+  it('offers an exit button when the pointer goes to the top of the window', async () => {
+    renderShell();
+    act(() => useUiStore.getState().setReadingMode(true));
+    expect(screen.queryByRole('button', { name: 'Exit reading mode' })).not.toBeInTheDocument();
+
+    act(() => {
+      window.dispatchEvent(new MouseEvent('mousemove', { clientX: 400, clientY: 4 }));
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Exit reading mode' }));
+
+    expect(useUiStore.getState().readingMode).toBe(false);
+    expect(screen.getByRole('menubar', { name: 'Main menu' })).toBeInTheDocument();
+  });
+
+  it('does not touch the saved menu bar setting', async () => {
+    const bridge = installBridgeStub({ 'settings:patch': { ok: true, data: DEFAULT_SETTINGS } });
+    renderShell();
+    act(() => useUiStore.getState().setReadingMode(true));
+    await act(async () => {
+      await userEvent.keyboard('{Escape}');
+    });
+    expect(bridge.invoke).not.toHaveBeenCalledWith('settings:patch', expect.anything());
+  });
+
+  it('hides the menu bar when settings say so', () => {
     renderShell();
     expect(screen.getByRole('menubar', { name: 'Main menu' })).toBeInTheDocument();
 
-    renderShell(settingsWith({ commandBarVisible: false }));
+    renderShell(settingsWith({ menuBarVisible: false }));
     expect(screen.getAllByRole('menubar')).toHaveLength(1);
+  });
+
+  it('offers the menu bar back in the title bar while it is hidden', async () => {
+    const bridge = installBridgeStub({ 'settings:patch': { ok: true, data: DEFAULT_SETTINGS } });
+    renderShell(settingsWith({ menuBarVisible: false }));
+    expect(screen.queryByRole('menubar', { name: 'Main menu' })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Show menu bar' }));
+    expect(bridge.invoke).toHaveBeenCalledWith('settings:patch', {
+      layout: { menuBarVisible: true },
+    });
+  });
+
+  it('keeps Search commands and Settings in the title bar while the menu bar is hidden', async () => {
+    renderShell(settingsWith({ menuBarVisible: false }));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Search commands' }));
+    expect(useUiStore.getState().commandPaletteOpen).toBe(true);
+    act(() => useUiStore.getState().setCommandPaletteOpen(false));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    expect(useUiStore.getState().dialog).toBe('settings');
+  });
+
+  it('has no menu bar button in the title bar while the menu bar is shown', () => {
+    renderShell();
+    expect(screen.queryByRole('button', { name: 'Show menu bar' })).not.toBeInTheDocument();
   });
 
   it('exposes every focus region for F6 navigation', () => {

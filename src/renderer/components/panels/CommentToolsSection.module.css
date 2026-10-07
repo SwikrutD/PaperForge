@@ -1,0 +1,24 @@
+.section {
+  padding: var(--pf-space-100);
+  border-bottom: 1px solid var(--pf-color-divider);
+}
+
+.title {
+  margin: 0 0 var(--pf-space-050);
+  color: var(--pf-color-text-secondary);
+  font-size: var(--pf-font-size-200);
+  font-weight: var(--pf-font-weight-medium);
+}
+
+/* The toolbar's groups, wrapping onto as many rows as the pane is narrow. */
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pf-space-050) var(--pf-space-100);
+}
+
+.group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pf-space-025);
+}
