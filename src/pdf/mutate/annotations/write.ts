@@ -20,6 +20,15 @@ import type {
   AnnotationStyle,
 } from '@shared/schemas/annotation';
 import { buildAppearance } from './appearance';
+import {
+  applyStampPlacement,
+  bboxOf,
+  clearTurn,
+  isStampKind,
+  isTurned,
+  normalAppearance,
+  placeStamp,
+} from './stampTransform';
 import { measureDrawing, unionRect, type MeasureDrawing } from './measure';
 import { boundsOf } from './geometry';
 import { toPdfDate } from './pdfDate';
@@ -264,7 +273,68 @@ export function writeAnnotation(
   if (input.stampLabel !== undefined) entries['Name'] = PDFName.of(stampName(input.stampLabel));
 
   const dict = document.context.obj(entries);
+  turnNewAppearance(context, dict, input, rect);
   page.node.addAnnot(document.context.register(dict));
+}
+
+/** Turns a stamp whose appearance was just drawn upright in its own box. */
+function turnNewAppearance(
+  context: WriteContext,
+  dict: PDFDict,
+  input: AnnotationInput,
+  outer: { x: number; y: number; width: number; height: number },
+): void {
+  if (!isStampKind(input.geometry.kind) || !('rect' in input.geometry)) return;
+  if (!isTurned(input.rotation)) {
+    clearTurn(dict);
+    return;
+  }
+  const appearance = normalAppearance(dict);
+  if (appearance === undefined) return;
+  const { rect } = input.geometry;
+  const rotation = input.rotation ?? 0;
+  applyStampPlacement(
+    context.document,
+    dict,
+    appearance,
+    placeStamp(outer, rect, rect, rotation),
+    rect,
+    rotation,
+  );
+}
+
+/**
+ * Fits a stamp whose appearance is kept, such as a signature from an earlier
+ * session, to its new box and turn: the box its picture was drawn in is
+ * mapped exactly onto the one asked for.
+ */
+function refitKeptAppearance(context: WriteContext, dict: PDFDict, input: AnnotationInput): void {
+  if (!('rect' in input.geometry)) return;
+  const appearance = normalAppearance(dict);
+  const bbox = appearance === undefined ? undefined : bboxOf(appearance);
+  if (appearance === undefined || bbox === undefined) return;
+
+  // The picture was drawn inset from its box by the padding a stroke needs.
+  const pad = -boundsOf(
+    { kind: 'stamp', rect: { x: 0, y: 0, width: 0, height: 0 } },
+    input.style.borderWidth,
+  ).x;
+  const inner = {
+    x: bbox.x + pad,
+    y: bbox.y + pad,
+    width: Math.max(1, bbox.width - pad * 2),
+    height: Math.max(1, bbox.height - pad * 2),
+  };
+  const { rect } = input.geometry;
+  const rotation = input.rotation ?? 0;
+  applyStampPlacement(
+    context.document,
+    dict,
+    appearance,
+    placeStamp(bbox, inner, rect, rotation),
+    rect,
+    rotation,
+  );
 }
 
 /** The annotation's rectangle: its shape, and a measurement's caption beside it. */
@@ -358,6 +428,13 @@ export function rewriteAnnotation(
 
   if (input.style.fillColor === null) dict.delete(PDFName.of('IC'));
   else set('IC', colorArray(input.style.fillColor));
+
+  // A stamp PaperForge made is turned and fitted through its appearance; one
+  // made elsewhere keeps being moved by its rectangle alone, as before.
+  if (isStampKind(input.geometry.kind)) {
+    if (canRedraw) turnNewAppearance(context, dict, input, rect);
+    else if (annotation.id.startsWith('pf-')) refitKeptAppearance(context, dict, input);
+  }
 
   if (measured !== null) {
     for (const [key, value] of Object.entries(measured.entries)) {

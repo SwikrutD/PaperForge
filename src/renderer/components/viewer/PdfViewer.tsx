@@ -390,6 +390,20 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
     () => ({ onDraw: setMarquee, onFinish: finishMarquee }),
     [finishMarquee],
   );
+  // Stamps and signatures PaperForge made can be resized, turned and copied.
+  const transformStamp = useCallback(
+    (
+      annotation: { id: string },
+      rect: { x: number; y: number; width: number; height: number },
+      turn: number,
+    ) => void useAnnotationStore.getState().transform(annotation.id, rect, turn),
+    [],
+  );
+  const duplicateStamp = useCallback(
+    (annotation: { id: string }) => void useAnnotationStore.getState().duplicate(annotation.id),
+    [],
+  );
+
   // Ctrl+V, Delete and the arrows, for pictures in Edit PDF.
   const pastePoint = useCallback(() => {
     const element = scrollerRef.current;
@@ -790,6 +804,8 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                           }}
                           onMove={tools.move}
                           onErase={tools.erase}
+                          onTransform={transformStamp}
+                          onDuplicate={duplicateStamp}
                         />
                         {draft !== null && draft.pageNumber === pageNumber && (
                           <DraftEditor
@@ -914,6 +930,8 @@ export function PdfViewer({ tab }: { tab: DocumentTab }): ReactElement {
                           onCreate={tools.create}
                           onMove={tools.move}
                           onErase={tools.erase}
+                          onTransform={transformStamp}
+                          onDuplicate={duplicateStamp}
                         />
                         {draft !== null && draft.pageNumber === pageNumber && (
                           <DraftEditor

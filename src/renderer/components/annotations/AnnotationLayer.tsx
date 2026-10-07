@@ -6,11 +6,12 @@ import {
   type ReactElement,
 } from 'react';
 import type { PdfPageGeometry } from '@pdf/render/types';
-import type {
-  Annotation,
-  AnnotationGeometry,
-  AnnotationInput,
-  AnnotationPoint,
+import {
+  isOwnStamp,
+  type Annotation,
+  type AnnotationGeometry,
+  type AnnotationInput,
+  type AnnotationPoint,
 } from '@shared/schemas/annotation';
 import { boundsOf, translateGeometry } from '@pdf/mutate/annotations/geometry';
 import { cssBoxStyle, cssPointToPdf, pdfRectToCss } from '../viewer/pageGeometry';
@@ -23,6 +24,8 @@ import {
 } from './annotationDrawing';
 import { AnnotationPreview } from './AnnotationPreview';
 import { PendingAnnotationMark } from './PendingAnnotationMark';
+import { StampTransformFrame } from './StampTransformFrame';
+import { pointAt } from '../edit/imageGeometry';
 import type { AnnotationTool, PendingAnnotation } from '../../stores/annotationStore';
 import { awaitingPaint, usePaintedRevision } from '../viewer/paintedRevision';
 import styles from './AnnotationLayer.module.css';
@@ -40,6 +43,13 @@ interface AnnotationLayerProps {
   onCreate: (geometry: AnnotationGeometry, pageNumber: number) => void;
   onMove: (annotation: Annotation, geometry: AnnotationGeometry) => void;
   onErase: (annotation: Annotation) => void;
+  /** Resizes or turns a stamp PaperForge made; without it, stamps have no handles. */
+  onTransform?: (
+    annotation: Annotation,
+    rect: { x: number; y: number; width: number; height: number },
+    rotation: number,
+  ) => void;
+  onDuplicate?: (annotation: Annotation) => void;
   /** A draft being typed into, drawn while it has no annotation yet. */
   draft: AnnotationInput | null;
   /** Marks of this page still being written into the document. */
@@ -82,6 +92,8 @@ export function AnnotationLayer({
   onCreate,
   onMove,
   onErase,
+  onTransform,
+  onDuplicate,
   draft,
   pending = NO_PENDING,
   onSettle,
@@ -212,12 +224,7 @@ export function AnnotationLayer({
         onPointerCancel={() => setDrag(null)}
       >
         {annotations.map((annotation) => {
-          const box = pdfRectToCss(
-            boundsOf(annotation.geometry, annotation.style.borderWidth),
-            geometry,
-            scale,
-            rotation,
-          );
+          const box = pdfRectToCss(extentOf(annotation), geometry, scale, rotation);
           if (box === null) return null;
           const selected = annotation.id === selectedId;
 
@@ -242,6 +249,24 @@ export function AnnotationLayer({
             />
           );
         })}
+
+        {tool === 'select' &&
+          onTransform !== undefined &&
+          onDuplicate !== undefined &&
+          drag === null &&
+          annotations
+            .filter((annotation) => annotation.id === selectedId && isOwnStamp(annotation))
+            .map((annotation) => (
+              <StampTransformFrame
+                key={`frame-${annotation.id}`}
+                annotation={annotation}
+                geometry={geometry}
+                scale={scale}
+                rotation={rotation}
+                onTransform={onTransform}
+                onDuplicate={onDuplicate}
+              />
+            ))}
 
         {previewGeometry !== null && (
           <AnnotationPreview
@@ -272,6 +297,29 @@ export function AnnotationLayer({
       </div>
     </>
   );
+}
+
+/**
+ * The area an annotation covers on the page: its rectangle, or for a turned
+ * stamp the upright box the turned stamp needs.
+ */
+function extentOf(annotation: Annotation): ReturnType<typeof boundsOf> {
+  const bounds = boundsOf(annotation.geometry, annotation.style.borderWidth);
+  const turn = annotation.rotation ?? 0;
+  if (turn === 0 || !('rect' in annotation.geometry)) return bounds;
+
+  const placement = { ...bounds, rotation: turn, flipX: false, flipY: false };
+  const corners = [
+    { x: 0, y: 0 },
+    { x: 1, y: 0 },
+    { x: 0, y: 1 },
+    { x: 1, y: 1 },
+  ].map((corner) => pointAt(placement, corner));
+  const xs = corners.map((corner) => corner.x);
+  const ys = corners.map((corner) => corner.y);
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
 }
 
 /** What a screen reader says about an annotation's hit area. */

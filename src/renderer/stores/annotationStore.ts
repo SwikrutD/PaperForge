@@ -10,7 +10,7 @@ import {
   type BuiltInStamp,
   type StampImage,
 } from '@shared/schemas/annotation';
-import { describeInput } from '@pdf/mutate/operations';
+import { describeInput, describeKind } from '@pdf/mutate/operations';
 import { invoke } from '../services/ipcClient';
 import { useDocumentStore } from './documentStore';
 import { useUiStore } from './uiStore';
@@ -44,6 +44,9 @@ export interface PendingAnnotation {
 }
 
 let pendingCounter = 0;
+
+/** How far a duplicate lands from what it copies: down and to the right. */
+const DUPLICATE_OFFSET = 12;
 
 interface AnnotationStore {
   tool: AnnotationTool;
@@ -80,6 +83,14 @@ interface AnnotationStore {
   /** Adds annotations to the active document as one undoable step. */
   add: (inputs: readonly AnnotationInput[]) => Promise<void>;
   update: (id: string, patch: AnnotationPatch, label?: string) => Promise<void>;
+  /** Resizes and turns a stamp PaperForge made, as one undoable step. */
+  transform: (
+    id: string,
+    rect: { x: number; y: number; width: number; height: number },
+    rotation: number,
+  ) => Promise<void>;
+  /** Copies a stamp a little way off, and selects the copy. */
+  duplicate: (id: string) => Promise<void>;
   remove: (ids: readonly string[]) => Promise<void>;
   /** Forgets pending marks once their page shows them. */
   settlePending: (ids: readonly string[]) => void;
@@ -195,8 +206,16 @@ export const useAnnotationStore = create<AnnotationStore>((set, get) => ({
     // A moved mark is shown where it was put, not back where it came from.
     const annotation = get().annotations.find((candidate) => candidate.id === id);
     const moved =
-      annotation !== undefined && patch.geometry !== undefined
-        ? [{ ...annotation, geometry: patch.geometry }]
+      annotation !== undefined && (patch.geometry !== undefined || patch.rotation !== undefined)
+        ? [
+            {
+              ...annotation,
+              geometry: patch.geometry ?? annotation.geometry,
+              ...(patch.rotation === undefined && annotation.rotation === undefined
+                ? {}
+                : { rotation: patch.rotation ?? annotation.rotation }),
+            },
+          ]
         : [];
 
     await showWhileWriting(sessionId, moved, () =>
@@ -205,6 +224,39 @@ export const useAnnotationStore = create<AnnotationStore>((set, get) => ({
         operations: [{ kind: 'updateAnnotations', updates: [{ id, patch }] }],
       }),
     );
+  },
+
+  transform: async (id, rect, rotation) => {
+    const annotation = get().annotations.find((candidate) => candidate.id === id);
+    if (annotation === undefined || !('rect' in annotation.geometry)) return;
+    const turned = (annotation.rotation ?? 0) !== rotation;
+    await get().update(
+      id,
+      { geometry: { ...annotation.geometry, rect }, rotation },
+      `${turned ? 'Rotate' : 'Resize'} ${describeKind(annotation.geometry.kind)}`,
+    );
+  },
+
+  duplicate: async (id) => {
+    const sessionId = activeSessionId();
+    const annotation = get().annotations.find((candidate) => candidate.id === id);
+    if (sessionId === null || annotation === undefined) return;
+
+    const newId = `pf-${globalThis.crypto.randomUUID()}`;
+    const before = revisionOf(sessionId);
+    await useDocumentStore.getState().applyEdit(sessionId, {
+      label: `Duplicate ${describeKind(annotation.geometry.kind)}`,
+      operations: [
+        {
+          kind: 'duplicateAnnotations',
+          copies: [{ id, newId }],
+          dx: DUPLICATE_OFFSET,
+          dy: -DUPLICATE_OFFSET,
+        },
+      ],
+    });
+    // The list is read again for the new revision; the copy is selected then.
+    if (revisionOf(sessionId) !== before) set({ selectedId: newId });
   },
 
   remove: async (ids) => {

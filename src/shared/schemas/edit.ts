@@ -63,6 +63,25 @@ export const deleteAnnotationsOperationSchema = z.strictObject({
   ids: z.array(z.string().min(1).max(120)).min(1).max(500),
 });
 
+/**
+ * Copies annotations onto the same page, moved by an offset. Each copy gets
+ * the id asked for, so it can be selected the moment it is written.
+ */
+export const duplicateAnnotationsOperationSchema = z.strictObject({
+  kind: z.literal('duplicateAnnotations'),
+  copies: z
+    .array(
+      z.strictObject({
+        id: z.string().min(1).max(120),
+        newId: z.string().regex(/^pf-[A-Za-z0-9-]{1,80}$/),
+      }),
+    )
+    .min(1)
+    .max(100),
+  dx: z.number().finite().min(-10_000).max(10_000),
+  dy: z.number().finite().min(-10_000).max(10_000),
+});
+
 /** Moves pages to a new position, keeping their order among themselves. */
 export const movePagesOperationSchema = z.strictObject({
   kind: z.literal('movePages'),
@@ -536,6 +555,7 @@ export const editOperationSchema = z.discriminatedUnion('kind', [
   addAnnotationsOperationSchema,
   updateAnnotationsOperationSchema,
   deleteAnnotationsOperationSchema,
+  duplicateAnnotationsOperationSchema,
   setMetadataOperationSchema,
   setDocumentLanguageOperationSchema,
   setDocumentTitleOperationSchema,

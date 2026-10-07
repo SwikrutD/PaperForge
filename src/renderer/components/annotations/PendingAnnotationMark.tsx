@@ -200,8 +200,19 @@ export function PendingAnnotationMark({
     case 'imageStamp': {
       const box = rectOf(geometry.rect);
       const label = geometry.kind === 'stamp' ? (input.stampLabel ?? '') : '';
+      // Turned anticlockwise on the page is anticlockwise on screen, which
+      // SVG, counting y downwards, writes as a negative angle.
+      const turn = input.rotation ?? 0;
       shape = (
-        <g>
+        <g
+          {...(turn === 0
+            ? {}
+            : {
+                transform: `rotate(${String(-turn)} ${String(box.x + box.width / 2)} ${String(
+                  box.y + box.height / 2,
+                )})`,
+              })}
+        >
           <rect
             {...box}
             {...lineProps}

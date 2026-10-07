@@ -185,6 +185,11 @@ export const annotationInputSchema = z.strictObject({
   imageToken: z.string().max(200).optional(),
   /** Makes the line, polyline or polygon a measurement. */
   measure: measurementSchema.optional(),
+  /**
+   * How far a stamp is turned about its middle, anticlockwise, in degrees.
+   * Its geometry is the stamp's own upright box.
+   */
+  rotation: z.number().finite().min(-360).max(360).optional(),
 });
 export type AnnotationInput = z.infer<typeof annotationInputSchema>;
 
@@ -213,8 +218,22 @@ export const annotationPatchSchema = z.strictObject({
   author: z.string().max(200).optional(),
   subject: z.string().max(200).optional(),
   resolved: z.boolean().optional(),
+  /** Turns a stamp; see `rotation` on the input. */
+  rotation: z.number().finite().min(-360).max(360).optional(),
 });
 export type AnnotationPatch = z.infer<typeof annotationPatchSchema>;
+
+/**
+ * True for a stamp or signature PaperForge made, which it can resize, turn
+ * and duplicate. Its id is PaperForge's own, written when it was made.
+ */
+export function isOwnStamp(annotation: Annotation): boolean {
+  return (
+    annotation.editable &&
+    annotation.id.startsWith('pf-') &&
+    (annotation.geometry.kind === 'stamp' || annotation.geometry.kind === 'imageStamp')
+  );
+}
 
 /** An image staged for stamping, and the size it wants to be placed at. */
 export const stampImageSchema = z.strictObject({

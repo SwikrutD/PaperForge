@@ -19,6 +19,7 @@ import {
   type AnnotationStyle,
   type Measurement,
 } from '@shared/schemas/annotation';
+import { readTurn } from './stampTransform';
 import { boundsOf } from './geometry';
 import { fromPdfDate } from './pdfDate';
 import { MEASURE_INTENTS } from './measure';
@@ -297,7 +298,14 @@ function toRecord(dict: PDFDict, pageIndex: number, ref: string): AnnotationReco
   // Links, form fields and popups belong to other parts of the application.
   if (kind === null) return null;
 
-  const geometry = geometryOf(dict, kind);
+  const read = geometryOf(dict, kind);
+  // A stamp PaperForge turned keeps its own upright box beside its rectangle.
+  const turn =
+    read?.kind === 'stamp'
+      ? readTurn(dict, rectOf(numberArray(dict.get(PDFName.of('Rect')))))
+      : null;
+  const geometry: AnnotationGeometry | null =
+    turn === null || read?.kind !== 'stamp' ? read : { kind: 'stamp', rect: turn.upright };
   const style = styleOf(dict);
   const id = stringOf(dict, 'NM') ?? ref;
   if (id === '') return null;
@@ -338,6 +346,7 @@ function toRecord(dict: PDFDict, pageIndex: number, ref: string): AnnotationReco
     ...(measurementOf(dict, kind) === null
       ? {}
       : { measure: measurementOf(dict, kind) as Measurement }),
+    ...(turn === null ? {} : { rotation: turn.rotation }),
   };
 
   return { annotation, dict, ref, pageIndex };
@@ -370,6 +379,23 @@ function measurementOf(dict: PDFDict, kind: AnnotationKind): Measurement | null 
       unit: unit.trim().slice(0, 12),
       label: (stringOf(measure, 'R') ?? '').slice(0, 80),
     },
+  };
+}
+
+/** A `/Rect`, as a rectangle; empty when it is missing. */
+function rectOf(rectangle: readonly number[]): {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+} {
+  if (rectangle.length < 4) return { x: 0, y: 0, width: 0, height: 0 };
+  const [x1 = 0, y1 = 0, x2 = 0, y2 = 0] = rectangle;
+  return {
+    x: Math.min(x1, x2),
+    y: Math.min(y1, y2),
+    width: Math.abs(x2 - x1),
+    height: Math.abs(y2 - y1),
   };
 }
 

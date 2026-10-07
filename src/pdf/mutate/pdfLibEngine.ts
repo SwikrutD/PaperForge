@@ -13,6 +13,7 @@ import type {
   RedactionSearchResult,
 } from '@shared/schemas/redaction';
 import { readAnnotations, type AnnotationRecord } from './annotations/read';
+import { duplicateAnnotation } from './annotations/duplicate';
 import {
   embedAppearanceFont,
   removeAnnotations,
@@ -374,6 +375,31 @@ export class PdfLibMutationEngine implements PdfMutationEngine {
             break;
           }
 
+          case 'duplicateAnnotations': {
+            const context = await annotationContext();
+            const byId = new Map(context.records.map((record) => [record.annotation.id, record]));
+            for (const { id, newId } of operation.copies) {
+              const record = byId.get(id);
+              if (record === undefined) {
+                throw new AppError('internal/unexpected', {
+                  message: 'That mark is no longer in the document.',
+                  details: id,
+                });
+              }
+              if (byId.has(newId)) {
+                throw new AppError('internal/unexpected', {
+                  message: 'The document already has a mark by that name.',
+                  details: newId,
+                });
+              }
+              const page = pageContext.order[record.pageIndex];
+              if (page === undefined) continue;
+              duplicateAnnotation(document, record, page, newId, operation);
+            }
+            annotations = null;
+            break;
+          }
+
           case 'deleteAnnotations': {
             const context = await annotationContext();
             const byId = new Map(context.records.map((record) => [record.annotation.id, record]));
@@ -450,6 +476,7 @@ function applyUpdates(
     const onlyStatus =
       patch.style === undefined &&
       patch.geometry === undefined &&
+      patch.rotation === undefined &&
       patch.contents === undefined &&
       patch.author === undefined &&
       patch.subject === undefined;
@@ -475,6 +502,9 @@ function applyUpdates(
       subject: patch.subject ?? current.subject,
       ...(current.stampLabel === undefined ? {} : { stampLabel: current.stampLabel }),
       ...(current.measure === undefined ? {} : { measure: current.measure }),
+      ...((patch.rotation ?? current.rotation) === undefined
+        ? {}
+        : { rotation: patch.rotation ?? current.rotation }),
     };
 
     rewriteAnnotation(context.write, record.dict, input, { ...current, resolved }, new Date());
