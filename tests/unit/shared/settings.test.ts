@@ -93,3 +93,52 @@ describe('layout settings', () => {
     expect(settings.layout.activeLeftPanel).toBe('bookmarks');
   });
 });
+
+describe('the menu bar setting', () => {
+  /** A layout as an earlier PaperForge saved it, with the View-menu toggle off. */
+  const legacyLayout = {
+    leftPanel: { visible: false, width: 300 },
+    rightPanel: { visible: true, width: 400 },
+    activeLeftPanel: 'bookmarks',
+    activeRightPanel: 'tools',
+    commandBarVisible: false,
+  };
+
+  it('shows the menu bar by default', () => {
+    expect(DEFAULT_SETTINGS.layout.menuBarVisible).toBe(true);
+  });
+
+  it('is saved when turned off, and when turned back on', () => {
+    const hidden = applySettingsPatch(DEFAULT_SETTINGS, { layout: { menuBarVisible: false } });
+    expect(parseStoredSettings(structuredClone(hidden)).settings.layout.menuBarVisible).toBe(false);
+
+    const shown = applySettingsPatch(hidden, { layout: { menuBarVisible: true } });
+    expect(parseStoredSettings(structuredClone(shown)).settings.layout.menuBarVisible).toBe(true);
+  });
+
+  it('no longer accepts the old Command Bar field', () => {
+    expect(settingsPatchSchema.safeParse({ layout: { commandBarVisible: false } }).success).toBe(
+      false,
+    );
+  });
+
+  it('shows the menu bar again for a file saved with the old toggle off, keeping the rest of the layout', () => {
+    const { settings } = parseStoredSettings({ ...DEFAULT_SETTINGS, layout: legacyLayout });
+
+    expect(settings.layout.menuBarVisible).toBe(true);
+    expect(settings.layout).not.toHaveProperty('commandBarVisible');
+    expect(settings.layout.leftPanel).toEqual({ visible: false, width: 300 });
+    expect(settings.layout.rightPanel).toEqual({ visible: true, width: 400 });
+    expect(settings.layout.activeLeftPanel).toBe('bookmarks');
+    expect(settings.layout.activeRightPanel).toBe('tools');
+  });
+
+  it('keeps a menu bar hidden from Settings hidden', () => {
+    const { commandBarVisible: _old, ...layout } = legacyLayout;
+    const { settings } = parseStoredSettings({
+      ...DEFAULT_SETTINGS,
+      layout: { ...layout, menuBarVisible: false },
+    });
+    expect(settings.layout.menuBarVisible).toBe(false);
+  });
+});
