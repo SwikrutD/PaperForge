@@ -3,6 +3,7 @@
   "productName": "PaperForge",
   "version": "0.1.0",
   "description": "PaperForge — an offline-first Windows PDF workspace.",
+  "author": "PaperForge contributors",
   "private": true,
   "license": "MIT",
   "main": ".vite/build/main.js",
@@ -23,7 +24,8 @@
     "test:watch": "vitest",
     "icons": "node scripts/generate-icon.mjs",
     "licenses": "node scripts/check-licenses.mjs",
-    "test:e2e": "electron-forge package && playwright test"
+    "test:e2e": "electron-forge package && playwright test",
+    "dist": "electron-forge package && electron-builder --win nsis --x64 --prepackaged out/PaperForge-win32-x64 --config electron-builder.yml --publish never"
   },
   "dependencies": {
     "docx": "9.7.2",
@@ -54,6 +56,7 @@
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.1",
     "electron": "44.4.3",
+    "electron-builder": "26.15.3",
     "eslint": "10.11.0",
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-react-refresh": "0.5.7",
@@ -68,6 +71,7 @@
   },
   "allowScripts": {
     "electron@44.4.3": true,
-    "electron-winstaller@5.4.4": true
+    "electron-winstaller@5.4.4": true,
+    "electron-winstaller@5.4.0": false
   }
 }

@@ -1,0 +1,41 @@
+# The Windows setup wizard. `npm run dist` packages PaperForge with Electron
+# Forge first (which builds the app, stamps the executable and sets the
+# Electron fuses) and then hands that finished folder to electron-builder,
+# which only wraps it in an NSIS installer. electron-builder never rebuilds or
+# re-stamps the app, so the asar integrity the fuses check stays intact.
+appId: com.paperforge.PaperForge
+productName: PaperForge
+copyright: Copyright (c) 2026 PaperForge contributors
+directories:
+  output: out/installer
+  buildResources: resources/installer
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: resources/icons/icon.ico
+  # Forge already wrote the version resources and fuses into PaperForge.exe.
+  signAndEditExecutable: false
+nsis:
+  # An assisted wizard rather than a one-click install.
+  oneClick: false
+  # Always for the current user, under %LOCALAPPDATA%\Programs, so no
+  # administrator prompt; the folder can still be changed.
+  perMachine: false
+  allowElevation: false
+  allowToChangeInstallationDirectory: true
+  license: LICENSE
+  installerIcon: resources/icons/icon.ico
+  uninstallerIcon: resources/icons/icon.ico
+  uninstallDisplayName: PaperForge
+  shortcutName: PaperForge
+  createStartMenuShortcut: true
+  # The desktop shortcut and the PDF association are choices on the wizard's
+  # "Additional tasks" page (resources/installer/installer.nsh).
+  createDesktopShortcut: false
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false
+  differentialPackage: false
+  include: resources/installer/installer.nsh
+  artifactName: PaperForge-Setup-${version}-x64.${ext}
+publish: null

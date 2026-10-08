@@ -23,18 +23,19 @@ application.
 
 ## Development
 
-| Package                                                                                                | Why                                                                                                                               |
-| ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| electron                                                                                               | Desktop shell.                                                                                                                    |
-| @electron-forge/cli, plugin-vite, maker-zip, maker-squirrel                                            | Build, dev-run and packaging pipeline.                                                                                            |
-| @electron-forge/plugin-fuses, @electron/fuses                                                          | Flips Electron security fuses at package time. Pinned to `@electron/fuses@1.x` because the Forge plugin peer-requires that major. |
-| ts-node                                                                                                | Lets Forge load `forge.config.ts` as TypeScript.                                                                                  |
-| vite, @vitejs/plugin-react                                                                             | Bundling and dev server for all three targets.                                                                                    |
-| typescript                                                                                             | Strict type checking across four projects.                                                                                        |
-| eslint, @eslint/js, typescript-eslint, eslint-plugin-react-hooks, eslint-plugin-react-refresh, globals | Type-aware linting, including the rules that keep Node APIs out of the renderer.                                                  |
-| prettier                                                                                               | Formatting. `CLAUDE.md` is excluded so the specification is never reformatted.                                                    |
-| vitest, jsdom, @testing-library/{react,jest-dom,user-event}                                            | Unit and component tests.                                                                                                         |
-| @types/node, @types/react, @types/react-dom                                                            | Type definitions.                                                                                                                 |
+| Package                                                                                                | Why                                                                                                                                                                                                                                            |
+| ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| electron                                                                                               | Desktop shell.                                                                                                                                                                                                                                 |
+| @electron-forge/cli, plugin-vite, maker-zip, maker-squirrel                                            | Build, dev-run and packaging pipeline.                                                                                                                                                                                                         |
+| @electron-forge/plugin-fuses, @electron/fuses                                                          | Flips Electron security fuses at package time. Pinned to `@electron/fuses@1.x` because the Forge plugin peer-requires that major.                                                                                                              |
+| electron-builder                                                                                       | Wraps the Forge-packaged folder in the NSIS setup wizard for `npm run dist` (install folder choice, optional desktop shortcut and PDF association, uninstaller). Used with `--prepackaged`, so it never rebuilds the app or touches the fuses. |
+| ts-node                                                                                                | Lets Forge load `forge.config.ts` as TypeScript.                                                                                                                                                                                               |
+| vite, @vitejs/plugin-react                                                                             | Bundling and dev server for all three targets.                                                                                                                                                                                                 |
+| typescript                                                                                             | Strict type checking across four projects.                                                                                                                                                                                                     |
+| eslint, @eslint/js, typescript-eslint, eslint-plugin-react-hooks, eslint-plugin-react-refresh, globals | Type-aware linting, including the rules that keep Node APIs out of the renderer.                                                                                                                                                               |
+| prettier                                                                                               | Formatting. `CLAUDE.md` is excluded so the specification is never reformatted.                                                                                                                                                                 |
+| vitest, jsdom, @testing-library/{react,jest-dom,user-event}                                            | Unit and component tests.                                                                                                                                                                                                                      |
+| @types/node, @types/react, @types/react-dom                                                            | Type definitions.                                                                                                                                                                                                                              |
 
 ## Version choices worth knowing
 
@@ -48,9 +49,11 @@ application.
   fuse disabled, which is precisely what stops a test runner from attaching to it. Playwright
   therefore launches `.vite/build/main.js` with the Electron binary: same code, same `app://`
   renderer, without the fuses. The packaged build is smoke-tested separately.
-- **No Squirrel maker yet.** `@electron-forge/maker-squirrel` pulls in `electron-winstaller` and a
-  large, partly outdated dependency tree; the installer is a Segment 18 deliverable, so it is added
-  there rather than carried unused.
+- **Two Windows installers.** `npm run make` still builds the Squirrel installer (one click, no
+  choices) and the zip; `npm run dist` builds the NSIS setup wizard with electron-builder, which is
+  the one to hand to people. electron-builder runs with `--prepackaged`, on the folder Forge made,
+  because Forge is what sets the fuses and asar integrity; letting electron-builder package the
+  app itself would mean a second, different packaging pipeline.
 - **Fluent UI React Components is not installed yet.** Segment 0 needs tokens, not a control
   library. The decision for or against it belongs to Segment 1, where the real shell controls are
   built; the design tokens are deliberately framework-neutral either way.
