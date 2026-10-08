@@ -115,6 +115,13 @@ async function readSimpleFont(
   const standard = widths.length === 0 ? await standardWidths(baseFont) : null;
   const missing = numberValue(descriptor?.lookup(PDFName.of('MissingWidth')), 0);
 
+  const byCharacter = new Map<string, number>();
+  for (const [code, text] of toUnicode) {
+    // A code with no width is not one the font draws.
+    const listed = widths.length === 0 || (code >= firstChar && code < firstChar + widths.length);
+    if (listed && !byCharacter.has(text)) byCharacter.set(text, code);
+  }
+
   return {
     name,
     baseFont,
@@ -139,15 +146,30 @@ async function readSimpleFont(
       return missing > 0 ? missing : DEFAULT_WIDTH;
     },
     codeFor: (character) => {
+      // What the font says it draws comes first: a subset font numbers its
+      // glyphs 1, 2, 3… and only its ToUnicode map says which is which.
+      const mapped = byCharacter.get(character);
+      if (mapped !== undefined) return mapped;
+
       for (const [code, glyphName] of differences) {
         if (unicodeForGlyphName(glyphName) === character) return code;
       }
+      // A subset holds only the glyphs the document used, and its ToUnicode
+      // map lists them; a character missing from it has no glyph to draw.
+      if (toUnicode.size > 0 && isSubset(baseFont)) return null;
+
       const code = codeForUnicode(encoding, character);
       // A code the font has no glyph for would draw nothing.
       if (code === null) return null;
-      return differences.has(code) && unicodeForGlyphName(differences.get(code) ?? '') !== character
-        ? null
-        : code;
+      if (differences.has(code) && unicodeForGlyphName(differences.get(code) ?? '') !== character) {
+        return null;
+      }
+      // The code already means something else to this font.
+      const meaning = toUnicode.get(code);
+      if (meaning !== undefined && meaning !== character) return null;
+      // A font that lists its widths has no glyph outside them.
+      if (widths.length > 0 && (code < firstChar || code >= firstChar + widths.length)) return null;
+      return code;
     },
     ascent: numberValue(descriptor?.lookup(PDFName.of('Ascent')), DEFAULT_ASCENT),
     descent: numberValue(descriptor?.lookup(PDFName.of('Descent')), DEFAULT_DESCENT),
@@ -208,6 +230,11 @@ function readCompositeFont(
     // moves down the page rather than along it, which is not measured here.
     positionsKnown: encodingName === 'Identity-H',
   };
+}
+
+/** A subset font's name starts with six capital letters and a plus sign. */
+function isSubset(baseFont: string): boolean {
+  return /^[A-Z]{6}\+/.test(baseFont);
 }
 
 function readEncoding(
