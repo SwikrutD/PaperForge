@@ -88,6 +88,40 @@ export interface Color {
 
 export const BLACK: Color = { space: 'gray', components: [0] };
 
+/**
+ * A colour space selected by `cs`/`CS`, which says what the numbers given to
+ * `sc`/`scn` mean. Its colours come out in a device space, so everything
+ * after the walk deals in gray, RGB and CMYK only.
+ */
+export interface ColorSpace {
+  /** The colour selecting the space sets, before any `sc` does. */
+  initial: Color;
+  /** The colour `sc`/`scn` sets with these numbers. */
+  colorOf: (components: number[]) => Color;
+}
+
+/** Finds a colour space by the name a content stream gives it. */
+export type ColorSpaceLookup = (name: string) => ColorSpace | undefined;
+
+const DEVICE_SPACES: Record<string, ColorSpace> = {
+  DeviceGray: { initial: BLACK, colorOf: (components) => ({ space: 'gray', components }) },
+  DeviceRGB: {
+    initial: { space: 'rgb', components: [0, 0, 0] },
+    colorOf: (components) => ({ space: 'rgb', components }),
+  },
+  DeviceCMYK: {
+    initial: { space: 'cmyk', components: [0, 0, 0, 1] },
+    colorOf: (components) => ({ space: 'cmyk', components }),
+  },
+  // A pattern is not a colour; what draws with one is shown as black.
+  Pattern: { initial: BLACK, colorOf: (components) => ({ space: 'other', components }) },
+};
+
+/** The spaces a content stream can name without the page's resources. */
+export function deviceColorSpace(name: string): ColorSpace | undefined {
+  return Object.hasOwn(DEVICE_SPACES, name) ? DEVICE_SPACES[name] : undefined;
+}
+
 export interface TextState {
   /** Resource name of the font, without its slash. */
   fontName: string | null;
@@ -122,10 +156,20 @@ export interface GraphicsState {
   text: TextState;
   fill: Color;
   stroke: Color;
+  /** The space `cs` selected for filling, or null for a device space. */
+  fillSpace: ColorSpace | null;
+  strokeSpace: ColorSpace | null;
 }
 
 export function initialGraphicsState(ctm: Matrix = IDENTITY): GraphicsState {
-  return { ctm, text: { ...INITIAL_TEXT_STATE }, fill: BLACK, stroke: BLACK };
+  return {
+    ctm,
+    text: { ...INITIAL_TEXT_STATE },
+    fill: BLACK,
+    stroke: BLACK,
+    fillSpace: null,
+    strokeSpace: null,
+  };
 }
 
 /**
@@ -160,6 +204,11 @@ export interface WalkOptions {
   onOperation?: (context: WalkContext) => void;
   /** Advance in unscaled text units for `Tj`, `TJ`, `'` and `"`. */
   advanceOf?: ShowAdvance;
+  /**
+   * The colour spaces the page's resources define. Without it, a colour set
+   * through a named space is guessed from how many numbers it has.
+   */
+  colorSpaces?: ColorSpaceLookup;
 }
 
 const SHOW_OPERATORS = new Set(['Tj', 'TJ', "'", '"']);
@@ -270,30 +319,42 @@ export function walkContent(
         break;
 
       case 'g':
-        state = { ...state, fill: { space: 'gray', components: numbersOf(operands) } };
+        state = { ...state, fill: deviceColor('gray', operands), fillSpace: null };
         break;
       case 'G':
-        state = { ...state, stroke: { space: 'gray', components: numbersOf(operands) } };
+        state = { ...state, stroke: deviceColor('gray', operands), strokeSpace: null };
         break;
       case 'rg':
-        state = { ...state, fill: { space: 'rgb', components: numbersOf(operands) } };
+        state = { ...state, fill: deviceColor('rgb', operands), fillSpace: null };
         break;
       case 'RG':
-        state = { ...state, stroke: { space: 'rgb', components: numbersOf(operands) } };
+        state = { ...state, stroke: deviceColor('rgb', operands), strokeSpace: null };
         break;
       case 'k':
-        state = { ...state, fill: { space: 'cmyk', components: numbersOf(operands) } };
+        state = { ...state, fill: deviceColor('cmyk', operands), fillSpace: null };
         break;
       case 'K':
-        state = { ...state, stroke: { space: 'cmyk', components: numbersOf(operands) } };
+        state = { ...state, stroke: deviceColor('cmyk', operands), strokeSpace: null };
         break;
+      // Selecting a space also sets its initial colour: black, full tint, or
+      // the first entry of an indexed palette.
+      case 'cs': {
+        const space = spaceNamed(operands[0], options.colorSpaces);
+        state = { ...state, fill: space?.initial ?? BLACK, fillSpace: space ?? null };
+        break;
+      }
+      case 'CS': {
+        const space = spaceNamed(operands[0], options.colorSpaces);
+        state = { ...state, stroke: space?.initial ?? BLACK, strokeSpace: space ?? null };
+        break;
+      }
       case 'sc':
       case 'scn':
-        state = { ...state, fill: colorFrom(operands) };
+        state = { ...state, fill: colorIn(state.fillSpace, operands) };
         break;
       case 'SC':
       case 'SCN':
-        state = { ...state, stroke: colorFrom(operands) };
+        state = { ...state, stroke: colorIn(state.strokeSpace, operands) };
         break;
 
       default:
@@ -321,7 +382,28 @@ function matrixFrom(operands: readonly ContentValue[]): Matrix {
   };
 }
 
-/** A colour set through a named space: read the numbers, name the rest. */
+function deviceColor(space: ColorSpaceKind, operands: readonly ContentValue[]): Color {
+  return { space, components: numbersOf(operands) };
+}
+
+function spaceNamed(
+  operand: ContentValue | undefined,
+  lookup: ColorSpaceLookup | undefined,
+): ColorSpace | undefined {
+  const name = nameOf(operand);
+  if (name === null) return undefined;
+  return lookup?.(name) ?? deviceColorSpace(name);
+}
+
+/** A colour set with `sc`/`scn`, in the space `cs` selected. */
+function colorIn(space: ColorSpace | null, operands: readonly ContentValue[]): Color {
+  return space === null ? colorFrom(operands) : space.colorOf(numbersOf(operands));
+}
+
+/**
+ * A colour set through a space the walk does not know: read the numbers and
+ * guess from how many there are.
+ */
 function colorFrom(operands: readonly ContentValue[]): Color {
   const components = numbersOf(operands);
   switch (components.length) {

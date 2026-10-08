@@ -11,6 +11,7 @@ import {
 import { parseContent, type ContentOperation } from './parser';
 import { readPageFonts, type FontMetrics } from './fonts';
 import { extractTextRuns, type TextRun } from './textRuns';
+import { readColorSpaces } from './colorSpaces';
 import {
   extractImages,
   type FormOpener,
@@ -57,7 +58,10 @@ export async function readPageContent(
   const bytes = contentBytes(document, page);
   const operations = parseContent(bytes);
   const fonts = await readPageFonts(document, resources);
-  const runs = extractTextRuns(operations, { fonts: (name) => fonts.get(name) });
+  const runs = extractTextRuns(operations, {
+    fonts: (name) => fonts.get(name),
+    colorSpaces: readColorSpaces(document, resources),
+  });
 
   const resourcesRead = readXObjects?.(document, resources);
   const skipped: SkippedImageReason[] = [];

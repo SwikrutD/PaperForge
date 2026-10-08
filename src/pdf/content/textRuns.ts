@@ -7,6 +7,7 @@ import {
   multiply,
   walkContent,
   type Color,
+  type ColorSpaceLookup,
   type Matrix,
   type TextState,
 } from './state';
@@ -170,6 +171,8 @@ export interface TextRunOptions {
   fonts: FontLookup;
   /** The transform the page puts on its content, if any. */
   ctm?: Matrix;
+  /** The colour spaces the page's resources define, for `cs` and `scn`. */
+  colorSpaces?: ColorSpaceLookup;
 }
 
 /** Reads every run of text a content stream draws. */
@@ -181,6 +184,7 @@ export function extractTextRuns(
 
   walkContent(operations, {
     ...(options.ctm === undefined ? {} : { ctm: options.ctm }),
+    ...(options.colorSpaces === undefined ? {} : { colorSpaces: options.colorSpaces }),
     advanceOf: (context) => {
       const parts = showParts(context.operation);
       const state = context.state;

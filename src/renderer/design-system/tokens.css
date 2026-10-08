@@ -84,6 +84,8 @@
   --pf-color-bg-selected: #e9f2fd;
   --pf-color-workspace: #f0eeec;
   --pf-color-page: #ffffff;
+  /* Behind text too light to read on the page: white words on a dark band. */
+  --pf-color-page-inverse: #3b3a39;
   /* Shades the part of a picture a crop will hide; it lies over the page. */
   --pf-color-crop-shade: rgba(32, 31, 30, 0.5);
   /* Presentation mode surrounds the page with black in both themes. */
@@ -132,6 +134,8 @@
   --pf-color-bg-selected: #0d2c45;
   --pf-color-workspace: #141313;
   --pf-color-page: #ffffff;
+  /* Behind text too light to read on the page: white words on a dark band. */
+  --pf-color-page-inverse: #3b3a39;
   /* Shades the part of a picture a crop will hide; it lies over the page. */
   --pf-color-crop-shade: rgba(32, 31, 30, 0.5);
 
