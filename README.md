@@ -116,15 +116,19 @@ npm run licenses    # audits the license of every package that ships
 Packaging:
 
 ```sh
+npm run dist        # out/installer/PaperForge-Setup-<version>-x64.exe — the setup wizard to hand out
 npm run package     # unpacked app in out/PaperForge-win32-x64
-npm run make        # out/make: PaperForge-Setup.exe (per-user installer) and a zip
+npm run make        # out/make: one-click Squirrel installer and a portable zip
 npm run icons       # regenerate resources/icons from scripts/generate-icon.mjs
 ```
 
-`PaperForge-Setup.exe` installs for the current user only, in `%LOCALAPPDATA%\PaperForge`, with
-Start menu and desktop shortcuts, and adds PaperForge to the Open With list for PDF files. It needs
-no administrator rights and downloads nothing. Windows leaves the choice of default PDF app to the
-user; Settings → Windows opens the right page. Uninstall from Settings → Apps.
+`PaperForge-Setup-<version>-x64.exe` is a standard setup wizard: license, install folder (default
+`%LOCALAPPDATA%\Programs\PaperForge`), then a choice of desktop shortcut and of offering PaperForge
+for PDF files. It always makes a Start menu shortcut, installs for the current user without
+administrator rights, includes everything PaperForge needs (no Node.js or npm on the target
+machine), downloads nothing, and uninstalls from Settings → Apps. Windows leaves the choice of
+default PDF app to the user; Settings → Windows in PaperForge opens the right page.
+`docs/RELEASE_CHECKLIST.md` has the details and the release steps.
 
 ## Documentation
 

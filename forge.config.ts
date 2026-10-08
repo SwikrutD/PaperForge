@@ -29,6 +29,10 @@ const config: ForgeConfig = {
     icon: 'resources/icons/icon',
     asar: true,
     ignore: shouldIgnoreInPackage,
+    // Local tools staged for this build (qpdf, Tesseract with its tessdata)
+    // land in resources/bundled-tools beside the asar, where the qpdf and
+    // Tesseract services look first. An empty folder ships as an empty folder.
+    extraResource: ['resources/bundled-tools'],
     win32metadata: {
       CompanyName: 'PaperForge',
       ProductName: 'PaperForge',

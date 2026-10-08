@@ -135,7 +135,7 @@ export function TextEditLayer({
     return (
       <input
         ref={inputRef}
-        className={styles.input}
+        className={cx(styles.input, isLight(textStyle.color) && styles.inputOnDark)}
         value={value}
         style={{
           top: 'auto',
@@ -261,6 +261,14 @@ export function TextEditLayer({
       )}
     </div>
   );
+}
+
+/**
+ * True when text in this colour would be lost on a white page — white words
+ * from a dark band, say — so the field shows them on a dark ground instead.
+ */
+function isLight({ r, g, b }: TextStyle['color']): boolean {
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.8;
 }
 
 /** True when an event started inside the open text field. */

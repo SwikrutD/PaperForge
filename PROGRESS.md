@@ -1358,6 +1358,27 @@ Run on Windows 11 x64, Node 24.19.0, npm 11.17.0, after the moved-objects fix:
 | Packaged launch        | `out/PaperForge-win32-x64/PaperForge.exe` opened its window ("PaperForge") and was ended |
 | Installer smoke        | Not repeated this segment (last passed in Segment 18); a clean-VM run is still to do     |
 
+## Follow-up — setup wizard (`npm run dist`)
+
+`npm run dist` packages the app with Forge and wraps `out/PaperForge-win32-x64` in an NSIS setup
+wizard with electron-builder 26.15.3 (MIT, dev only, `--prepackaged` so the fuses and asar
+integrity Forge set are untouched). Output: `out/installer/PaperForge-Setup-<version>-x64.exe`.
+Pages: license, install folder (default `%LOCALAPPDATA%\Programs\PaperForge`, per-user, no admin),
+Additional tasks (desktop shortcut; Open PDF files with PaperForge), install, finish/run. The PDF
+association is written by `resources/installer/installer.nsh` with the same HKCU keys as
+`fileAssociation.ts`, and removed on uninstall. `forge.config.ts` now ships
+`resources/bundled-tools` as an extra resource, so a staged qpdf/Tesseract travels with the build
+(none is staged; the Tesseract Windows build carries LGPL DLLs and needs a licence decision first).
+`npm run make` (Squirrel + zip) is unchanged.
+
+Verified on the development machine (Windows 11, not a clean VM): silent install into a folder
+with spaces and a non-ASCII name; wizard install clicking through every page with the desktop
+shortcut unticked (no desktop shortcut made, Start menu shortcut and association made); Finish
+started PaperForge; a PDF with a Unicode name opened through the association's command; wizard and
+silent uninstall removed the folder, shortcuts, association and Apps entry and left another app's
+Open with entry alone. typecheck, lint, format:check, unit tests (1125) and the licence audit pass.
+The installer is not code-signed, so Windows SmartScreen warns on first run.
+
 ## Manual setup required
 
 None beyond `npm install`. On npm 11 the first install asks to approve the Electron and

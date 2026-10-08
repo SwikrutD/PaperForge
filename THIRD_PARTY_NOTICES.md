@@ -38,6 +38,7 @@ Not redistributed with the application.
 | @electron-forge/maker-squirrel | 7.11.2  | MIT        |
 | @electron-forge/maker-zip      | 7.11.2  | MIT        |
 | electron-winstaller            | 5.4.4   | MIT        |
+| electron-builder               | 26.15.3 | MIT        |
 | @electron-forge/plugin-fuses   | 7.11.2  | MIT        |
 | @electron-forge/plugin-vite    | 7.11.2  | MIT        |
 | @electron/fuses                | 1.8.0   | MIT        |
@@ -69,6 +70,13 @@ installed application are Squirrel.Windows; they are redistributed with the inst
 the application archive. electron-winstaller's build-time tools — NuGet (Apache-2.0), 7-Zip
 (LGPL-2.1 with the unRAR restriction) and rcedit (MIT) — run on the build machine only and are not
 part of either distributable.
+
+`npm run dist` builds `PaperForge-Setup-<version>-x64.exe`, the setup wizard, with
+electron-builder (MIT). electron-builder only wraps the folder Forge packaged; it fetches NSIS
+(zlib/libpng license, with bzip2 and zlib parts under their own permissive licenses) and 7-Zip
+onto the build machine the first time it runs. The NSIS installer and uninstaller stubs are
+redistributed inside the setup program and the installed folder (`Uninstall PaperForge.exe`); NSIS's
+license permits that without notice requirements. 7-Zip runs on the build machine only.
 
 ### Licenses other than MIT, ISC, Apache-2.0 and BSD
 

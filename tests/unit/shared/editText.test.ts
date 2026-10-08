@@ -200,6 +200,53 @@ describe('when it cannot', () => {
   });
 });
 
+describe('rewriting a run in a subset font', () => {
+  // How LibreOffice, Word and most generators write a subset: the glyphs are
+  // numbered in the order the document first used them, with no /Encoding,
+  // and only the ToUnicode map says which number is which letter.
+  const subset = {
+    name: 'F2',
+    baseFont: 'BAAAAA+LiberationSans',
+    widths: [610, 556, 389, 556, 889, 277],
+    toUnicode: { 32: 'L', 33: 'o', 34: 'r', 35: 'e', 36: 'm', 37: ' ' },
+  };
+  const page = (codes: string): PdfSpec => ({
+    pages: [{ content: `BT /F2 12 Tf 1 0 0 1 60 700 Tm <${codes}> Tj ET` }],
+    fonts: [subset],
+  });
+
+  it('writes the glyph numbers the font uses, not ASCII', async () => {
+    const original = documentOf(page('2021222324'));
+    const { run, id } = await firstRun(original);
+    expect(run.text).toBe('Lorem');
+
+    const edited = await editText(original, id, 'more Lore');
+    const rewritten = await firstRun(edited);
+    // m o r e ␠ L o r e, each as the subset numbers it.
+    const operand = rewritten.content.bytes.subarray(
+      rewritten.run.textRange.start,
+      rewritten.run.textRange.end,
+    );
+    expect(new TextDecoder('latin1').decode(operand)).toBe('($!"#% !"#)');
+    expect(rewritten.run.text).toBe('more Lore');
+  });
+
+  it('writes a space with the space glyph, so words stay apart', async () => {
+    const original = documentOf(page('2021222324'));
+    const { id } = await firstRun(original);
+
+    const edited = await editText(original, id, 'Lo re');
+    const rewritten = await firstRun(edited);
+    expect(rewritten.run.glyphs.map((glyph) => glyph.code)).toEqual([32, 33, 37, 34, 35]);
+  });
+
+  it('refuses a letter the subset has no glyph for', async () => {
+    const original = documentOf(page('2021222324'));
+    const { id } = await firstRun(original);
+    await expect(editText(original, id, 'Lowe')).rejects.toThrow(/cannot write “w”/);
+  });
+});
+
 describe('replacing text PaperForge cannot write natively', () => {
   const style = {
     family: 'helvetica' as const,

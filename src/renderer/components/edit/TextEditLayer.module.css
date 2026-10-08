@@ -45,6 +45,11 @@
   line-height: 1;
 }
 
+/* Text too light to read on the page's colour is shown on a dark ground. */
+.inputOnDark {
+  background-color: var(--pf-color-page-inverse);
+}
+
 /* While choosing where new text goes, the page itself is the target. */
 .placing {
   cursor: crosshair;
